@@ -191,9 +191,3 @@ ccms-project/
 
 ```
 
----
-
-If you want, I can also **create a matching `.env.example` and `.gitignore` template** for all folders so your team can literally clone and start working immediately.  
-
-Do you want me to do that next?
-```
