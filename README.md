@@ -50,6 +50,7 @@ git commit -m "Add: feature description"
 git push origin yourname-feature
 
 # Step 5: Open Pull Request to merge into develop
+Always create a PR from your branch into develop and ask a teammate to review before merging. That way, no one merges directly to develop or main accidentally
 ````
 
 > Flow: `your-branch` → `develop` (via PR) → `main` (only at the end)
@@ -125,6 +126,7 @@ Keep notes and docs as we go:
 
 
 > Let’s build, learn, and have fun together!
+
 
 
 
