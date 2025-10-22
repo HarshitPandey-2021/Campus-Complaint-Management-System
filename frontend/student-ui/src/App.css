@@ -1,0 +1,19 @@
+body{
+  font-family: 'Inter' , sans-serif;
+  text-align: center;
+  background-color: gainsboro;
+  margin-top: 80px;
+}
+
+button{
+  background: indigo;
+  color: white;
+  border: none;
+  padding: 12px , 20px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+button:hover{
+  background: #005bbb;
+}
