@@ -1,132 +1,246 @@
-
-````markdown
 # 🎓 CCMS - Campus Complaint Management System
 
 > Report it. Track it. Fix it. 🚀
 
-## 👋 What We're Building
+Modern web application for managing campus facility complaints with real-time tracking, analytics, and automated workflows.
 
-Welcome to the **Campus Complaint Management System (CCMS)**!  
-
-This project will allow students to report campus issues (broken fans, dirty washrooms, flickering lights) and give admins a dashboard to track, assign, and resolve them efficiently.  
-
-**Right now:** We only have the basic folder structure set up — we’ll gradually add code, dependencies, and features together.
+**Status:** 🟢 Admin Panel Live | 🟡 Backend & Student Portal In Progress
 
 ---
 
-## 👥 Team & Responsibilities
+## 🌐 Live Demos
 
-| Member | Role |
-|--------|------|
-| **Somesh** | Backend/API |
-| **Shakti** | Student UI (Frontend) |
-| **Harshit** | Admin Panel |
-| **Shiva** | Database Design, Testing |
-
-> We’re here to **learn together** and help each other as we build this project.
+- **Admin Dashboard:** [Check it here](https://notwhite.netlify.app/) ✅
+- Student Portal: Coming Soon
+- API Docs: Coming Soon
 
 ---
 
-## 🌳 Git Workflow (Keep It Simple!)
+## 👥 Team
 
-- **`main`** → Final production-ready code (hands off! 🚫)  
-- **`develop`** → Where we test & integrate everything  
+| Member | Module | Status |
+|--------|--------|--------|
+| **Harshit** | [Admin Panel →](./admin/) | ✅ Complete & Deployed |
+| **Shakti** | Student UI | 🚧 In Progress |
+| **Somesh** | Backend API | 🚧 In Progress |
+| **Shiva** | Database & Testing | 🚧 In Progress |
 
-### Daily Flow
+---
+
+## 📦 Project Modules
+
+### [🎛️ Admin Panel](./admin/) - ✅ Production Ready
+Full-featured admin dashboard with dark mode, analytics, and export capabilities.
+
+**Features:** Real-time stats · Complaint management · Interactive charts · CSV export · Print reports · Fully responsive
+
+**Tech:** React 18 + Vite + Tailwind CSS + Recharts
+
+**[📖 Full Documentation](./admin/README.md)** | **[🚀 Live Demo](https://notwhite.netlify.app/)**
+
+---
+
+### 📱 Student Portal - 🚧 In Progress
+Complaint submission and tracking interface for students.
+
+**Planned Features:** Submit complaints · Upload images · Track status · View history
+
+---
+
+### ⚙️ Backend API - 🚧 In Progress
+RESTful API with authentication and database integration.
+
+**Required Endpoints:** Auth · Complaints CRUD · Statistics · File uploads
+
+**[API Spec →](./admin/README.md#backend-integration)**
+
+---
+
+### 💾 Database - 🚧 In Progress
+PostgreSQL/MongoDB with complaint tracking and user management.
+
+**Schema:** Users (admins, students) · Complaints · Categories · Activity logs
+
+---
+
+## 🚀 Quick Start
 
 ```bash
-# Step 1: Start fresh from develop
+# Clone the repo
+git clone <repo-url>
+cd Campus-Complaint-Management-System
+
+# For Admin Panel (already working!)
+cd admin
+npm install
+npm run dev
+# Opens at http://localhost:5173
+
+# For other modules - wait for your teammates! 😄
+```
+
+---
+
+## 🔧 Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend (Admin) | React 18, Vite, Tailwind CSS |
+| Frontend (Student) | React, TBD |
+| Backend | Node.js, Express (planned) |
+| Database | PostgreSQL/MongoDB (TBD) |
+| Deployment | Netlify (Frontend), TBD (Backend) |
+
+---
+
+## 🌳 Git Workflow
+
+**Branches:**
+- `main` → Production code (protected 🔒)
+- `develop` → Integration & testing (default branch)
+- `feature/*` → Your work here!
+
+**Daily Flow:**
+```bash
+# Start fresh
 git checkout develop
 git pull origin develop
 
-# Step 2: Create YOUR feature branch
-git checkout -b yourname-feature
+# Create your branch
+git checkout -b feature/your-feature-name
 
-# Step 3: Work on your feature
-
-# Step 4: Stage, commit, and push
+# Work, commit, push
 git add .
-git commit -m "Add: feature description"
-git push origin yourname-feature
+git commit -m "feat: what you did"
+git push origin feature/your-feature-name
 
-# Step 5: Open Pull Request to merge into develop
-Always create a PR from your branch into develop and ask a teammate to review before merging. That way, no one merges directly to develop or main accidentally
-````
+# Create PR on GitHub → Request review → Merge after approval
+```
 
-> Flow: `your-branch` → `develop` (via PR) → `main` (only at the end)
+**Commit Format:**
+- `feat:` New feature
+- `fix:` Bug fix
+- `docs:` Documentation
+- `style:` UI/formatting
 
 ---
 
-## 📁 Current Project Structure
+## 🔌 Integration Guide
+
+### Backend Team: Required API Endpoints
+
+```http
+POST   /api/auth/login              # Admin/student login
+GET    /api/complaints               # Get all complaints
+POST   /api/complaints               # Submit new complaint
+GET    /api/complaints/:id           # Get single complaint
+PATCH  /api/complaints/:id/status    # Update status
+GET    /api/complaints/stats         # Get statistics
+GET    /api/complaints/analytics     # Get chart data
+```
+
+**Full spec with data formats:** [admin/README.md](./admin/README.md#backend-integration)
+
+---
+
+### Database Team: Required Schema
+
+```sql
+-- Users table
+id, name, email, password_hash, role, department, created_at
+
+-- Complaints table
+id, subject, description, category, location, status, priority,
+submitted_by, email, submitted_at, admin_remarks, assigned_to, 
+image_url, updated_at
+```
+
+**Status:** `Pending`, `In Progress`, `Resolved`, `Rejected`  
+**Categories:** `Fan`, `Light`, `Cleanliness`, `Projector`, `Infrastructure`, `Plumbing`, `Network`
+
+---
+
+## 📁 Project Structure
 
 ```
 Campus-Complaint-Management-System/
+├── admin/              ✅ Admin dashboard (React)
+│   ├── README.md       → Complete setup & integration guide
+│   ├── src/            → All React components
+│   └── docs/           → Screenshots & documentation
 │
-├── frontend/   # Student complaint portal (React)
-├── admin/      # Admin dashboard (React)
-├── backend/    # API & Database (Node/Express)
-├── docs/       # Project documentation
-├── .gitignore
-└── README.md
+├── frontend/           🚧 Landing Page (React)
+│
+├── backend/            🚧 API server (Node.js/Express)
+│
+├── docs/               📚 Shared documentation
+│
+└── README.md           ← You are here!
 ```
 
-> We’ll gradually add `src/`, `package.json`, `.env`, and other files as we build.
+---
+
+## 🎯 Current Sprint
+
+- [x] Admin Panel - Dashboard, analytics, dark mode
+- [x] Admin Panel - Deployed to Netlify
+- [ ] Backend API - Authentication & complaint endpoints
+- [ ] Student Portal - Complaint submission UI
+- [ ] Database - Setup & migrations
+- [ ] Integration - Connect all modules
 
 ---
 
-## 🚀 Future Plans
+## 🛡️ Rules (Keep It Clean!)
 
-* **Dependencies:** Will install with `npm install` in each folder.
-* **Ports (planned):**
-
-  * Backend → `http://localhost:5000`
-  * Student Frontend → `http://localhost:3000`
-  * Admin Panel → `http://localhost:3001`
-* **Environment variables:** Will use `.env` files for secrets (JWT, database URL, email, etc.).
-
-> Don’t worry — we’ll add these step by step as we code.
-
----
-
-## 🛑 Friendly Rules & Tips
-
-| DO ✅                                | DON'T ❌                                     |
-| ----------------------------------- | ------------------------------------------- |
-| Work on your own branch             | Push directly to `main`                     |
-| Pull from `develop` before starting | Start coding without pulling latest changes |
-| Commit often with clear messages    | Commit `.env` or `node_modules/`            |
-| Ask teammates for help if stuck     | Waste hours struggling alone                |
-| Use Pull Requests for review        | Merge your own PR without review            |
+| ✅ DO | ❌ DON'T |
+|-------|----------|
+| Create feature branches | Push to `develop` or `main` directly |
+| Request PR reviews (min 1 approval) | Merge your own PR without review |
+| Write clear commit messages | Use vague messages like "fix" or "update" |
+| Pull before starting work | Work on outdated code |
+| Test locally before pushing | Push broken code |
+| Keep `.env` files local | Commit secrets or `node_modules/` |
 
 ---
 
-## 📚 Documentation (`docs/` folder)
+## 📸 Preview
 
-Keep notes and docs as we go:
+<img src="./admin/docs/screenshots/dashboard-light.png" alt="Admin Dashboard" width="600"/>
 
-* `project-overview.md` → Project description & goals
-* `api-docs.md` → API endpoints & examples (later)
-* `meeting-notes.md` → Team discussions and decisions
-
-> Helps everyone stay on the same page while learning together.
+**More screenshots:** [admin/docs/screenshots/](./admin/docs/screenshots/)
 
 ---
 
-## ⚡ Quick Start (What to do now)
+## 🤝 Contributing
 
-```
-□ Clone repo
-□ Checkout develop branch
-□ Create feature branch
-□ Add code/features to your folder
-□ Commit & push
-□ Open Pull Request
-□ Learn & help each other! 🚀
-```
+1. Pick a task from issues/project board
+2. Create feature branch: `git checkout -b feature/task-name`
+3. Code & test locally
+4. Commit with clear message: `git commit -m "feat: add login validation"`
+5. Push: `git push origin feature/task-name`
+6. Create PR on GitHub
+7. Request review from teammate
+8. Merge after approval ✅
 
+---
 
-> Let’s build, learn, and have fun together!
+## 📞 Need Help?
 
+- **Admin Panel Issues:** Contact Harshit or check [admin/README.md](./admin/README.md)
+- **Git Problems:** Ask in group chat
+- **API Questions:** Wait for backend docs
 
+---
 
+## 📝 License
 
+Academic Project - Built by Team CCMS
+
+---
+
+**Last Updated:**  23rd October 2025 | **Default Branch:** `develop`
+
+---
+
+> 💡 **Tip:** Always pull from `develop` before creating a new feature branch!
