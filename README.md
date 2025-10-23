@@ -206,7 +206,7 @@ Campus-Complaint-Management-System/
 
 ## 📸 Preview
 
-<img src="./admin/docs/screenshots/dashboard-light.png" alt="Admin Dashboard" width="600"/>
+<img width="1920" height="975" alt="dashboard-light" src="https://github.com/user-attachments/assets/231136da-8ce3-463c-85b7-f0368efb9719" />
 
 **More screenshots:** [admin/docs/screenshots/](./admin/docs/screenshots/)
 
@@ -239,8 +239,10 @@ Academic Project - Built by Team CCMS
 
 ---
 
+
 **Last Updated:**  23rd October 2025 | **Default Branch:** `develop`
 
 ---
 
 > 💡 **Tip:** Always pull from `develop` before creating a new feature branch!
+
