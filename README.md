@@ -67,7 +67,7 @@ PostgreSQL/MongoDB with complaint tracking and user management.
 
 ```bash
 # Clone the repo
-git clone <repo-url>
+git clone <https://github.com/HarshitPandey-2021/Campus-Complaint-Management-System>
 cd Campus-Complaint-Management-System
 
 # For Admin Panel (already working!)
@@ -86,9 +86,9 @@ npm run dev
 | Layer | Technology |
 |-------|-----------|
 | Frontend (Admin) | React 18, Vite, Tailwind CSS |
-| Frontend (Student) | React, TBD |
+| Frontend (Student) | React |
 | Backend | Node.js, Express (planned) |
-| Database | PostgreSQL/MongoDB (TBD) |
+| Database | MongoDB (planned) |
 | Deployment | Netlify (Frontend), TBD (Backend) |
 
 ---
@@ -168,7 +168,8 @@ Campus-Complaint-Management-System/
 │   ├── README.md       → Complete setup & integration guide
 │   ├── src/            → All React components
 │   └── docs/           → Screenshots & documentation
-│
+│   └── ...
+|  
 ├── frontend/           🚧 Landing Page (React)
 │
 ├── backend/            🚧 API server (Node.js/Express)
@@ -240,9 +241,10 @@ Academic Project - Built by Team CCMS
 ---
 
 
-**Last Updated:**  23rd October 2025 | **Default Branch:** `develop`
+**Last Updated:**  24th October 2025 | **Default Branch:** `develop`
 
 ---
 
 > 💡 **Tip:** Always pull from `develop` before creating a new feature branch!
+
 
