@@ -1,36 +1,106 @@
 # 🎓 Campus Complaint Management System - Admin Panel
 
-Modern, responsive admin dashboard for managing campus complaints with real-time analytics, dark mode, and export capabilities.
+[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://notwhite.netlify.app)
+[![React](https://img.shields.io/badge/React-18.3.1-blue)](https://reactjs.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4.0-38bdf8)](https://tailwindcss.com/)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-![CCMS Dashboard](./docs/screenshots/dashboard-light.png)
+A modern, responsive admin dashboard for managing campus facility complaints with real-time analytics, dark mode, anonymous reporting, and PDF verification.
+
+**🔗 Live Demo:** [https://notwhite.netlify.app](https://notwhite.netlify.app)
+
 ---
 
-## ✨ Features
+## 📸 Screenshots
 
-- **Dashboard** - Real-time statistics with complaint overview and trends
-- **Complaint Management** - Filter, search, sort, and update complaint status
-- **Analytics** - Interactive charts for insights (category, status, trends)
+<table>
+  <tr>
+    <td><img src="./docs/screenshots/dashboard-light.png" alt="Dashboard Light" /></td>
+    <td><img src="./docs/screenshots/dashboard-dark.png" alt="Dashboard Dark" /></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Dashboard (Light Mode)</b></td>
+    <td align="center"><b>Dashboard (Dark Mode)</b></td>
+  </tr>
+  <tr>
+    <td><img src="./docs/screenshots/complaint-light.png" alt="Complaints" /></td>
+    <td><img src="./docs/screenshots/analytics-light.png" alt="Analytics" /></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Complaint Management</b></td>
+    <td align="center"><b>Analytics Dashboard</b></td>
+  </tr>
+  <tr>
+    <td><img src="./docs/screenshots/dashboard-mobile.png" alt="Mobile Dashboard" /></td>
+    <td><img src="./docs/screenshots/complain-mobile.png" alt="Mobile Complaints" /></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Mobile Dashboard</b></td>
+    <td align="center"><b>Mobile Complaints</b></td>
+  </tr>
+</table>
+
+---
+
+## ✨ Key Features
+
+### 📊 Complaint Management
+- **Real-time Dashboard** with live statistics and recent complaint tracking
+- **Advanced Filtering** by status, category, priority, and search
+- **Status Workflow** - Manage complaint lifecycle (Pending → In Progress → Resolved/Rejected)
+- **Detailed View** - Complete complaint information with image gallery and timeline
+- **Quick Actions** - Update status, add remarks, and assign tasks
+
+### 🔒 Privacy & Security
+- **Anonymous Reporting** - Students can submit complaints without revealing identity
+- **Identity Protection** - Contact information hidden for anonymous complaints
+- **PDF Verification** - Upload and verify application letters (5MB max, PDF only)
+- **Confidentiality Warnings** - Clear indicators for sensitive complaints
+
+### 📈 Analytics & Reporting
+- **Interactive Charts** - Category distribution, status overview, priority breakdown, and monthly trends
+- **CSV Export** - Download filtered complaint data for offline analysis
+- **Print Support** - Print-friendly complaint reports
+- **Real-time Statistics** - Auto-updating complaint counts and metrics
+
+### 🎨 User Experience
 - **Dark Mode** - Persistent theme toggle with smooth transitions
-- **Export & Print** - Download CSV reports or print complaint lists
-- **Fully Responsive** - Optimized for mobile, tablet, and desktop devices
+- **Fully Responsive** - Optimized for mobile, tablet, and desktop
+- **Toast Notifications** - Real-time feedback for all actions
+- **Loading States** - Skeleton loaders and progress indicators
+- **Image Lightbox** - Full-screen image viewer for complaint photos
+- **Search Suggestions** - Autocomplete for quick filtering
 
 ---
 
 ## 🚀 Quick Start
 
+### Prerequisites
+- Node.js 16+ and npm
+
+### Installation
+
 ```bash
+# Clone repository
+git clone https://github.com/HarshitPandey-2021/Campus-Complaint-Management-System.git
+
+# Navigate to admin folder
+cd Campus-Complaint-Management-System/admin
+
 # Install dependencies
 npm install
 
-# Run development server
+# Start development server
 npm run dev
-
-# Open browser at http://localhost:5173
 ```
 
-**Build for production:**
+Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+### Build for Production
+
 ```bash
 npm run build
+npm run preview
 ```
 
 ---
@@ -39,12 +109,13 @@ npm run build
 
 | Technology | Purpose |
 |------------|---------|
-| React 18 + Vite | Frontend framework & build tool |
-| Tailwind CSS | Utility-first styling |
-| React Router v6 | Client-side routing |
-| Recharts | Data visualization |
-| React Icons | Icon library |
-| Context API | State management (dark mode) |
+| React 18.3.1 | UI Framework |
+| Vite 7.x | Build Tool & Dev Server |
+| Tailwind CSS 3.4.0 | Styling Framework |
+| React Router v6 | Client-side Routing |
+| Recharts | Data Visualization |
+| React Icons | Icon Library |
+| Context API | State Management |
 
 ---
 
@@ -53,231 +124,220 @@ npm run build
 ```
 admin/
 ├── src/
-│   ├── components/          # Reusable UI components
-│   │   ├── Navbar.jsx       # Top navigation with dark mode
-│   │   ├── Sidebar.jsx      # Left navigation menu
-│   │   ├── ComplaintTable.jsx    # Table (desktop) + Cards (mobile)
-│   │   ├── ComplaintFilters.jsx  # Search & filter controls
-│   │   ├── ComplaintDetails.jsx  # Modal for complaint details
-│   │   ├── Charts.jsx            # Analytics charts
-│   │   ├── Toast.jsx             # Notification system
+│   ├── components/          # 17 Reusable Components
+│   │   ├── Navbar.jsx
+│   │   ├── Sidebar.jsx
+│   │   ├── ComplaintTable.jsx
+│   │   ├── ComplaintDetails.jsx
+│   │   ├── ComplaintFilters.jsx
+│   │   ├── FileUpload.jsx
+│   │   ├── Charts.jsx
 │   │   └── ...
 │   │
-│   ├── pages/               # Route pages
-│   │   ├── Dashboard.jsx    # Overview with stats
-│   │   ├── Complaints.jsx   # Complaint management
-│   │   ├── Analytics.jsx    # Charts & insights
-│   │   └── Profile.jsx      # Admin profile
+│   ├── pages/               # 5 Main Pages
+│   │   ├── Dashboard.jsx
+│   │   ├── Complaints.jsx
+│   │   ├── Analytics.jsx
+│   │   ├── Profile.jsx
+│   │   └── NotFound.jsx
 │   │
-│   ├── services/            # Data & API layer
-│   │   └── adminService.js  # ⚠️ Currently mock data - Replace with API
+│   ├── services/
+│   │   └── adminService.js  # Mock Data (Replace with API)
 │   │
-│   ├── context/             # React Context
+│   ├── context/
 │   │   └── DarkModeContext.jsx
 │   │
-│   ├── hooks/               # Custom hooks
-│   │   └── useToast.js
+│   ├── hooks/
+│   │   ├── useToast.js
+│   │   └── useCountUp.js
 │   │
-│   ├── utils/               # Helper functions
-│   │   └── exportUtils.js   # CSV export & print
+│   ├── utils/
+│   │   └── exportUtils.js
 │   │
-│   └── App.jsx              # Main app with routing
+│   ├── App.jsx
+│   └── index.css
 │
-├── docs/                    # Documentation & screenshots
+├── public/
 ├── package.json
-└── README.md
+└── vite.config.js
 ```
 
 ---
 
-## 🔌 Backend Integration
+## 🎯 Feature Highlights
 
-### Current State
-All data is **mock data** from `src/services/adminService.js`. Replace with real API calls.
+### 1. Anonymous Complaint System 🕵️
+Protect student identity for sensitive issues like harassment or ragging with:
+- Hidden contact information
+- Visual indicators (🕵️ badge)
+- Confidentiality warnings for admins
+- Optional PDF verification without revealing identity
 
-### Required API Endpoints
+### 2. PDF Verification System 📄
+Verify complaint authenticity with:
+- PDF-only upload (5MB max)
+- Drag & drop support
+- File preview with size and date
+- Download capability for admins
+- Strict validation (type, size, corruption checks)
 
-#### Authentication
-```
-POST   /api/auth/login        # Admin login
-GET    /api/auth/profile      # Get admin profile
-PATCH  /api/auth/profile      # Update profile
-```
+### 3. Dashboard Filter Navigation 🎯
+Quick filtering with clickable stat cards:
+- Click "Total" → View all complaints
+- Click "Pending" → Filter pending complaints
+- Click "In Progress" → Filter active complaints
+- Click "Resolved" → Filter completed complaints
 
-#### Complaints
-```
-GET    /api/complaints                 # Get all complaints
-GET    /api/complaints/:id             # Get single complaint
-PATCH  /api/complaints/:id/status      # Update status
-GET    /api/complaints/stats           # Get statistics
-GET    /api/complaints/analytics       # Get chart data
-```
+### 4. Responsive Modal System 🎨
+Perfectly centered complaint details modal:
+- Centers on viewport regardless of scroll position
+- Mobile-optimized (90vh max height)
+- Scroll lock on background
+- ESC key and outside-click to close
 
-### Expected Data Format
-
-**Complaint Object:**
-```json
-{
-  "id": 1,
-  "subject": "Broken Ceiling Fan in Room 101",
-  "category": "Fan",
-  "location": "Room 101, Main Building",
-  "status": "Pending",
-  "priority": "High",
-  "submittedBy": "Student Name",
-  "email": "student@college.edu",
-  "submittedAt": "2025-01-15T09:30:00Z",
-  "description": "Detailed description...",
-  "adminRemarks": "",
-  "updatedAt": "2025-01-15T09:30:00Z"
-}
-```
-
-**Status Values:** `Pending`, `In Progress`, `Resolved`, `Rejected`  
-**Priority Values:** `High`, `Medium`, `Low`  
-**Categories:** `Fan`, `Light`, `Cleanliness`, `Projector`, `Infrastructure`, `Plumbing`, `Network`
-
-### Integration Steps
-
-1. **Create API service** (`src/services/api.js`):
-```javascript
-const API_URL = 'http://localhost:3000/api';
-
-export const complaintAPI = {
-  getAll: async () => {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`${API_URL}/complaints`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    return res.json();
-  }
-};
-```
-
-2. **Replace mock imports** in components:
-```javascript
-// OLD: import { getAllComplaints } from '../services/adminService';
-// NEW: import { complaintAPI } from '../services/api';
-```
-
-3. **Handle errors** with try-catch and show toast notifications
+### 5. Advanced Analytics 📊
+Four interactive chart types:
+- Category Distribution (Pie Chart)
+- Status Overview (Bar Chart)
+- Priority Breakdown (Donut Chart)
+- Monthly Trends (Line Chart)
 
 ---
 
-## 💾 Database Schema
+## 📊 Mock Data
 
-### Users Table (Admins)
-```sql
-id, name, email, password_hash, role, department, created_at
+Currently using **12 sample complaints**:
+- **10 Regular Complaints** (visible student information)
+- **2 Anonymous Complaints** (protected identity)
+- **4 Complaints with PDF** verification documents
+
+**Statistics:**
+- Total: 12 complaints
+- Pending: 4 | In Progress: 4 | Resolved: 2 | Rejected: 1
+- Anonymous: 2 | With PDF: 4
+
+---
+
+## 🌐 Deployment
+
+### Netlify (Current)
+```bash
+npm run build
+# Drag dist/ folder to Netlify dashboard
 ```
 
-### Complaints Table
-```sql
-id, subject, description, category, location, status, priority,
-submitted_by, email, submitted_at, admin_remarks, assigned_to, updated_at
+### Vercel
+```bash
+npm install -g vercel
+vercel
+```
+
+### GitHub Pages
+```bash
+npm install --save-dev gh-pages
+npm run build
+npm run deploy
 ```
 
 ---
 
 ## 🎨 Design System
 
-**Colors:**
-- Pending: Blue (#3B82F6)
-- In Progress: Yellow (#F59E0B)  
-- Resolved: Green (#10B981)
-- Rejected: Red (#DC2626)
-- Primary: Indigo (#4F46E5)
+### Colors
+- **Pending:** Blue (#60A5FA)
+- **In Progress:** Yellow (#F59E0B)
+- **Resolved:** Green (#10B981)
+- **Rejected:** Red (#DC2626)
+- **Primary:** Indigo (#4F46E5)
 
-**Responsive Breakpoints:**
-- Mobile: < 768px
-- Tablet: 768px - 1024px
-- Desktop: ≥ 1024px
+### Responsive Breakpoints
+- **Mobile:** < 768px (Cards, stacked layout)
+- **Tablet:** 768px - 1024px (Hybrid layout)
+- **Desktop:** ≥ 1024px (Full table view)
 
-**Typography:** Inter font (Google Fonts)
-
----
-
-## 🌐 Deployment
-
-### Vercel (Recommended)
-```bash
-npm install -g vercel
-vercel
-```
-
-### Netlify
-```bash
-npm run build
-npx netlify-cli deploy --prod --dir=dist
-```
-
-### GitHub Pages
-```bash
-npm install --save-dev gh-pages
-
-# Add to package.json:
-"homepage": "https://username.github.io/repo-name",
-"scripts": { "deploy": "gh-pages -d dist" }
-
-npm run build && npm run deploy
-```
-
----
-
-## 📸 Screenshots
-
-### Desktop
-![Dashboard](https://raw.githubusercontent.com/HarshitPandey-2021/Campus-Complaint-Management-System/admin-panel//docs/screenshots/dashboard-light.png)
-![Complaints](./docs/screenshots/complaint-light.png)
-![Analytics](./docs/screenshots/analytics-light.png)
-
-### Dark Mode
-![Dashboard Dark](./docs/screenshots/dashboard-dark.png)
-![Profile Dark](./docs/screenshots/profile-dark.png)
-
-### Mobile
-![Mobile View](./docs/screenshots/dashboard-mobile.png)
-![Mobile View](./docs/screenshots/complain-mobile.png)
+### Typography
+- **Font:** Inter (Google Fonts)
+- **Headings:** Bold, 36px - 20px
+- **Body:** Regular, 16px - 12px
 
 ---
 
 ## 🤝 Contributing
 
-**Branch Structure:**
-- `main` - Production code
-- `develop` - Development branch
-- `feature/*` - Feature branches
-
-**Workflow:**
+### Workflow
 ```bash
+# Create feature branch
 git checkout -b feature/your-feature
-git add .
-git commit -m "feat: description"
+
+# Commit changes
+git commit -m "feat: your feature description"
+
+# Push to GitHub
 git push origin feature/your-feature
-# Create Pull Request on GitHub
+
+# Create Pull Request
 ```
 
-**Commit Format:**
+### Commit Convention
 - `feat:` New feature
 - `fix:` Bug fix
-- `style:` UI changes
+- `style:` UI/CSS changes
 - `docs:` Documentation
+- `refactor:` Code restructuring
 
 ---
 
 ## 👥 Team
 
-- **Frontend (Admin):** Harshit
-- **Frontend (Landing_Page):** Shakti 
-- **Backend:** Somesh
-- **Database:** Shiva
+| Role | Name | Status |
+|------|------|--------|
+| Frontend - Admin Panel | Harshit Pandey | ✅ Complete |
+| Frontend - Landing Page | Shakti | 🚧 In Progress |
+| Backend API | Somesh | 🚧 In Progress |
+| Database & Testing | Shiva | 🚧 In Progress |
 
 ---
 
-## 📞 Support
+## 📞 Links
 
-**Live Demo:** [View Here](https://notwhite.netlify.app)  
-**Issues:** Open GitHub issue  
-**Contact:** team@college.edu
+- **Live Demo:** [https://notwhite.netlify.app](https://notwhite.netlify.app)
+- **Repository:** [GitHub](https://github.com/HarshitPandey-2021/Campus-Complaint-Management-System)
+- **Issues:** [Report Bug](https://github.com/HarshitPandey-2021/Campus-Complaint-Management-System/issues)
 
 ---
+
+## 📝 License
+
+This project is licensed under the MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+## 📈 Changelog
+
+### v2.0.0 (25th Oct 2025)
+- ✅ Added anonymous complaint system with identity protection
+- ✅ Added PDF verification document upload
+- ✅ Fixed modal positioning on all scroll positions
+- ✅ Fixed mobile notification panel overflow
+- ✅ Fixed dashboard filter navigation
+- ✅ Improved responsive design across all devices
+
+### v1.0.0 (Initial Release)
+- ✅ Dashboard with real-time statistics
+- ✅ Complaint management with filters
+- ✅ Analytics with interactive charts
+- ✅ Dark mode support
+- ✅ CSV export and print functionality
+- ✅ Fully responsive design
+
+---
+
+<div align="center">
+
+**Made with ❤️ by the CCMS Team**
+
+⭐ **Star this repo if you found it helpful!** ⭐
+
+[Live Demo](https://notwhite.netlify.app) • [Report Bug](https://github.com/HarshitPandey-2021/Campus-Complaint-Management-System/issues) • [Request Feature](https://github.com/HarshitPandey-2021/Campus-Complaint-Management-System/issues)
+
+</div>
