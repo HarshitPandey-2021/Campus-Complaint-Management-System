@@ -1,14 +1,46 @@
 // src/components/ComplaintFilters.jsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { RiSearchLine, RiFilterLine, RiRefreshLine } from 'react-icons/ri';
 
-const ComplaintFilters = ({ onFilterChange }) => {
-  const [status, setStatus] = useState('All');
+const ComplaintFilters = ({ onFilterChange, initialFilters }) => {
+  const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
-  const [dateRange, setDateRange] = useState('All');
+  const [dateRange, setDateRange] = useState('all');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  
+  // ✅ NEW: Track if component has been initialized
+  const isInitialized = useRef(false);
+  const isApplyingInitialFilters = useRef(false);
 
+  // ✅ FIXED: Apply initial filters from Dashboard navigation FIRST
+  useEffect(() => {
+    if (initialFilters && !isApplyingInitialFilters.current) {
+      console.log('🎯 ComplaintFilters received initialFilters:', initialFilters);
+      
+      isApplyingInitialFilters.current = true;
+      
+      // Set all filters at once
+      if (initialFilters.status !== undefined) {
+        setStatus(initialFilters.status || '');
+      }
+      if (initialFilters.search !== undefined) {
+        setSearch(initialFilters.search || '');
+        setDebouncedSearch(initialFilters.search || '');
+      }
+      if (initialFilters.dateRange !== undefined) {
+        setDateRange(initialFilters.dateRange || 'all');
+      }
+
+      // Mark as initialized after applying initial filters
+      setTimeout(() => {
+        isInitialized.current = true;
+        isApplyingInitialFilters.current = false;
+      }, 0);
+    }
+  }, [initialFilters]);
+
+  // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
@@ -17,29 +49,40 @@ const ComplaintFilters = ({ onFilterChange }) => {
     return () => clearTimeout(timer);
   }, [search]);
 
+  // ✅ FIXED: Auto-apply filters ONLY after initialization
   useEffect(() => {
-    handleApplyFilters();
-  }, [debouncedSearch]);
+    // Don't apply filters on initial mount or when applying initial filters
+    if (isInitialized.current && !isApplyingInitialFilters.current) {
+      handleApplyFilters();
+    }
+  }, [status, debouncedSearch, dateRange]);
 
   const handleApplyFilters = () => {
-    onFilterChange({
+    const filters = {
       status,
       search: debouncedSearch,
       dateRange
-    });
+    };
+    
+    console.log('🔍 ComplaintFilters applying:', filters);
+    onFilterChange(filters);
   };
 
   const handleReset = () => {
-    setStatus('All');
+    setStatus('');
     setSearch('');
-    setDateRange('All');
+    setDateRange('all');
     setDebouncedSearch('');
+    
     onFilterChange({
-      status: 'All',
+      status: '',
       search: '',
-      dateRange: 'All'
+      dateRange: 'all'
     });
   };
+
+  // Check if any filters are active
+  const hasActiveFilters = status !== '' || debouncedSearch !== '' || dateRange !== 'all';
 
   return (
     <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
@@ -63,7 +106,7 @@ const ComplaintFilters = ({ onFilterChange }) => {
             onChange={(e) => setStatus(e.target.value)}
             className="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
           >
-            <option value="All">All Status</option>
+            <option value="">All Status</option>
             <option value="Pending">Pending</option>
             <option value="In Progress">In Progress</option>
             <option value="Resolved">Resolved</option>
@@ -91,7 +134,7 @@ const ComplaintFilters = ({ onFilterChange }) => {
             {search && (
               <button
                 onClick={() => setSearch('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                 aria-label="Clear search"
               >
                 ✕
@@ -116,9 +159,10 @@ const ComplaintFilters = ({ onFilterChange }) => {
             onChange={(e) => setDateRange(e.target.value)}
             className="w-full px-4 py-3 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
           >
-            <option value="All">All Time</option>
-            <option value="Last 7 Days">Last 7 Days</option>
-            <option value="Last 30 Days">Last 30 Days</option>
+            <option value="all">All Time</option>
+            <option value="today">Today</option>
+            <option value="week">Last 7 Days</option>
+            <option value="month">Last 30 Days</option>
           </select>
         </div>
 
@@ -129,14 +173,15 @@ const ComplaintFilters = ({ onFilterChange }) => {
           </label>
           <button
             onClick={handleApplyFilters}
-            className="flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-all shadow-sm"
+            className="flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-all hover:scale-105 shadow-sm"
           >
             <RiFilterLine className="h-5 w-5" />
             <span>Apply</span>
           </button>
           <button
             onClick={handleReset}
-            className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-all"
+            disabled={!hasActiveFilters}
+            className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <RiRefreshLine className="h-5 w-5" />
             <span>Reset</span>
@@ -145,46 +190,56 @@ const ComplaintFilters = ({ onFilterChange }) => {
       </div>
 
       {/* Active Filters Indicator */}
-      {(status !== 'All' || debouncedSearch !== '' || dateRange !== 'All') && (
+      {hasActiveFilters && (
         <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Active Filters:</span>
-            {status !== 'All' && (
+            
+            {status && (
               <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700">
                 Status: {status}
                 <button
-                  onClick={() => setStatus('All')}
-                  className="ml-2 text-indigo-500 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-200"
+                  onClick={() => setStatus('')}
+                  className="ml-2 text-indigo-500 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-200 transition-colors"
                   aria-label="Remove status filter"
                 >
                   ✕
                 </button>
               </span>
             )}
+            
             {debouncedSearch && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700">
-                Search: "{debouncedSearch}"
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700">
+                Search: "{debouncedSearch.length > 20 ? debouncedSearch.substring(0, 20) + '...' : debouncedSearch}"
                 <button
                   onClick={() => setSearch('')}
-                  className="ml-2 text-indigo-500 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-200"
+                  className="ml-2 text-green-500 dark:text-green-400 hover:text-green-700 dark:hover:text-green-200 transition-colors"
                   aria-label="Remove search filter"
                 >
                   ✕
                 </button>
               </span>
             )}
-            {dateRange !== 'All' && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700">
-                Date: {dateRange}
+            
+            {dateRange !== 'all' && (
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700">
+                Date: {dateRange === 'today' ? 'Today' : dateRange === 'week' ? 'Last 7 Days' : 'Last 30 Days'}
                 <button
-                  onClick={() => setDateRange('All')}
-                  className="ml-2 text-indigo-500 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-200"
+                  onClick={() => setDateRange('all')}
+                  className="ml-2 text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-200 transition-colors"
                   aria-label="Remove date filter"
                 >
                   ✕
                 </button>
               </span>
             )}
+            
+            <button
+              onClick={handleReset}
+              className="ml-auto text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-semibold transition-colors"
+            >
+              Clear All
+            </button>
           </div>
         </div>
       )}

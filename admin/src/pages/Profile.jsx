@@ -23,11 +23,11 @@ const Profile = () => {
 
   // Profile data (mock)
   const [profileData, setProfileData] = useState({
-    name: 'Jane Doe',
-    email: 'admin@college.edu',
+    name: 'Notwhite444',
+    email: 'Notwhite444@lkouniv.edu',
     role: 'System Administrator',
     department: 'IT Department',
-    phone: '+1 (555) 123-4567',
+    phone: '+91 123-4567',
     joinedDate: '2023-01-15',
     lastLogin: new Date().toISOString()
   });

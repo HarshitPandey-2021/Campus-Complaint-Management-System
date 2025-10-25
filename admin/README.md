@@ -227,7 +227,7 @@ npm run build && npm run deploy
 ## 📸 Screenshots
 
 ### Desktop
-![Dashboard](https://raw.githubusercontent.com/HarshitPandey-2021/Campus-Complaint-Management-System/admin-panel/admin/docs/screenshots/dashboard-light.png)
+![Dashboard](https://raw.githubusercontent.com/HarshitPandey-2021/Campus-Complaint-Management-System/admin-panel//docs/screenshots/dashboard-light.png)
 ![Complaints](./docs/screenshots/complaint-light.png)
 ![Analytics](./docs/screenshots/analytics-light.png)
 

@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import Badge from './Badge';
+import ImageGallery from './ImageGallery';
+import EmptyState from './EmptyState';
 import { RiEyeLine, RiPlayFill, RiCheckFill, RiCloseFill, RiArrowUpLine, RiArrowDownLine } from 'react-icons/ri';
 
 const ComplaintTable = ({ complaints, onRowClick, onActionClick }) => {
@@ -146,12 +148,7 @@ const ComplaintTable = ({ complaints, onRowClick, onActionClick }) => {
   };
 
   if (complaints.length === 0) {
-    return (
-      <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-        <p className="text-gray-500 dark:text-gray-400 text-lg">No complaints found.</p>
-        <p className="text-gray-400 dark:text-gray-500 text-sm mt-2">Try adjusting your filters.</p>
-      </div>
-    );
+    return <EmptyState type="filter" />;
   }
 
   return (
@@ -170,6 +167,11 @@ const ComplaintTable = ({ complaints, onRowClick, onActionClick }) => {
                   <SortIcon columnKey="id" />
                 </div>
               </th>
+
+              {/* IMAGE COLUMN */}
+              <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                Image
+              </th>
               
               <th 
                 className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
@@ -178,6 +180,17 @@ const ComplaintTable = ({ complaints, onRowClick, onActionClick }) => {
                 <div className="flex items-center gap-2">
                   Subject
                   <SortIcon columnKey="subject" />
+                </div>
+              </th>
+
+              {/* ✅ NEW: SUBMITTED BY COLUMN */}
+              <th 
+                className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
+                onClick={() => handleSort('submittedBy')}
+              >
+                <div className="flex items-center gap-2">
+                  Submitted By
+                  <SortIcon columnKey="submittedBy" />
                 </div>
               </th>
               
@@ -248,11 +261,39 @@ const ComplaintTable = ({ complaints, onRowClick, onActionClick }) => {
                     #{complaint.id}
                   </span>
                 </td>
+
+                {/* IMAGE CELL */}
+                <td className="px-4 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                  <ImageGallery images={complaint.images} compact={true} />
+                </td>
+
                 <td className="px-4 py-4">
                   <div className="text-sm font-semibold text-gray-800 dark:text-gray-200 max-w-xs truncate">
                     {complaint.subject}
                   </div>
                 </td>
+
+                {/* ✅ NEW: SUBMITTED BY CELL */}
+                <td className="px-4 py-4 whitespace-nowrap">
+                  {complaint.isAnonymous ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm italic text-gray-500 dark:text-gray-400">
+                        Anonymous
+                      </span>
+                      <span 
+                        className="text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 px-2 py-0.5 rounded-full font-semibold"
+                        title="This complaint was submitted anonymously"
+                      >
+                        🕵️
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-700 dark:text-gray-300">
+                      {complaint.submittedBy}
+                    </div>
+                  )}
+                </td>
+
                 <td className="px-4 py-4 whitespace-nowrap">
                   <span className="text-sm text-gray-700 dark:text-gray-300">{complaint.category}</span>
                 </td>
@@ -311,11 +352,33 @@ const ComplaintTable = ({ complaints, onRowClick, onActionClick }) => {
               <Badge status={complaint.status} />
             </div>
 
+            {/* IMAGE GALLERY IN MOBILE CARD */}
+            {complaint.images && complaint.images.length > 0 && (
+              <div className="mb-3" onClick={(e) => e.stopPropagation()}>
+                <ImageGallery images={complaint.images} compact={true} />
+              </div>
+            )}
+
             <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
               {complaint.subject}
             </h3>
 
             <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
+              {/* ✅ NEW: SUBMITTED BY IN MOBILE */}
+              <div className="col-span-2">
+                <span className="font-medium text-gray-700 dark:text-gray-300">Submitted By:</span>
+                {complaint.isAnonymous ? (
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-sm italic text-gray-500 dark:text-gray-400">
+                      Anonymous Student
+                    </span>
+                    <span className="text-xs">🕵️</span>
+                  </div>
+                ) : (
+                  <p className="text-gray-600 dark:text-gray-400 mt-1">{complaint.submittedBy}</p>
+                )}
+              </div>
+              
               <div>
                 <span className="font-medium text-gray-700 dark:text-gray-300">Category:</span>
                 <p className="text-gray-600 dark:text-gray-400">{complaint.category}</p>
@@ -326,7 +389,7 @@ const ComplaintTable = ({ complaints, onRowClick, onActionClick }) => {
                   {complaint.priority}
                 </p>
               </div>
-                            <div className="col-span-2">
+              <div className="col-span-2">
                 <span className="font-medium text-gray-700 dark:text-gray-300">Location:</span>
                 <p className="text-gray-600 dark:text-gray-400">{complaint.location}</p>
               </div>

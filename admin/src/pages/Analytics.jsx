@@ -40,13 +40,14 @@ const Analytics = () => {
   }, []);
 
   if (loading) {
-    return (
-      <div className="p-6">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6">Loading Analytics...</h1>
-        <Loading />
-      </div>
-    );
-  }
+  return (
+    <div className="p-6 space-y-6">
+      <Loading type="chart" />
+      <Loading type="chart" />
+      <Loading type="chart" />
+    </div>
+  );
+}
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
