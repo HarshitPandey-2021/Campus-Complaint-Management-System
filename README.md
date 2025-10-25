@@ -1,4 +1,4 @@
 ﻿# Campus Complaint Management System
 
 - [Admin Panel Setup](admin/README.md)
-- [User Panel Setup](user/README.md)
+
