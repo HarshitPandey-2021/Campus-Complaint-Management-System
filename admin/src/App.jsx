@@ -7,6 +7,9 @@ import Sidebar from './components/Sidebar';
 import Breadcrumb from './components/Breadcrumb';
 import useKeyboardShortcuts from './hooks/useKeyboardShortcuts';
 
+// ✅ ADD THIS IMPORT
+import { ToastProvider } from './context/ToastContext';
+
 // Import Pages
 import Dashboard from './pages/Dashboard';
 import Complaints from './pages/Complaints';
@@ -86,7 +89,10 @@ const AppContent = () => {
 function App() {
   return (
     <Router>
-      <AppContent />
+      {/* ✅ WRAP EVERYTHING WITH TOAST PROVIDER */}
+      <ToastProvider>
+        <AppContent />
+      </ToastProvider>
     </Router>
   );
 }

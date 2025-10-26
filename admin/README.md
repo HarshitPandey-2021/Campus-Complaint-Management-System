@@ -278,6 +278,6 @@ git push origin feature/your-feature
 
 **Live Demo:** [View Here](https://notwhite.netlify.app)  
 **Issues:** Open GitHub issue  
-**Contact:** team@college.edu
+**Contact:** team@college.edu 
 
 ---

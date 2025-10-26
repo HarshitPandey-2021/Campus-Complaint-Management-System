@@ -1,10 +1,10 @@
 // src/pages/Analytics.jsx
 
 import React, { useState, useEffect } from 'react';
+// ❌ REMOVED: import { ToastContainer } from '../components/Toast';
+// ❌ REMOVED: import { useToast } from '../hooks/useToast'; (not used in this component)
 import Charts from '../components/Charts';
 import Loading from '../components/Loading';
-import { ToastContainer } from '../components/Toast';
-import { useToast } from '../hooks/useToast';
 import { 
   getComplaintsByCategory, 
   getComplaintsByStatus, 
@@ -24,7 +24,7 @@ const Analytics = () => {
   const [stats, setStats] = useState(null);
   const [avgResolutionTime, setAvgResolutionTime] = useState(0);
   
-  const { toasts, removeToast } = useToast();
+  // ❌ REMOVED: const { toasts, removeToast } = useToast();
 
   useEffect(() => {
     // Simulate loading
@@ -40,18 +40,19 @@ const Analytics = () => {
   }, []);
 
   if (loading) {
-  return (
-    <div className="p-6 space-y-6">
-      <Loading type="chart" />
-      <Loading type="chart" />
-      <Loading type="chart" />
-    </div>
-  );
-}
+    return (
+      <div className="p-6 space-y-6">
+        <Loading type="chart" />
+        <Loading type="chart" />
+        <Loading type="chart" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
+      {/* ❌ REMOVED: <ToastContainer toasts={toasts} removeToast={removeToast} /> */}
+      {/* ✅ Toast now renders globally from ToastProvider in App.jsx */}
 
       {/* Page Title */}
       <div className="mb-6">
@@ -125,7 +126,7 @@ const Analytics = () => {
         trendData={trendData}
       />
 
-           {/* Priority Distribution */}
+      {/* Priority Distribution */}
       <div className="mt-6 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
         <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-4">
           Priority Distribution

@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ToastContainer } from '../components/Toast';
-import { useToast } from '../hooks/useToast';
+// ❌ REMOVED: import { ToastContainer } from '../components/Toast';
+import { useToast } from '../hooks/useToast'; // ✅ This now uses global context
 import { 
   RiUserFill, 
   RiMailFill, 
@@ -19,7 +19,8 @@ import {
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { toasts, removeToast, success, error } = useToast();
+  // ✅ UPDATED: Only destructure what we need (no toasts/removeToast)
+  const { success, error } = useToast();
 
   // Profile data (mock)
   const [profileData, setProfileData] = useState({
@@ -120,7 +121,8 @@ const Profile = () => {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
+      {/* ❌ REMOVED: <ToastContainer toasts={toasts} removeToast={removeToast} /> */}
+      {/* ✅ Toast now renders globally from ToastProvider in App.jsx */}
 
       {/* Page Title */}
       <div className="mb-6">
@@ -291,7 +293,7 @@ const Profile = () => {
                 )}
               </div>
 
-                           {/* Joined Date */}
+              {/* Joined Date */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   <RiCalendarLine className="inline h-4 w-4 mr-1" />

@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Badge from '../components/Badge';
 import Loading from '../components/Loading';
-import { ToastContainer } from '../components/Toast';
-import { useToast } from '../hooks/useToast';
+// ❌ REMOVED: import { ToastContainer } from '../components/Toast';
+import { useToast } from '../hooks/useToast'; // ✅ This now uses global context
 import useCountUp from '../hooks/useCountUp';
 import { getAllComplaints, getStats } from '../services/adminService';
 import { 
@@ -25,7 +25,8 @@ const Dashboard = () => {
   const [recentComplaints, setRecentComplaints] = useState([]);
   const [stats, setStats] = useState({ total: 0, pending: 0, inProgress: 0, resolved: 0 });
   
-  const { toasts, removeToast, info, success } = useToast();
+  // ✅ UPDATED: Only destructure what we need (no toasts/removeToast)
+  const { info, success } = useToast();
 
   // Animated counters for stats
   const totalCount = useCountUp(stats.total, 1200);
@@ -59,12 +60,12 @@ const Dashboard = () => {
     }
   }, [stats, info, success]);
 
-  // ✅ ENHANCED: Navigate with filter + toast feedback
-  // Navigate with filter (banner will show feedback on Complaints page)
-const handleStatClick = (status) => {
-  navigate('/complaints', { state: { filterStatus: status } });
-};
-  // ✅ ENHANCED: Loading skeletons instead of basic spinner
+  // Navigate with filter
+  const handleStatClick = (status) => {
+    navigate('/complaints', { state: { filterStatus: status } });
+  };
+
+  // Loading skeletons
   if (loading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8 page-enter">
@@ -106,9 +107,10 @@ const handleStatClick = (status) => {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 page-enter">
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
+      {/* ❌ REMOVED: <ToastContainer toasts={toasts} removeToast={removeToast} /> */}
+      {/* ✅ Toast now renders globally from ToastProvider in App.jsx */}
 
-      {/* ✅ ENHANCED: Page Header with welcome message */}
+      {/* Page Header */}
       <div className="mb-8 animate-fadeIn">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
@@ -120,7 +122,7 @@ const handleStatClick = (status) => {
             </p>
           </div>
           
-          {/* ✅ NEW: Current date/time display */}
+          {/* Current date/time display */}
           <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 text-sm bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded-lg">
             <RiCalendarLine className="h-4 w-4" />
             <span>{new Date().toLocaleDateString('en-US', { 
@@ -133,7 +135,7 @@ const handleStatClick = (status) => {
         </div>
       </div>
 
-      {/* ✅ ENHANCED: Stats Cards Grid with stagger animation */}
+      {/* Stats Cards Grid */}
       <section className="mb-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 stagger-children">
           
@@ -313,7 +315,7 @@ const handleStatClick = (status) => {
                     </span>
                   </div>
                   
-                  {/* ✅ ENHANCED: Priority with glow effect for High */}
+                  {/* Priority with glow effect for High */}
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-gray-700 dark:text-gray-300">Priority:</span>
                     <span className={`px-2 py-1 rounded font-semibold ${

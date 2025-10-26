@@ -3,24 +3,41 @@
 import React from 'react';
 
 const Badge = ({ status }) => {
-  const getStatusClasses = () => {
-    switch (status) {
-      case 'Pending':
-        return 'bg-blue-400 text-white';
-      case 'In Progress':
-        return 'bg-yellow-500 text-gray-900';
-      case 'Resolved':
-        return 'bg-green-500 text-white';
-      case 'Rejected':
-        return 'bg-red-600 text-white';
-      default:
-        return 'bg-gray-400 text-white';
-    }
+  const getStatusConfig = (status) => {
+    const configs = {
+      'Pending': {
+        className: 'bg-blue-400 text-white dark:bg-blue-500',
+        label: 'Pending'
+      },
+      'In Progress': {
+        className: 'bg-yellow-500 text-gray-900 dark:bg-yellow-500 dark:text-gray-900',
+        label: 'In Progress'
+      },
+      'Resolved': {
+        className: 'bg-green-500 text-white dark:bg-green-600',
+        label: 'Resolved'
+      },
+      'Rejected': {
+        className: 'bg-red-600 text-white dark:bg-red-700',
+        label: 'Rejected'
+      }
+    };
+    return configs[status] || {
+      className: 'bg-gray-400 text-white dark:bg-gray-500',
+      label: status
+    };
   };
 
+  const config = getStatusConfig(status);
+
   return (
-    <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${getStatusClasses()}`}>
-      {status}
+    <span 
+      className={`inline-flex items-center justify-center px-3 py-1 rounded-md text-xs font-bold shadow-sm ${config.className}`}
+      style={{ minWidth: '100px', height: '28px' }}
+      role="status"
+      aria-label={`Status: ${status}`}
+    >
+      {config.label}
     </span>
   );
 };

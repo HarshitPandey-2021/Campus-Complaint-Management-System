@@ -9,18 +9,15 @@ const ComplaintFilters = ({ onFilterChange, initialFilters }) => {
   const [dateRange, setDateRange] = useState('all');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   
-  // ✅ NEW: Track if component has been initialized
   const isInitialized = useRef(false);
   const isApplyingInitialFilters = useRef(false);
 
-  // ✅ FIXED: Apply initial filters from Dashboard navigation FIRST
   useEffect(() => {
     if (initialFilters && !isApplyingInitialFilters.current) {
       console.log('🎯 ComplaintFilters received initialFilters:', initialFilters);
       
       isApplyingInitialFilters.current = true;
       
-      // Set all filters at once
       if (initialFilters.status !== undefined) {
         setStatus(initialFilters.status || '');
       }
@@ -32,7 +29,6 @@ const ComplaintFilters = ({ onFilterChange, initialFilters }) => {
         setDateRange(initialFilters.dateRange || 'all');
       }
 
-      // Mark as initialized after applying initial filters
       setTimeout(() => {
         isInitialized.current = true;
         isApplyingInitialFilters.current = false;
@@ -40,7 +36,6 @@ const ComplaintFilters = ({ onFilterChange, initialFilters }) => {
     }
   }, [initialFilters]);
 
-  // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
@@ -49,9 +44,7 @@ const ComplaintFilters = ({ onFilterChange, initialFilters }) => {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // ✅ FIXED: Auto-apply filters ONLY after initialization
   useEffect(() => {
-    // Don't apply filters on initial mount or when applying initial filters
     if (isInitialized.current && !isApplyingInitialFilters.current) {
       handleApplyFilters();
     }
@@ -81,7 +74,6 @@ const ComplaintFilters = ({ onFilterChange, initialFilters }) => {
     });
   };
 
-  // Check if any filters are active
   const hasActiveFilters = status !== '' || debouncedSearch !== '' || dateRange !== 'all';
 
   return (
@@ -166,26 +158,28 @@ const ComplaintFilters = ({ onFilterChange, initialFilters }) => {
           </select>
         </div>
 
-        {/* Action Buttons */}
-        <div className="md:col-span-2 flex flex-col sm:flex-row md:flex-col gap-2 md:justify-end">
-          <label className="hidden md:block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        {/* Action Buttons - ✅ VERTICAL LAYOUT (Apply above Reset) */}
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Actions
           </label>
-          <button
-            onClick={handleApplyFilters}
-            className="flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-all hover:scale-105 shadow-sm"
-          >
-            <RiFilterLine className="h-5 w-5" />
-            <span>Apply</span>
-          </button>
-          <button
-            onClick={handleReset}
-            disabled={!hasActiveFilters}
-            className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <RiRefreshLine className="h-5 w-5" />
-            <span>Reset</span>
-          </button>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={handleApplyFilters}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-all hover:scale-105 shadow-sm"
+            >
+              <RiFilterLine className="h-5 w-5" />
+              <span>Apply</span>
+            </button>
+            <button
+  onClick={handleReset}
+  disabled={!hasActiveFilters}
+  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold rounded-lg hover:bg-gray-390 dark:hover:bg-gray-600 focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+>
+  <RiRefreshLine className="h-5 w-5" />
+  <span>Reset</span>
+</button>
+          </div>
         </div>
       </div>
 
