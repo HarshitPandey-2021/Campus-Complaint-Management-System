@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { RiHistoryLine } from 'react-icons/ri';
 import { 
   RiDashboardFill, 
   RiFileTextFill, 
@@ -15,6 +16,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     { path: '/', label: 'Dashboard', icon: RiDashboardFill },
     { path: '/complaints', label: 'Complaints', icon: RiFileTextFill },
     { path: '/analytics', label: 'Analytics', icon: RiBarChartFill },
+      { path: '/activity-logs', icon: RiHistoryLine, label: 'Activity Logs' },
     { path: '/profile', label: 'Profile', icon: RiUserFill },
   ];
 

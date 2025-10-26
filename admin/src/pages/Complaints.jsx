@@ -11,6 +11,7 @@ import { useToast } from '../hooks/useToast';
 import { getAllComplaints, filterComplaints, updateComplaintStatus, getComplaintById } from '../services/adminService';
 import { RiDownloadLine, RiPrinterLine, RiArrowRightLine, RiCloseLine } from 'react-icons/ri';
 import { exportToCSV, exportToPrint } from '../utils/exportUtils';
+import { logActivity, ACTIVITY_TYPES } from '../services/activityLogger';
 
 const Complaints = () => {
   const location = useLocation();
@@ -99,8 +100,16 @@ const Complaints = () => {
   const handleStatusUpdate = (complaintId, newStatus, remarks) => {
     const updateSuccess = updateComplaintStatus(complaintId, newStatus, remarks);
     
-    if (updateSuccess) {
+    if (updateSuccess) {  
       // ✅ Show appropriate toast based on new status
+      logActivity(ACTIVITY_TYPES.STATUS_CHANGE, {
+      complaintId: complaintId,
+      complaintSubject: selectedComplaint?.subject || 'Unknown',
+      previousStatus: selectedComplaint?.status || 'Unknown',
+      newStatus: newStatus,
+      remarks: remarks || 'No remarks provided',
+      action: `Changed status from ${selectedComplaint?.status} to ${newStatus}`
+    });
       if (newStatus === 'In Progress') {
         success(`🚀 Started working on complaint #${complaintId}`);
       } else if (newStatus === 'Resolved') {
@@ -134,13 +143,25 @@ const Complaints = () => {
   const handleExportCSV = () => {
     const filename = `complaints_${new Date().toISOString().split('T')[0]}.csv`;
     exportToCSV(filteredComplaints, filename);
-    success(`✅ ${filteredComplaints.length} complaints exported to CSV!`);
-  };
-
+    logActivity(ACTIVITY_TYPES.COMPLAINT_EXPORT, {
+    action: 'Exported complaints to CSV',
+    filename: filename,
+    complaintCount: filteredComplaints.length,
+    filters: currentFilters
+  });
+  
+  success(`✅ ${filteredComplaints.length} complaints exported to CSV!`);
+};
   const handlePrint = () => {
     exportToPrint(filteredComplaints);
-    success('📄 Print preview opened in new tab');
-  };
+    logActivity(ACTIVITY_TYPES.COMPLAINT_EXPORT, {
+    action: 'Printed complaints',
+    complaintCount: filteredComplaints.length,
+    filters: currentFilters
+  });
+  
+  success('📄 Print preview opened in new tab');
+};
 
   const getEmptyStateType = () => {
     if (currentFilters.search) return 'search';
