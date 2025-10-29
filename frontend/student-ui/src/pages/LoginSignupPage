@@ -1,0 +1,79 @@
+import React, { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+
+const LoginSignupPage = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState(location.state?.tab || 'student');
+  const [isLogin, setIsLogin] = useState(location.state?.login ?? true);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (activeTab === 'student') navigate('/student-dashboard');
+    else navigate('/faculty-dashboard');
+  };
+
+  const primaryColor = activeTab === 'student' ? 'indigo' : 'teal';
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8">
+        {/* Tabs */}
+        <div className="flex justify-around mb-6">
+          <button
+            onClick={() => { setActiveTab('student'); setIsLogin(true); }}
+            className={`py-2 px-4 rounded-lg font-semibold ${activeTab === 'student' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+          >
+            Student
+          </button>
+          <button
+            onClick={() => { setActiveTab('faculty'); setIsLogin(true); }}
+            className={`py-2 px-4 rounded-lg font-semibold ${activeTab === 'faculty' ? 'bg-teal-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+          >
+            Faculty
+          </button>
+        </div>
+
+        <h2 className="text-3xl font-extrabold text-gray-800 text-center mb-6">
+          {activeTab === 'student' ? (isLogin ? 'Student Login' : 'Student Sign Up') : (isLogin ? 'Faculty Login' : 'Faculty Sign Up')}
+        </h2>
+
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          {!isLogin && (
+            <div>
+              <label className="block text-gray-700 font-medium mb-1">Full Name</label>
+              <input type="text" placeholder="Your Name" className={`w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-${primaryColor}-400 focus:outline-none`} />
+            </div>
+          )}
+
+          <div>
+            <label className="block text-gray-700 font-medium mb-1">Email</label>
+            <input type="email" placeholder={activeTab === 'student' ? 'example@student.com' : 'example@faculty.com'} className={`w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-${primaryColor}-400 focus:outline-none`} />
+          </div>
+
+          <div className="relative">
+            <label className="block text-gray-700 font-medium mb-1">Password</label>
+            <input type={showPassword ? 'text' : 'password'} placeholder="********" className={`w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-${primaryColor}-400 focus:outline-none`} />
+            <button type="button" className="absolute right-3 top-9 text-gray-500 hover:text-gray-700" onClick={() => setShowPassword(!showPassword)}>
+              {showPassword ? 'Hide' : 'Show'}
+            </button>
+          </div>
+
+          <button type="submit" className={`w-full py-3 rounded-lg bg-${primaryColor}-600 text-white font-semibold hover:bg-${primaryColor}-700 transition`}>
+            {isLogin ? 'Login' : 'Sign Up'}
+          </button>
+        </form>
+
+        <p className="text-center text-gray-600 mt-4">
+          {isLogin ? "Don't have an account?" : "Already have an account?"}{' '}
+          <span className={`font-semibold cursor-pointer ${activeTab === 'student' ? 'text-indigo-600 hover:underline' : 'text-teal-600 hover:underline'}`} onClick={() => setIsLogin(!isLogin)}>
+            {isLogin ? 'Sign Up' : 'Login'}
+          </span>
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default LoginSignupPage;
