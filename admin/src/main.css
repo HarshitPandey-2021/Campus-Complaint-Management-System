@@ -1,0 +1,437 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply font-sans bg-gray-50 text-gray-800;
+}
+
+/* Smooth transitions */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+/* ============================================
+   🔥 MODAL ANIMATIONS (NEW & IMPROVED)
+   ============================================ */
+
+/* Modal entrance animation */
+@keyframes modal-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-modal-enter {
+  animation: modal-enter 0.2s ease-out;
+}
+
+/* Smooth scrolling for modal */
+#complaint-modal-content {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar for modal */
+#complaint-modal-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+#complaint-modal-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#complaint-modal-content::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.dark #complaint-modal-content::-webkit-scrollbar-thumb {
+  background: #4b5563;
+}
+
+#complaint-modal-content::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.dark #complaint-modal-content::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* ============================================
+   PAGE TRANSITION ANIMATIONS
+   ============================================ */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.page-enter {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.page-exit {
+  animation: fadeOut 0.2s ease-out forwards;
+}
+
+/* Stagger children animation */
+.stagger-children > * {
+  opacity: 0;
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+.stagger-children > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.1s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.15s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.2s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.25s; }
+.stagger-children > *:nth-child(6) { animation-delay: 0.3s; }
+.stagger-children > *:nth-child(7) { animation-delay: 0.35s; }
+.stagger-children > *:nth-child(8) { animation-delay: 0.4s; }
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   TOAST & NOTIFICATION ANIMATIONS
+   ============================================ */
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes toastProgress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+/* ============================================
+   LOADING ANIMATIONS
+   ============================================ */
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Shimmer effect for loading skeletons */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+/* ============================================
+   TOOLTIP ANIMATIONS
+   ============================================ */
+
+@keyframes tooltipFade {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ============================================
+   SCALE & BOUNCE ANIMATIONS
+   ============================================ */
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes bounce-subtle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(239, 68, 68, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.8);
+  }
+}
+
+/* ============================================
+   ANIMATION CLASSES
+   ============================================ */
+
+.animate-fadeIn {
+  animation: fadeIn 0.15s ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.2s ease-out;
+}
+
+.animate-slideDown {
+  animation: slideDown 0.3s ease-out;
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.3s ease-out;
+}
+
+.animate-toastProgress {
+  animation: toastProgress linear forwards;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    #f3f4f6 0%,
+    #e5e7eb 20%,
+    #f3f4f6 40%,
+    #f3f4f6 100%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+.dark .animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    #374151 0%,
+    #4b5563 20%,
+    #374151 40%,
+    #374151 100%
+  );
+  background-size: 1000px 100%;
+}
+
+.animate-tooltipFade {
+  animation: tooltipFade 0.2s ease-out forwards;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.3s ease-out;
+}
+
+.animate-bounce-subtle {
+  animation: bounce-subtle 2s ease-in-out infinite;
+}
+
+.glow-high-priority {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+/* ============================================
+   BUTTON RIPPLE EFFECT
+   ============================================ */
+
+.btn-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-ripple::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.btn-ripple:active::before {
+  width: 300px;
+  height: 300px;
+}
+
+/* ============================================
+   CUSTOM SCROLLBAR
+   ============================================ */
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 10px;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #4B5563;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+/* Line Clamp */
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* Smooth transitions */
+.smooth-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================
+   ACCESSIBILITY
+   ============================================ */
+
+/* Focus visible for accessibility */
+*:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Remove tap highlight on mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ============================================
+   GLOBAL IMPROVEMENTS
+   ============================================ */
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Better text rendering */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ============================================
+   REDUCED MOTION SUPPORT
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
