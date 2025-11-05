@@ -1,40 +1,57 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import Button from "../components/common/button";
+import Header from "../components/common/header";
+import Footer from "../components/common/footer";
 
 const LandingPage = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-indigo-50 flex flex-col">
-      <header className="bg-indigo-600 text-white shadow-lg p-6 text-center">
-        <h1 className="text-4xl font-extrabold">Campus Complaint Management System</h1>
-        <p className="mt-2 text-lg opacity-90">University of Lucknow</p>
-      </header>
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-50 via-teal-50 to-pink-50">
+      {/* Header */}
+      <Header />
 
-      <main className="flex flex-col justify-center items-center flex-grow space-y-6 p-6">
-        <h2 className="text-3xl font-bold text-gray-800">Welcome to CCMS 👋</h2>
-        <p className="text-lg text-gray-600 text-center max-w-2xl">
-          Report, track complaints, and help make your campus better — faster, simpler, and smarter.
+      {/* Main Content */}
+      <main className="flex flex-col items-center justify-center flex-grow px-6 py-16 text-center">
+        {/* University Logo / Placeholder */}
+        <div className="mb-6">
+          <img
+            src="/images/university-logo.png"
+            alt="University of Lucknow Logo"
+            className="w-28 h-28 object-contain mx-auto mb-4"
+            onError={(e) => (e.target.style.display = "none")} // hides if logo not found
+          />
+        </div>
+
+        {/* Title */}
+        <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-600 via-blue-700 to-pink-600">
+          Campus Complaint Management System
+        </h1>
+
+        {/* Subtitle */}
+        <p className="mt-4 text-lg text-gray-700 max-w-2xl">
+          A unified digital platform by <span className="font-semibold">University of Lucknow</span> 
+          to ensure transparent, fast, and efficient redressal of student and faculty concerns.
         </p>
-        <div className="flex space-x-4">
-          <button
-            onClick={() => navigate('/login-signup', { state: { tab: 'student', login: true } })}
-            className="px-6 py-3 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition"
-          >
-            Student Login
-          </button>
-          <button
-            onClick={() => navigate('/login-signup', { state: { tab: 'faculty', login: true } })}
-            className="px-6 py-3 rounded-lg bg-teal-600 text-white font-semibold hover:bg-teal-700 transition"
-          >
-            Faculty Login
-          </button>
+
+        {/* Buttons */}
+        <div className="mt-8 flex gap-4">
+          <Button
+            label="Login"
+            color="teal"
+            onClick={() => navigate("/login")}
+          />
+          <Button
+            label="Sign Up"
+            color="blue"
+            onClick={() => navigate("/signup")}
+          />
         </div>
       </main>
 
-      <footer className="bg-gray-800 text-gray-300 text-center py-4">
-        &copy; 2025 University of Lucknow | Version 1.0.0
-      </footer>
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };
