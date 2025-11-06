@@ -1,57 +1,59 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
-import Button from "../components/common/button";
-import Header from "../components/common/header";
-import Footer from "../components/common/footer";
+import Navbar from "../components/common/NavBar";
 
 const LandingPage = () => {
-  const navigate = useNavigate();
-
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-50 via-teal-50 to-pink-50">
-      {/* Header */}
-      <Header />
+    <div className="min-h-screen flex flex-col bg-neutral-bg">
+      <Navbar />
 
-      {/* Main Content */}
-      <main className="flex flex-col items-center justify-center flex-grow px-6 py-16 text-center">
-        {/* University Logo / Placeholder */}
-        <div className="mb-6">
-          <img
-            src="/images/university-logo.png"
-            alt="University of Lucknow Logo"
-            className="w-28 h-28 object-contain mx-auto mb-4"
-            onError={(e) => (e.target.style.display = "none")} // hides if logo not found
-          />
+      {/* Hero Section */}
+      <section
+        className="relative bg-cover bg-center h-[70vh] flex flex-col justify-center items-center text-center"
+        style={{
+          backgroundImage:
+            "url('https://www.lkouniv.ac.in/site/writereaddata/HomePage/Header/H_202403191545264198.jpg')",
+        }}
+      >
+        <div className="bg-black bg-opacity-40 absolute inset-0" />
+        <div className="relative z-10 text-white px-4">
+          <h1 className="text-4xl md:text-5xl font-bold mb-3">
+            Campus Grievance Redressal Portal
+          </h1>
+          <p className="text-lg md:text-xl mb-6">
+            Report and Track Campus Issues
+          </p>
+          <button className="bg-yellow-400 text-gray-900 px-6 py-3 font-semibold rounded-lg shadow hover:bg-yellow-300 transition">
+            Report and Track your Campus Issues
+          </button>
         </div>
+      </section>
 
-        {/* Title */}
-        <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-600 via-blue-700 to-pink-600">
-          Campus Complaint Management System
-        </h1>
-
-        {/* Subtitle */}
-        <p className="mt-4 text-lg text-gray-700 max-w-2xl">
-          A unified digital platform by <span className="font-semibold">University of Lucknow</span> 
-          to ensure transparent, fast, and efficient redressal of student and faculty concerns.
-        </p>
-
-        {/* Buttons */}
-        <div className="mt-8 flex gap-4">
-          <Button
-            label="Login"
-            color="teal"
-            onClick={() => navigate("/login")}
-          />
-          <Button
-            label="Sign Up"
-            color="blue"
-            onClick={() => navigate("/signup")}
-          />
+      {/* Cards */}
+      <section className="py-16 px-6 md:px-20 grid md:grid-cols-3 gap-8 text-center">
+        <div className="bg-white p-8 rounded-2xl shadow-md">
+          <h3 className="text-xl font-semibold mb-3">Submit Complaints</h3>
+          <p className="text-gray-600">
+            Register and report campus-related issues conveniently.
+          </p>
         </div>
-      </main>
+        <div className="bg-white p-8 rounded-2xl shadow-md">
+          <h3 className="text-xl font-semibold mb-3">Track Status</h3>
+          <p className="text-gray-600">
+            Check your complaint status in real-time.
+          </p>
+        </div>
+        <div className="bg-white p-8 rounded-2xl shadow-md">
+          <h3 className="text-xl font-semibold mb-3">Admin Transparency</h3>
+          <p className="text-gray-600">
+            Transparent reporting and progress tracking.
+          </p>
+        </div>
+      </section>
 
       {/* Footer */}
-      <Footer />
+      <footer className="bg-primary-700 text-white py-6 text-center">
+        <p>© 2025 University of Lucknow | Campus Complaint Portal</p>
+      </footer>
     </div>
   );
 };
