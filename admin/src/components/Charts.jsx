@@ -1,5 +1,3 @@
-// src/components/Charts.jsx
-
 import React from 'react';
 import {
   BarChart,
@@ -36,6 +34,12 @@ const Charts = ({ categoryData, statusData, trendData }) => {
     tooltip: isDarkMode ? '#1F2937' : '#FFFFFF',     // gray-800 : white
     tooltipBorder: isDarkMode ? '#4B5563' : '#D1D5DB' // gray-600 : gray-300
   };
+
+  // Transform trendData
+const transformedTrendData = trendData.map(item => ({
+  date: new Date(item.name.split('/').reverse().join('-')).toLocaleDateString('en-GB'), // Converts to 'DD/MM/YYYY' format
+  complaints: item.value
+}));
 
   // Custom Tooltip
   const CustomTooltip = ({ active, payload, label }) => {
@@ -75,7 +79,7 @@ const Charts = ({ categoryData, statusData, trendData }) => {
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend wrapperStyle={{ color: chartTheme.text }} />
-            <Bar dataKey="count" fill="#4F46E5" name="Complaints" radius={[8, 8, 0, 0]} />
+            <Bar dataKey="Complaints" fill="#4F46E5" name="Complaints" radius={[8, 8, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -113,29 +117,30 @@ const Charts = ({ categoryData, statusData, trendData }) => {
           Complaints Trend (Last 7 Days)
         </h3>
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={trendData}>
-            <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
-            <XAxis 
-              dataKey="date" 
-              tick={{ fill: chartTheme.text, fontSize: 12 }}
-              stroke={chartTheme.grid}
-            />
-            <YAxis 
-              tick={{ fill: chartTheme.text, fontSize: 12 }}
-              stroke={chartTheme.grid}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend wrapperStyle={{ color: chartTheme.text }} />
-            <Line 
-              type="monotone" 
-              dataKey="complaints" 
-              stroke="#4F46E5" 
-              strokeWidth={2}
-              dot={{ fill: '#4F46E5', r: 4 }}
-              activeDot={{ r: 6 }}
-              name="Complaints"
-            />
-          </LineChart>
+ <LineChart data={transformedTrendData}>
+    <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
+    <XAxis 
+      dataKey="date" 
+      tick={{ fill: chartTheme.text, fontSize: 12 }}
+      stroke={chartTheme.grid}
+      tickFormatter={(tick) => tick} // No need to format date here if it's already a string
+    />
+    <YAxis 
+      tick={{ fill: chartTheme.text, fontSize: 12 }}
+      stroke={chartTheme.grid}
+    />
+    <Tooltip content={<CustomTooltip />} />
+    <Legend wrapperStyle={{ color: chartTheme.text }} />
+    <Line 
+      type="monotone" 
+      dataKey="complaints" 
+      stroke="#4F46E5" 
+      strokeWidth={2}
+      dot={{ fill: '#4F46E5', r: 4 }}
+      activeDot={{ r: 6 }}
+      name="Complaints"
+    />
+  </LineChart>
         </ResponsiveContainer>
       </div>
     </div>

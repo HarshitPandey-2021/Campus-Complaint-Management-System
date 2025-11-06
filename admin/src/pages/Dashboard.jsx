@@ -35,14 +35,30 @@ const Dashboard = () => {
   const resolvedCount = useCountUp(stats.resolved, 1200);
 
   // Load data
-  useEffect(() => {
-    setTimeout(() => {
-      const allComplaints = getAllComplaints();
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      // 🧭 Fetch from backend API
+      const allComplaints = await getAllComplaints();
       setRecentComplaints(allComplaints.slice(0, 5));
-      setStats(getStats());
+
+      // 🧮 Fetch or compute stats
+      const statsData = await getStats();
+      setStats(statsData);
+    } catch (err) {
+      console.error("❌ Error loading dashboard data:", err);
+      info("⚠️ Failed to fetch complaints from the server. Please try again.");
+    } finally {
       setLoading(false);
-    }, 800);
-  }, []);
+    }
+  };
+
+  fetchData();
+
+  // ✅ Include dependencies to satisfy ESLint
+}, [info]);
+
+
 
   // Welcome message
   useEffect(() => {
@@ -298,7 +314,7 @@ const Dashboard = () => {
               >
                 <div className="flex items-start justify-between mb-3">
                   <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-full">
-                    #{complaint.id}
+                    #{index + 1}
                   </span>
                   <Badge status={complaint.status} />
                 </div>
