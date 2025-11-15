@@ -1,4 +1,4 @@
-// src/components/Toast.jsx
+// src/components/common/Toast.jsx
 
 import React, { useEffect } from 'react';
 import { RiCheckFill, RiErrorWarningFill, RiInformationFill, RiCloseLine } from 'react-icons/ri';
