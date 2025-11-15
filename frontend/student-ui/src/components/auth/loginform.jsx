@@ -1,80 +1,72 @@
 import React, { useState } from "react";
-import Button from "../common/button";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/authContext";
 
-const LoginForm = () => {
+export default function LoginForm() {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
+  const { login } = useAuth();
+
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setForm((s) => ({ ...s, [e.target.name]: e.target.value }));
+    setError("");
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    // Simulate login success for now
-    if (formData.email && formData.password) {
-      alert("Login successful!");
+  const handleSubmit = async (ev) => {
+    ev.preventDefault();
+    if (!form.email || !form.password) {
+      setError("Please fill both fields");
+      return;
+    }
+    setLoading(true);
+    try {
+      await login({ email: form.email.trim(), password: form.password });
       navigate("/dashboard");
-    } else {
-      alert("Please fill in all fields.");
+    } catch (err) {
+      setError(err.message || "Login failed");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto bg-white rounded-xl shadow-md border border-gray-100 p-8 mt-10">
-      <h2 className="text-2xl font-semibold text-teal-700 mb-6 text-center">
-        Student / Faculty Login
-      </h2>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {error && <div className="text-red-700 bg-red-100 p-2 rounded">{error}</div>}
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Email */}
-        <div>
-          <label className="block text-gray-700 font-medium mb-2">Email</label>
-          <input
-            type="email"
-            name="email"
-            placeholder="Enter your university email"
-            value={formData.email}
-            onChange={handleChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-600 focus:outline-none"
-          />
-        </div>
+      <div>
+        <label className="block text-sm font-medium">University Email</label>
+        <input
+          name="email"
+          type="email"
+          value={form.email}
+          onChange={handleChange}
+          className="w-full p-2 border rounded"
+        />
+      </div>
 
-        {/* Password */}
-        <div>
-          <label className="block text-gray-700 font-medium mb-2">Password</label>
-          <input
-            type="password"
-            name="password"
-            placeholder="Enter password"
-            value={formData.password}
-            onChange={handleChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-none"
-          />
-        </div>
+      <div>
+        <label className="block text-sm font-medium">Password</label>
+        <input
+          name="password"
+          type="password"
+          value={form.password}
+          onChange={handleChange}
+          className="w-full p-2 border rounded"
+        />
+      </div>
 
-        {/* Submit */}
-        <div className="pt-2">
-          <Button type="submit" label="Login" color="primary" />
-        </div>
-      </form>
-
-      <p className="text-center text-sm mt-6">
-        Don’t have an account?{" "}
-        <span
-          onClick={() => navigate("/signup")}
-          className="text-magenta-600 font-medium cursor-pointer hover:underline"
+      <div>
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-primary text-white py-2 rounded disabled:opacity-60"
         >
-          Register here
-        </span>
-      </p>
-    </div>
+          {loading ? "Logging in..." : "Login"}
+        </button>
+      </div>
+    </form>
   );
-};
-
-export default LoginForm;
+}
