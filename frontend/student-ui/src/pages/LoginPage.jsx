@@ -1,7 +1,23 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function LoginPage() {
+  const navigate = useNavigate();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  function handleLogin(e) {
+    e.preventDefault();
+
+    // 🔹 TEMPORARY LOGIN CHECK (demo only)
+    if (email && password) {
+      navigate("/dashboard"); // redirect to dashboard
+    } else {
+      alert("Please enter email & password");
+    }
+  }
+
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4"
@@ -28,7 +44,7 @@ export default function LoginPage() {
           Login
         </h2>
 
-        <form className="space-y-4 text-gray-800">
+        <form className="space-y-4 text-gray-800" onSubmit={handleLogin}>
           {/* Email */}
           <div>
             <label className="block mb-1 font-medium text-gray-700">Email</label>
@@ -36,6 +52,8 @@ export default function LoginPage() {
               type="email"
               className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#c026d3] outline-none"
               required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
 
@@ -46,6 +64,8 @@ export default function LoginPage() {
               type="password"
               className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#0ea5e9] outline-none"
               required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
             />
           </div>
 

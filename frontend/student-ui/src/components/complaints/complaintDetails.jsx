@@ -1,28 +1,34 @@
 import React from "react";
-import Card from "../common/Card";
 
-const ComplaintDetails = ({ complaint }) => {
-  if (!complaint)
-    return <p className="text-center text-gray-500">No complaint selected.</p>;
-
+export default function ComplaintDetails({ data }) {
   return (
-    <Card title={`Complaint: ${complaint.title}`}>
-      <p>
-        <strong>Category:</strong> {complaint.category}
-      </p>
-      <p className="mt-2">
-        <strong>Description:</strong>
-        <br />
-        {complaint.description}
-      </p>
-      <p className="mt-2 text-sm text-gray-500">
-        <strong>Status:</strong> {complaint.status || "Pending"}
-      </p>
-      <p className="mt-2 text-sm text-gray-400">
-        Submitted on: {complaint.date || "N/A"}
-      </p>
-    </Card>
-  );
-};
+    <div className="max-w-3xl mx-auto bg-white p-8 rounded-2xl shadow-xl mt-10">
 
-export default ComplaintDetails;
+      <h1
+        className="text-4xl font-bold mb-4"
+        style={{
+          background: "linear-gradient(90deg,#c026d3,#ec4899,#0ea5e9,#008080)",
+          WebkitBackgroundClip: "text",
+          color: "transparent",
+        }}
+      >
+        {data.title}
+      </h1>
+
+      <p className="text-gray-600 mb-2">Category: {data.category}</p>
+      <p className="text-gray-600 mb-6">
+        Status:{" "}
+        <span className="font-semibold text-indigo-700">
+          {data.status}
+        </span>
+      </p>
+
+      <p className="text-gray-800 leading-relaxed">{data.description}</p>
+
+      <div className="mt-8 p-4 bg-gray-100 rounded-xl">
+        <h3 className="text-lg font-semibold text-gray-800">Updates</h3>
+        <p className="text-gray-700 mt-2">{data.updates}</p>
+      </div>
+    </div>
+  );
+}

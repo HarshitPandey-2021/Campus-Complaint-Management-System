@@ -5,7 +5,7 @@ import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import Dashboard from "./pages/Dashboard";
 import SubmitComplaint from "./pages/SubmitComplaint";
-import MyComplaints from "./pages/MyComplaint";
+import MyComplaints from "./pages/MyComplaints";
 import ComplaintDetailsPage from "./pages/ComplaintDetailsPage";
 
 export default function App() {
