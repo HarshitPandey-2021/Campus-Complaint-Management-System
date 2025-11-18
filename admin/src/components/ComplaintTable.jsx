@@ -392,7 +392,7 @@ const ComplaintTable = ({ complaints, onRowClick, onActionClick }) => {
             </thead>
 
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {sortedComplaints.map((complaint) => {
+              {sortedComplaints.map((complaint , index) => {
                 const priorityConfig = getPriorityConfig(complaint.priority);
 
                 return (
@@ -405,7 +405,7 @@ const ComplaintTable = ({ complaints, onRowClick, onActionClick }) => {
                     {/* ID */}
                     <td className="px-4 py-3 align-middle" style={{ width: '70px' }}>
                       <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
-                        #{complaint.id}
+                        #{index + 1}
                       </span>
                     </td>
 
@@ -680,7 +680,7 @@ const ComplaintTable = ({ complaints, onRowClick, onActionClick }) => {
         }
 
         @media (prefers-color-scheme: dark) {
-          .dark\:bg-gray-750 {
+          .dark\\:bg-gray-750 {
             background-color: #1f2937;
           }
         }

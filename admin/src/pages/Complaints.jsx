@@ -1,367 +1,313 @@
 // src/pages/Complaints.jsx
-
-import React, { useState, useEffect, useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
-import ComplaintFilters from '../components/ComplaintFilters';
-import ComplaintTable from '../components/ComplaintTable';
-import ComplaintDetails from '../components/ComplaintDetails';
-import Loading from '../components/Loading';
-import EmptyState from '../components/EmptyState';
-import { useToast } from '../hooks/useToast';
-import { getAllComplaints, filterComplaints, updateComplaintStatus, getComplaintById } from '../services/adminService';
-import { RiDownloadLine, RiPrinterLine, RiArrowRightLine, RiCloseLine } from 'react-icons/ri';
-import { exportToCSV, exportToPrint } from '../utils/exportUtils';
-import { logActivity, ACTIVITY_TYPES } from '../services/activityLogger';
+import React, { useState, useEffect, useMemo } from "react";
+import { useLocation } from "react-router-dom";
+import ComplaintFilters from "../components/ComplaintFilters";
+import ComplaintTable from "../components/ComplaintTable/myComplaintTable";
+import ComplaintDetails from "../components/ComplaintDetails";
+import Loading from "../components/Loading";
+import EmptyState from "../components/EmptyState";
+import { useToast } from "../hooks/useToast";
+import {
+  getAllComplaints,
+  updateComplaintStatus,
+  getComplaintById,
+} from "../services/adminService";
+import {
+  RiDownloadLine,
+  RiPrinterLine,
+  RiArrowRightLine,
+  RiCloseLine,
+} from "react-icons/ri";
+import { exportToCSV, exportToPrint } from "../utils/exportUtils";
+import { logActivity, ACTIVITY_TYPES } from "../services/activityLogger";
 
 const Complaints = () => {
   const location = useLocation();
-  
-  // Initialize filters from location.state IMMEDIATELY
+  const { success, error } = useToast();
+
+  // ✅ Handle dashboard filter navigation
   const initialFilters = useMemo(() => {
     if (location.state?.filterStatus) {
       const filterValue = location.state.filterStatus;
-      const statusToFilter = filterValue === 'all' ? '' : filterValue;
-      
-      // Clear navigation state immediately
       window.history.replaceState({}, document.title);
-      
       return {
-        status: statusToFilter,
-        search: '',
-        dateRange: 'all'
+        status: filterValue === "all" ? "" : filterValue,
+        search: "",
+        dateRange: "all",
       };
     }
-    return { status: '', search: '', dateRange: 'all' };
+    return { status: "", search: "", dateRange: "all" };
   }, [location.state]);
 
-  const [allComplaints, setAllComplaints] = useState([]);
+  const [, setComplaints] = useState([]);
   const [filteredComplaints, setFilteredComplaints] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentFilters, setCurrentFilters] = useState(initialFilters);
+  const [filters, setFilters] = useState(initialFilters);
   const [selectedComplaint, setSelectedComplaint] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [filterHighlight, setFilterHighlight] = useState(!!location.state?.filterStatus);
-  
-  const { success, error } = useToast();
+  const [filterHighlight, setFilterHighlight] = useState(
+    !!location.state?.filterStatus
+  );
 
-  // Load data and apply initial filter
+  // ✅ Fetch complaints from backend
   useEffect(() => {
-    setIsLoading(true);
-    
-    setTimeout(() => {
-      const complaints = getAllComplaints();
-      setAllComplaints(complaints);
-      
-      // Apply initial filter immediately
-      const filtered = filterComplaints(currentFilters);
-      setFilteredComplaints(filtered);
-      
-      setIsLoading(false);
-      
-      // Visual feedback animation
-      if (filterHighlight) {
-        setTimeout(() => setFilterHighlight(false), 4000);
+    const fetchComplaints = async () => {
+      try {
+        setIsLoading(true);
+        const response = await getAllComplaints();
+        setComplaints(response);
+
+
+        // Apply filters if any
+let filtered = response;
+
+// ✅ Filter by status
+if (filters.status && filters.status !== "All") {
+  filtered = filtered.filter((c) => c.status === filters.status);
+}
+
+// ✅ Filter by search (title, description, department)
+if (filters.search && filters.search.trim() !== "") {
+  const term = filters.search.toLowerCase();
+  filtered = filtered.filter(
+    (c) =>
+      c.title?.toLowerCase().includes(term) ||
+      c.description?.toLowerCase().includes(term) ||
+      c.department?.toLowerCase().includes(term)
+  );
+}
+
+// ✅ Date range filter
+if (filters.dateRange && filters.dateRange !== "all") {
+  const now = new Date();
+  let threshold = new Date();
+
+  if (filters.dateRange === "week") {
+    threshold.setDate(now.getDate() - 7);
+  } else if (filters.dateRange === "month") {
+    threshold.setDate(now.getDate() - 30);
+  } else if (filters.dateRange === "today") {
+    // ✅ Compare only date parts (ignore hours/min/sec)
+    threshold = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+
+  filtered = filtered.filter((c) => {
+    const date = new Date(c.createdAt || c.submittedAt || c.date);
+    if (isNaN(date)) return false;
+
+    if (filters.dateRange === "today") {
+      // ✅ Match same calendar day
+      const complaintDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      return complaintDate.getTime() === threshold.getTime();
+    }
+
+    return date >= threshold;
+  });
+}
+
+// ✅ Update filtered list
+setFilteredComplaints(filtered);
+
+      } catch (err) {
+        console.error("Error fetching complaints:", err);
+        error("❌ Failed to fetch complaints from the server.");
+      } finally {
+        setIsLoading(false);
       }
-    }, 500);
-  }, [currentFilters, filterHighlight]);
+    };
 
-  const handleFilterChange = (filters) => {
-    setIsLoading(true);
-    setCurrentFilters(filters);
+    fetchComplaints();
+  }, [filters, error]);
 
-    setTimeout(() => {
-      const filtered = filterComplaints(filters);
-      setFilteredComplaints(filtered);
-      setIsLoading(false);
-    }, 300);
+  // ✅ Handle filters
+  const handleFilterChange = (newFilters) => {
+    setFilters(newFilters);
   };
 
   const handleClearFilters = () => {
-    const defaultFilters = { status: '', search: '', dateRange: 'all' };
-    setCurrentFilters(defaultFilters);
-    setFilteredComplaints(allComplaints);
-    success('🔄 Filters cleared!');
+    setFilters({ status: "", search: "", dateRange: "all" });
+    success("🔄 Filters cleared!");
   };
 
-  const handleRowClick = (complaintId) => {
-    const complaint = getComplaintById(complaintId);
-    setSelectedComplaint(complaint);
-    setIsModalOpen(true);
-  };
-
-  // ✅ FIXED: Only open modal, don't show toast yet
-  const handleActionClick = (complaintId, action) => {
-    const complaint = getComplaintById(complaintId);
-    setSelectedComplaint(complaint);
-    setIsModalOpen(true);
-  };
-
-  // ✅ Toast shows here when action is actually confirmed
-  const handleStatusUpdate = (complaintId, newStatus, remarks) => {
-    const updateSuccess = updateComplaintStatus(complaintId, newStatus, remarks);
-    
-    if (updateSuccess) {  
-      // ✅ Show appropriate toast based on new status
-      logActivity(ACTIVITY_TYPES.STATUS_CHANGE, {
-      complaintId: complaintId,
-      complaintSubject: selectedComplaint?.subject || 'Unknown',
-      previousStatus: selectedComplaint?.status || 'Unknown',
-      newStatus: newStatus,
-      remarks: remarks || 'No remarks provided',
-      action: `Changed status from ${selectedComplaint?.status} to ${newStatus}`
-    });
-      if (newStatus === 'In Progress') {
-        success(`🚀 Started working on complaint #${complaintId}`);
-      } else if (newStatus === 'Resolved') {
-        success(`✅ Complaint #${complaintId} has been resolved!`);
-      } else if (newStatus === 'Rejected') {
-        error(`❌ Complaint #${complaintId} has been rejected.`);
-      } else {
-        success(`✅ Complaint #${complaintId} updated to ${newStatus}!`);
-      }
-      
-      // Refresh data
-      const allUpdated = getAllComplaints();
-      setAllComplaints(allUpdated);
-      
-      // Re-apply current filters
-      const filtered = filterComplaints(currentFilters);
-      setFilteredComplaints(filtered);
-      
-      setIsModalOpen(false);
-      setSelectedComplaint(null);
-    } else {
-      error(`❌ Failed to update complaint #${complaintId}. Please try again.`);
+  // ✅ Handle row click
+  const handleRowClick = async (complaintId) => {
+    try {
+      const complaint = await getComplaintById(complaintId);
+      setSelectedComplaint(complaint);
+      setIsModalOpen(true);
+    } catch (err) {
+      error("⚠️ Failed to load complaint details.",err);
     }
   };
 
+  // ✅ Update status
+  const handleStatusUpdate = async (complaintId, newStatus, remarks) => {
+    try {
+      const updateSuccess = await updateComplaintStatus(
+        complaintId,
+        newStatus,
+        remarks
+      );
+
+      if (updateSuccess) {
+        logActivity(ACTIVITY_TYPES.STATUS_CHANGE, {
+          complaintId,
+          complaintSubject: selectedComplaint?.title || "Unknown",
+          previousStatus: selectedComplaint?.status || "Unknown",
+          newStatus,
+          remarks: remarks || "No remarks provided",
+        });
+
+        success(`✅ Complaint #${complaintId} updated to ${newStatus}`);
+        setIsModalOpen(false);
+        setSelectedComplaint(null);
+
+        // Refresh data
+        const refreshed = await getAllComplaints();
+        setComplaints(refreshed);
+        setFilteredComplaints(refreshed);
+      } else {
+        error(`❌ Failed to update complaint #${complaintId}`);
+      }
+    } catch (err) {
+      console.error(err);
+      error("⚠️ Error while updating complaint status.");
+    }
+  };
+
+  // ✅ Modal close
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedComplaint(null);
   };
 
+  // ✅ Export and print
   const handleExportCSV = () => {
-    const filename = `complaints_${new Date().toISOString().split('T')[0]}.csv`;
+    const filename = `complaints_${new Date().toISOString().split("T")[0]}.csv`;
     exportToCSV(filteredComplaints, filename);
     logActivity(ACTIVITY_TYPES.COMPLAINT_EXPORT, {
-    action: 'Exported complaints to CSV',
-    filename: filename,
-    complaintCount: filteredComplaints.length,
-    filters: currentFilters
-  });
-  
-  success(`✅ ${filteredComplaints.length} complaints exported to CSV!`);
-};
+      action: "Exported complaints to CSV",
+      filename,
+      complaintCount: filteredComplaints.length,
+      filters,
+    });
+    success(`✅ Exported ${filteredComplaints.length} complaints to CSV!`);
+  };
+
   const handlePrint = () => {
     exportToPrint(filteredComplaints);
     logActivity(ACTIVITY_TYPES.COMPLAINT_EXPORT, {
-    action: 'Printed complaints',
-    complaintCount: filteredComplaints.length,
-    filters: currentFilters
-  });
-  
-  success('📄 Print preview opened in new tab');
-};
-
-  const getEmptyStateType = () => {
-    if (currentFilters.search) return 'search';
-    if (currentFilters.status || currentFilters.dateRange !== 'all') return 'filter';
-    return 'complaints';
+      action: "Printed complaints",
+      complaintCount: filteredComplaints.length,
+      filters,
+    });
+    success("📄 Print preview opened");
   };
 
+  // ✅ Determine empty state
+  const getEmptyStateType = () => {
+    if (filters.search) return "search";
+    if (filters.status || filters.dateRange !== "all") return "filter";
+    return "complaints";
+  };
+
+  // 🧩 JSX
   return (
     <div className="p-4 sm:p-6 lg:p-8 pt-0 page-enter">
-      {/* Page Title */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">
           Manage Complaints
         </h1>
         <p className="text-gray-600 dark:text-gray-400 mt-2">
-          Filter and manage all campus complaints from students and faculty.
+          Filter and manage all campus complaints.
         </p>
       </div>
 
-      {/* Filters */}
-      <ComplaintFilters 
-        onFilterChange={handleFilterChange}
-        initialFilters={currentFilters}
-      />
+      <ComplaintFilters onFilterChange={handleFilterChange} initialFilters={filters} />
 
-      {/* Visual Feedback Banner */}
-      {filterHighlight && currentFilters.status && (
-        <div className={`mb-4 bg-gradient-to-r border-l-4 p-4 rounded-lg shadow-sm animate-slideDown relative ${
-          currentFilters.status === 'Resolved' 
-            ? 'from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-600'
-            : currentFilters.status === 'Pending'
-            ? 'from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 border-blue-600'
-            : currentFilters.status === 'In Progress'
-            ? 'from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-yellow-600'
-            : currentFilters.status === 'Rejected'
-            ? 'from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 border-red-600'
-            : 'from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border-indigo-600'
-        }`}>
+      {/* Highlight Banner */}
+      {filterHighlight && filters.status && (
+        <div
+          className={`mb-4 border-l-4 p-4 rounded-lg shadow-sm animate-slideDown relative ${
+            filters.status === "Resolved"
+              ? "border-green-600 bg-green-50 dark:bg-green-900/20"
+              : filters.status === "Pending"
+              ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20"
+              : filters.status === "Rejected"
+              ? "border-red-600 bg-red-50 dark:bg-red-900/20"
+              : "border-yellow-600 bg-yellow-50 dark:bg-yellow-900/20"
+          }`}
+        >
           <div className="flex items-center gap-3">
-            {/* Icon based on status */}
-            <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center shadow-md ${
-              currentFilters.status === 'Resolved'
-                ? 'bg-green-600 animate-pulse'
-                : currentFilters.status === 'Pending'
-                ? 'bg-blue-600'
-                : currentFilters.status === 'In Progress'
-                ? 'bg-yellow-600'
-                : currentFilters.status === 'Rejected'
-                ? 'bg-red-600'
-                : 'bg-indigo-600'
-            }`}>
-              {currentFilters.status === 'Resolved' ? (
-                <span className="text-3xl">✅</span>
-              ) : currentFilters.status === 'Pending' ? (
-                <span className="text-3xl">⏳</span>
-              ) : currentFilters.status === 'In Progress' ? (
-                <span className="text-3xl">🔧</span>
-              ) : currentFilters.status === 'Rejected' ? (
-                <span className="text-3xl">❌</span>
-              ) : (
-                <RiArrowRightLine className="h-6 w-6 text-white" />
-              )}
-            </div>
-            
+            <span className="text-3xl">
+              {filters.status === "Resolved"
+                ? "✅"
+                : filters.status === "Pending"
+                ? "⏳"
+                : filters.status === "Rejected"
+                ? "❌"
+                : "🔧"}
+            </span>
             <div className="flex-1">
-              <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                <span>Filtered from Dashboard</span>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                  currentFilters.status === 'Resolved'
-                    ? 'bg-green-600 text-white'
-                    : currentFilters.status === 'Pending'
-                    ? 'bg-blue-600 text-white'
-                    : currentFilters.status === 'In Progress'
-                    ? 'bg-yellow-600 text-white'
-                    : currentFilters.status === 'Rejected'
-                    ? 'bg-red-600 text-white'
-                    : 'bg-indigo-600 text-white'
-                }`}>
-                  {currentFilters.status}
-                </span>
+              <p className="font-semibold text-gray-800 dark:text-gray-200">
+                Showing {filters.status} complaints
               </p>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                Found <span className="font-bold text-lg">{filteredComplaints.length}</span> {filteredComplaints.length === 1 ? 'complaint' : 'complaints'}
+              <p className="text-sm text-gray-500">
+                Found {filteredComplaints.length} items
               </p>
             </div>
-
-            {/* Dismiss button */}
             <button
               onClick={() => setFilterHighlight(false)}
-              className="flex-shrink-0 p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              aria-label="Dismiss notification"
+              className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg"
             >
-              <RiCloseLine className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+              <RiCloseLine />
             </button>
           </div>
         </div>
       )}
 
-      {/* Results Header */}
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-t-lg shadow-sm border border-gray-200 dark:border-gray-700 border-b-0">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          {/* Left: Count and Filter Badge */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">
-              {isLoading ? (
-                <span className="animate-pulse">Filtering...</span>
-              ) : (
-                <>
-                  {filteredComplaints.length} 
-                  <span className="text-gray-500 dark:text-gray-400 font-normal ml-1">
-                    {filteredComplaints.length === 1 ? 'Complaint' : 'Complaints'}
-                  </span>
-                </>
-              )}
-            </h2>
-            
-            {/* Active Filters Display */}
-            <div className="flex items-center gap-2 flex-wrap">
-              {currentFilters.status && (
-                <span className={`text-xs text-gray-600 dark:text-gray-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1.5 rounded-full border border-indigo-200 dark:border-indigo-700 transition-all duration-300 ${
-                  filterHighlight ? 'ring-2 ring-indigo-400 ring-offset-2 dark:ring-offset-gray-800 scale-110 shadow-lg' : ''
-                }`}>
-                  Status: <span className="font-semibold">{currentFilters.status}</span>
-                </span>
-              )}
-              {currentFilters.dateRange && currentFilters.dateRange !== 'all' && (
-                <span className="text-xs text-gray-600 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-full border border-blue-200 dark:border-blue-700">
-                  {currentFilters.dateRange === 'today' ? 'Today' : 
-                   currentFilters.dateRange === 'week' ? 'Last 7 Days' : 
-                   currentFilters.dateRange === 'month' ? 'Last 30 Days' : 
-                   currentFilters.dateRange}
-                </span>
-              )}
-              {currentFilters.search && (
-                <span className="text-xs text-gray-600 dark:text-gray-400 bg-green-50 dark:bg-green-900/30 px-3 py-1.5 rounded-full border border-green-200 dark:border-green-700">
-                  Search: <span className="font-semibold">"{currentFilters.search}"</span>
-                </span>
-              )}
-            </div>
+      {/* Header with Export */}
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-t-lg shadow-sm border border-gray-200 dark:border-gray-700 border-b-0 flex flex-col sm:flex-row justify-between items-center gap-3">
+        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">
+          {isLoading ? "Loading..." : `${filteredComplaints.length} Complaints`}
+        </h2>
+        {filteredComplaints.length > 0 && !isLoading && (
+          <div className="flex gap-2">
+            <button
+              onClick={handleExportCSV}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all"
+            >
+              <RiDownloadLine /> CSV
+            </button>
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
+            >
+              <RiPrinterLine /> Print
+            </button>
           </div>
-          
-          {/* Right: Export Buttons */}
-          {filteredComplaints.length > 0 && !isLoading && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleExportCSV}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-all hover:scale-105 shadow-sm text-sm"
-                title="Export filtered complaints to CSV"
-              >
-                <RiDownloadLine className="h-4 w-4" />
-                <span className="hidden sm:inline">Export CSV</span>
-                <span className="sm:hidden">CSV</span>
-              </button>
-              
-              <button
-                onClick={handlePrint}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-all hover:scale-105 shadow-sm text-sm"
-                title="Print filtered complaints"
-              >
-                <RiPrinterLine className="h-4 w-4" />
-                <span className="hidden sm:inline">Print</span>
-                <span className="sm:hidden">Print</span>
-              </button>
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
-      {/* Loading State */}
-      {isLoading && (
-        <>
-          <div className="hidden md:block">
-            <Loading type="table" />
-          </div>
-          <div className="md:hidden">
-            <Loading type="cards" />
-          </div>
-        </>
-      )}
-
-      {/* Empty State */}
+      {/* Loading / Empty / Table */}
+      {isLoading && <Loading type="table" />}
       {!isLoading && filteredComplaints.length === 0 && (
-        <EmptyState 
+        <EmptyState
           type={getEmptyStateType()}
-          searchTerm={currentFilters.search}
+          searchTerm={filters.search}
           onAction={handleClearFilters}
           actionLabel="Clear All Filters"
         />
       )}
-
-      {/* Complaint Table */}
       {!isLoading && filteredComplaints.length > 0 && (
         <ComplaintTable
           complaints={filteredComplaints}
           onRowClick={handleRowClick}
-          onActionClick={handleActionClick}
+          onActionClick={handleRowClick}
         />
       )}
 
-      {/* Complaint Details Modal */}
+      {/* Complaint Modal */}
       <ComplaintDetails
         complaint={selectedComplaint}
         isOpen={isModalOpen}
