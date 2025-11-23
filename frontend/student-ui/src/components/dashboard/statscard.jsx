@@ -1,20 +1,18 @@
-// components/dashboard/StatsCard.jsx
+// src/components/dashboard/StatsCard.jsx
 import React from "react";
 
-export default function StatsCard({ title, value }) {
+export default function StatsCard({ title, value, color }) {
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-md border relative 
-      hover:shadow-lg transition-all">
-      
-      {/* Gradient top border */}
-      <div className="absolute top-0 left-0 w-full h-1 rounded-t-2xl"
-        style={{
-          background: "linear-gradient(90deg,#c026d3,#ec4899,#0ea5e9,#008080)"
-        }}
-      ></div>
+    <div
+      className="bg-white p-6 rounded-2xl shadow-xl border border-gray-100 flex flex-col items-center text-center hover:shadow-2xl transition"
+      style={{ borderTop: `5px solid ${color}` }}
+    >
+      <h3 className="text-lg font-semibold text-gray-700 mb-2">{title}</h3>
 
-      <h3 className="text-gray-600 text-lg font-semibold">{title}</h3>
-      <p className="text-4xl font-extrabold mt-2 text-gray-900">
+      <p
+        className="text-5xl font-bold"
+        style={{ color: color }}
+      >
         {value}
       </p>
     </div>
