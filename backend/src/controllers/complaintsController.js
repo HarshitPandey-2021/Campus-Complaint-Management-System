@@ -1,7 +1,8 @@
 // src/controllers/complaintsController.js
 const { ObjectId } = require('mongodb');
+const cloudinary = require('../config/cloudinary');
 
-// 🧑‍🎓 STUDENT: Create a new complaint
+// 🧑‍🎓 STUDENT: Create a new complaint with file uploads
 async function createComplaint(req, res) {
   try {
     const db = req.app.locals.db;
@@ -11,7 +12,6 @@ async function createComplaint(req, res) {
       category,
       location,
       priority,
-      image,
       isAnonymous
     } = req.body;
 
@@ -29,26 +29,79 @@ async function createComplaint(req, res) {
       return res.status(404).json({ message: 'User not found. Please re-login.' });
     }
 
+    // ✅ Handle file uploads to Cloudinary
+    let imageUrls = [];
+    let pdfUrl = null;
+
+    // Upload images
+    if (req.files && req.files.images) {
+      for (const file of req.files.images) {
+        const result = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            { 
+              folder: 'campus-complaints/images',
+              resource_type: 'image'
+            },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          uploadStream.end(file.buffer);
+        });
+        imageUrls.push(result.secure_url);
+      }
+    }
+
+    // Upload PDF
+if (req.files && req.files.pdfDocument && req.files.pdfDocument[0]) {
+  const pdfFile = req.files.pdfDocument[0];
+  const result = await new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: 'campus-complaints/documents',
+        resource_type: 'raw',
+        format: 'pdf',
+        flags: 'attachment',
+      },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      }
+    );
+    uploadStream.end(pdfFile.buffer);
+  });
+  pdfUrl = result.secure_url;
+}
+
+
+    // ✅ Generate complaint ID
+    const complaintCount = await db.collection("Complaints").countDocuments();
+    const complaintId = `CMP${String(complaintCount + 1).padStart(5, '0')}`;
+
     // ✅ Build complaint document
     const newComplaint = {
+      complaintId,
       userId: req.user.userId,
-      submittedBy: user.name,
-      email: user.email,
+      submittedBy: isAnonymous === 'true' ? 'Anonymous' : user.name,
+      email: isAnonymous === 'true' ? null : user.email,
       subject,
       description,
       category,
       location,
       priority: priority || "Medium",
-      image: image || "",
+      images: imageUrls,
+      pdfDocument: pdfUrl,
       status: "Pending",
       assignedTo: null,
       adminRemarks: "",
-      isAnonymous: isAnonymous || false,
+      isAnonymous: isAnonymous === 'true',
       submittedAt: new Date(),
       updatedAt: new Date(),
       resolvedAt: null,
       readByAdmin: false,
       readAt: null,
+      createdAt: new Date()
     };
 
     const result = await db.collection("Complaints").insertOne(newComplaint);
@@ -59,7 +112,137 @@ async function createComplaint(req, res) {
     });
   } catch (error) {
     console.error("Error creating complaint:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+}
+
+// 🧑‍🎓 STUDENT: Update complaint (only if pending and not assigned)
+async function updateComplaint(req, res) {
+  try {
+    const db = req.app.locals.db;
+    const complaintId = req.params.id;
+    const userId = req.user.userId;
+
+    if (!ObjectId.isValid(complaintId)) {
+      return res.status(400).json({ message: "Invalid complaint ID format" });
+    }
+
+    // Find the complaint
+    const complaint = await db.collection('Complaints').findOne({ 
+      _id: new ObjectId(complaintId) 
+    });
+
+    if (!complaint) {
+      return res.status(404).json({ message: 'Complaint not found' });
+    }
+
+    // Check if user owns the complaint
+    if (complaint.userId !== userId) {
+      return res.status(403).json({ message: 'Not authorized to update this complaint' });
+    }
+
+    // Check if complaint can be edited
+    if (complaint.status !== 'Pending') {
+      return res.status(400).json({ message: 'Cannot edit complaint that is not pending' });
+    }
+
+    if (complaint.assignedTo) {
+      return res.status(400).json({ message: 'Cannot edit assigned complaints' });
+    }
+
+    // Update basic fields
+    const { subject, category, location, priority, description, isAnonymous, existingImages, existingPdf } = req.body;
+
+    const updateFields = {
+      updatedAt: new Date()
+    };
+
+    if (subject) updateFields.subject = subject;
+    if (category) updateFields.category = category;
+    if (location) updateFields.location = location;
+    if (priority) updateFields.priority = priority;
+    if (description) updateFields.description = description;
+    if (typeof isAnonymous !== 'undefined') {
+      updateFields.isAnonymous = isAnonymous === 'true';
+    }
+
+    // Handle existing images
+    let finalImages = [];
+    if (existingImages) {
+      if (Array.isArray(existingImages)) {
+        finalImages = existingImages;
+      } else {
+        finalImages = [existingImages];
+      }
+    }
+
+    // Upload new images if provided
+    if (req.files && req.files.images) {
+      for (const file of req.files.images) {
+        const result = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            { 
+              folder: 'campus-complaints/images',
+              resource_type: 'image'
+            },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          uploadStream.end(file.buffer);
+        });
+        finalImages.push(result.secure_url);
+      }
+    }
+
+    updateFields.images = finalImages;
+
+    // Handle PDF
+    if (existingPdf) {
+      updateFields.pdfDocument = existingPdf;
+    } else if (req.files && req.files.pdfDocument && req.files.pdfDocument[0]) {
+      const pdfFile = req.files.pdfDocument[0];
+      const result = await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          { 
+            folder: 'campus-complaints/documents',
+            resource_type: 'raw'
+          },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        );
+        uploadStream.end(pdfFile.buffer);
+      });
+      updateFields.pdfDocument = result.secure_url;
+    } else if (!existingPdf) {
+      updateFields.pdfDocument = null;
+    }
+
+    // Update the complaint
+    const result = await db.collection("Complaints").updateOne(
+      { _id: new ObjectId(complaintId) },
+      { $set: updateFields }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ message: "Complaint not found" });
+    }
+
+    // Fetch updated complaint
+    const updatedComplaint = await db.collection('Complaints').findOne({ 
+      _id: new ObjectId(complaintId) 
+    });
+
+    res.status(200).json({
+      message: 'Complaint updated successfully',
+      complaint: updatedComplaint
+    });
+  } catch (error) {
+    console.error('Update complaint error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 }
 
@@ -90,7 +273,9 @@ async function getComplaintById(req, res) {
       return res.status(400).json({ message: "Invalid complaint ID format" });
     }
 
-    const complaint = await db.collection('Complaints').findOne({ _id: new ObjectId(complaintId) });
+    const complaint = await db.collection('Complaints').findOne({ 
+      _id: new ObjectId(complaintId) 
+    });
 
     if (!complaint) {
       return res.status(404).json({ message: 'Complaint not found' });
@@ -115,27 +300,10 @@ async function getAllComplaints(req, res) {
 
     const complaints = await db
       .collection("Complaints")
-      .find(
-        {},
-        {
-          projection: {
-             _id: 1,
-            subject: 1,
-            description: 1,
-            priority: 1,
-            image: 1,
-            location: 1,
-            category: 1,
-            submittedBy: 1,
-            submittedAt: 1,
-            readByAdmin: 1,
-            readAt: 1,
-            status: 1,
-          },
-        }
-      )
+      .find({})
       .sort({ submittedAt: -1 })
       .toArray();
+      
     res.status(200).json(complaints);
   } catch (error) {
     console.error("Error fetching complaints:", error);
@@ -143,10 +311,7 @@ async function getAllComplaints(req, res) {
   }
 }
 
-
-/* =========================================================
-   🧑‍💼 ADMIN: Mark complaint as "read" (for notification panel)
-========================================================= */
+// 🧑‍💼 ADMIN: Mark complaint as "read" (for notification panel)
 async function markComplaintAsRead(req, res) {
   try {
     const db = req.app.locals.db;
@@ -265,6 +430,9 @@ async function getAnalyticsData(req, res) {
     res.status(500).json({ message: "Failed to fetch analytics data", error });
   }
 }
+
+/*
+
 
 /* =========================================================
    📦 EXPORTS

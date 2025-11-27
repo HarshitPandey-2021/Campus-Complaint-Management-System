@@ -11,7 +11,7 @@ import {
   getAllComplaints,
   updateComplaintStatus,
   getComplaintById,
-} from "../services/adminService";
+} from "../api";
 import {
   RiDownloadLine,
   RiPrinterLine,
@@ -25,7 +25,7 @@ const Complaints = () => {
   const location = useLocation();
   const { success, error } = useToast();
 
-  // ✅ Handle dashboard filter navigation
+  // Handle dashboard filter navigation
   const initialFilters = useMemo(() => {
     if (location.state?.filterStatus) {
       const filterValue = location.state.filterStatus;
@@ -39,7 +39,7 @@ const Complaints = () => {
     return { status: "", search: "", dateRange: "all" };
   }, [location.state]);
 
-  const [, setComplaints] = useState([]);
+  const [complaints, setComplaints] = useState([]);
   const [filteredComplaints, setFilteredComplaints] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState(initialFilters);
@@ -49,65 +49,62 @@ const Complaints = () => {
     !!location.state?.filterStatus
   );
 
-  // ✅ Fetch complaints from backend
+  // Fetch complaints from backend
   useEffect(() => {
     const fetchComplaints = async () => {
       try {
         setIsLoading(true);
-        const response = await getAllComplaints();
+        const token = localStorage.getItem("token");
+        const response = await getAllComplaints(token);
         setComplaints(response);
 
-
         // Apply filters if any
-let filtered = response;
+        let filtered = response;
 
-// ✅ Filter by status
-if (filters.status && filters.status !== "All") {
-  filtered = filtered.filter((c) => c.status === filters.status);
-}
+        // Filter by status
+        if (filters.status && filters.status !== "All") {
+          filtered = filtered.filter((c) => c.status === filters.status);
+        }
 
-// ✅ Filter by search (title, description, department)
-if (filters.search && filters.search.trim() !== "") {
-  const term = filters.search.toLowerCase();
-  filtered = filtered.filter(
-    (c) =>
-      c.title?.toLowerCase().includes(term) ||
-      c.description?.toLowerCase().includes(term) ||
-      c.department?.toLowerCase().includes(term)
-  );
-}
+        // Filter by search (title, description, department)
+        if (filters.search && filters.search.trim() !== "") {
+          const term = filters.search.toLowerCase();
+          filtered = filtered.filter(
+            (c) =>
+              c.title?.toLowerCase().includes(term) ||
+              c.description?.toLowerCase().includes(term) ||
+              c.department?.toLowerCase().includes(term)
+          );
+        }
 
-// ✅ Date range filter
-if (filters.dateRange && filters.dateRange !== "all") {
-  const now = new Date();
-  let threshold = new Date();
+        // Date range filter
+        if (filters.dateRange && filters.dateRange !== "all") {
+          const now = new Date();
+          let threshold = new Date();
 
-  if (filters.dateRange === "week") {
-    threshold.setDate(now.getDate() - 7);
-  } else if (filters.dateRange === "month") {
-    threshold.setDate(now.getDate() - 30);
-  } else if (filters.dateRange === "today") {
-    // ✅ Compare only date parts (ignore hours/min/sec)
-    threshold = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  }
+          if (filters.dateRange === "week") {
+            threshold.setDate(now.getDate() - 7);
+          } else if (filters.dateRange === "month") {
+            threshold.setDate(now.getDate() - 30);
+          } else if (filters.dateRange === "today") {
+            threshold = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          }
 
-  filtered = filtered.filter((c) => {
-    const date = new Date(c.createdAt || c.submittedAt || c.date);
-    if (isNaN(date)) return false;
+          filtered = filtered.filter((c) => {
+            const date = new Date(c.createdAt || c.submittedAt || c.date);
+            if (isNaN(date)) return false;
 
-    if (filters.dateRange === "today") {
-      // ✅ Match same calendar day
-      const complaintDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      return complaintDate.getTime() === threshold.getTime();
-    }
+            if (filters.dateRange === "today") {
+              // Match same calendar day
+              const complaintDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+              return complaintDate.getTime() === threshold.getTime();
+            }
 
-    return date >= threshold;
-  });
-}
+            return date >= threshold;
+          });
+        }
 
-// ✅ Update filtered list
-setFilteredComplaints(filtered);
-
+        setFilteredComplaints(filtered);
       } catch (err) {
         console.error("Error fetching complaints:", err);
         error("❌ Failed to fetch complaints from the server.");
@@ -117,9 +114,10 @@ setFilteredComplaints(filtered);
     };
 
     fetchComplaints();
+    // eslint-disable-next-line
   }, [filters, error]);
 
-  // ✅ Handle filters
+  // Handle filters
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters);
   };
@@ -129,23 +127,26 @@ setFilteredComplaints(filtered);
     success("🔄 Filters cleared!");
   };
 
-  // ✅ Handle row click
+  // Handle row click
   const handleRowClick = async (complaintId) => {
     try {
-      const complaint = await getComplaintById(complaintId);
+      const token = localStorage.getItem("token");
+      const complaint = await getComplaintById(complaintId, token);
       setSelectedComplaint(complaint);
       setIsModalOpen(true);
     } catch (err) {
-      error("⚠️ Failed to load complaint details.",err);
+      error("⚠️ Failed to load complaint details.", err);
     }
   };
 
-  // ✅ Update status
+  // Update status
   const handleStatusUpdate = async (complaintId, newStatus, remarks) => {
     try {
+      const token = localStorage.getItem("token");
       const updateSuccess = await updateComplaintStatus(
         complaintId,
         newStatus,
+        token,
         remarks
       );
 
@@ -163,7 +164,7 @@ setFilteredComplaints(filtered);
         setSelectedComplaint(null);
 
         // Refresh data
-        const refreshed = await getAllComplaints();
+        const refreshed = await getAllComplaints(token);
         setComplaints(refreshed);
         setFilteredComplaints(refreshed);
       } else {
@@ -175,13 +176,13 @@ setFilteredComplaints(filtered);
     }
   };
 
-  // ✅ Modal close
+  // Modal close
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedComplaint(null);
   };
 
-  // ✅ Export and print
+  // Export and print
   const handleExportCSV = () => {
     const filename = `complaints_${new Date().toISOString().split("T")[0]}.csv`;
     exportToCSV(filteredComplaints, filename);
@@ -204,14 +205,14 @@ setFilteredComplaints(filtered);
     success("📄 Print preview opened");
   };
 
-  // ✅ Determine empty state
+  // Determine empty state
   const getEmptyStateType = () => {
     if (filters.search) return "search";
     if (filters.status || filters.dateRange !== "all") return "filter";
     return "complaints";
   };
 
-  // 🧩 JSX
+  // JSX
   return (
     <div className="p-4 sm:p-6 lg:p-8 pt-0 page-enter">
       <div className="mb-6">

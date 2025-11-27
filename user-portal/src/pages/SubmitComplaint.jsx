@@ -1,35 +1,23 @@
-// src/pages/SubmitComplaint.jsx - FINAL POLISHED VERSION
-
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { useToast } from '../hooks/useToast';
-import LoadingSpinner from '../components/common/LoadingSpinner';
-import { CATEGORIES, PRIORITIES } from '../utils/constants';
-import { submitComplaint } from '../services/userService';
-import { 
-  RiSendPlaneFill, 
-  RiArrowLeftLine,
-  RiErrorWarningLine,
-  RiCheckLine,
-  RiUploadCloudLine,
-  RiImageAddLine,
-  RiFilePdfLine,
-  RiCloseLine,
-  RiAlertLine,
-  RiFlagLine,
-  RiMapPinLine,
-  RiFileTextLine,
-  RiEyeOffLine
-} from 'react-icons/ri';
+// src/pages/SubmitComplaint.jsx - FIXED VERSION
+import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
+import { useToast } from '../hooks/useToast'
+import LoadingSpinner from '../components/common/LoadingSpinner'
+import { CATEGORIES, PRIORITIES } from '../utils/constants'
+import api from '../api'  // ✅ Import api instead of userService
+import {
+  RiSendPlaneFill, RiArrowLeftLine, RiErrorWarningLine, RiCheckLine,
+  RiUploadCloudLine, RiImageAddLine, RiFilePdfLine, RiCloseLine,
+  RiAlertLine, RiFlagLine, RiMapPinLine, RiFileTextLine, RiEyeOffLine
+} from 'react-icons/ri'
 
 const SubmitComplaint = () => {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const { success, error: showError } = useToast();
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const { success, error: showError } = useToast()
 
-  const [loading, setLoading] = useState(false);
-  
+  const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     subject: '',
     category: '',
@@ -37,241 +25,235 @@ const SubmitComplaint = () => {
     priority: 'Medium',
     description: '',
     isAnonymous: false
-  });
-
-  const [images, setImages] = useState([]);
-  const [pdf, setPdf] = useState(null);
-  const [errors, setErrors] = useState({});
-  const [dragActive, setDragActive] = useState(false);
+  })
+  const [images, setImages] = useState([])
+  const [pdf, setPdf] = useState(null)
+  const [errors, setErrors] = useState({})
+  const [dragActive, setDragActive] = useState(false)
 
   // Category icons mapping
   const categoryIcons = {
-    'Fan': '🌀',
-    'Light': '💡',
-    'Projector': '📽️',
-    'Furniture': '🪑',
-    'Washroom': '🚽',
-    'Water': '💧',
-    'Internet': '📡',
-    'Other': '📌'
-  };
+    'Fan': '🌀', 'Light': '💡', 'Projector': '📽️', 'Furniture': '🪑',
+    'Washroom': '🚻', 'Water': '💧', 'Internet': '📶', 'Other': '📋'
+  }
 
   // Priority colors
   const priorityColors = {
     'Low': 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700',
     'Medium': 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700',
     'High': 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-700'
-  };
+  }
 
   // Calculate form completion percentage
   const calculateProgress = () => {
-    let completed = 0;
-    if (formData.subject.length >= 5) completed += 16.66;
-    if (formData.category) completed += 16.66;
-    if (formData.location.length >= 5) completed += 16.66;
-    if (formData.priority) completed += 16.66;
-    if (formData.description.length >= 20) completed += 16.66;
-    if (images.length > 0 || pdf) completed += 16.66;
-    return Math.round(completed);
-  };
+    let completed = 0
+    if (formData.subject.length >= 5) completed += 16.66
+    if (formData.category) completed += 16.66
+    if (formData.location.length >= 5) completed += 16.66
+    if (formData.priority) completed += 16.66
+    if (formData.description.length >= 20) completed += 16.66
+    if (images.length > 0 || pdf) completed += 16.66
+    return Math.round(completed)
+  }
 
-  const progress = calculateProgress();
+  const progress = calculateProgress()
 
   // Handle input change
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    const { name, value, type, checked } = e.target
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
     if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
+      setErrors(prev => ({ ...prev, [name]: '' }))
     }
-  };
+  }
 
-  // Handle category selection (visual cards)
+  // Handle category selection
   const handleCategorySelect = (category) => {
-    setFormData(prev => ({ ...prev, category }));
+    setFormData(prev => ({ ...prev, category }))
     if (errors.category) {
-      setErrors(prev => ({ ...prev, category: '' }));
+      setErrors(prev => ({ ...prev, category: '' }))
     }
-  };
+  }
 
   // Handle priority selection
   const handlePrioritySelect = (priority) => {
     if (priority === 'High' && user?.role === 'student') {
-      showError('Only faculty can set High priority');
-      return;
+      showError('Only faculty can set High priority')
+      return
     }
-    setFormData(prev => ({ ...prev, priority }));
-  };
+    setFormData(prev => ({ ...prev, priority }))
+  }
 
   // Validate form
   const validate = () => {
-    const newErrors = {};
-
+    const newErrors = {}
     if (!formData.subject.trim()) {
-      newErrors.subject = 'Subject is required';
+      newErrors.subject = 'Subject is required'
     } else if (formData.subject.length < 5) {
-      newErrors.subject = 'Subject must be at least 5 characters';
+      newErrors.subject = 'Subject must be at least 5 characters'
     } else if (formData.subject.length > 100) {
-      newErrors.subject = 'Subject must not exceed 100 characters';
+      newErrors.subject = 'Subject must not exceed 100 characters'
     }
 
-    if (!formData.category) {
-      newErrors.category = 'Please select a category';
-    }
+    if (!formData.category) newErrors.category = 'Please select a category'
 
     if (!formData.location.trim()) {
-      newErrors.location = 'Location is required';
+      newErrors.location = 'Location is required'
     } else if (formData.location.length < 5) {
-      newErrors.location = 'Location must be at least 5 characters';
+      newErrors.location = 'Location must be at least 5 characters'
     }
 
     if (!formData.description.trim()) {
-      newErrors.description = 'Description is required';
+      newErrors.description = 'Description is required'
     } else if (formData.description.length < 20) {
-      newErrors.description = 'Description must be at least 20 characters';
+      newErrors.description = 'Description must be at least 20 characters'
     } else if (formData.description.length > 500) {
-      newErrors.description = 'Description must not exceed 500 characters';
+      newErrors.description = 'Description must not exceed 500 characters'
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
-  // Handle drag events for image upload
+  // Handle drag events
   const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault()
+    e.stopPropagation()
     if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
+      setDragActive(true)
     } else if (e.type === 'dragleave') {
-      setDragActive(false);
+      setDragActive(false)
     }
-  };
+  }
 
-  // Handle drop for image upload
+  // Handle drop
   const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
+    e.preventDefault()
+    e.stopPropagation()
+    setDragActive(false)
+    const files = Array.from(e.dataTransfer.files)
+    handleImageFiles(files)
+  }
 
-    const files = Array.from(e.dataTransfer.files);
-    handleImageFiles(files);
-  };
-
-  // Handle image file selection
+  // ✅ FIXED: Handle image files - store actual file object
   const handleImageFiles = (files) => {
     if (images.length + files.length > 3) {
-      showError('Maximum 3 images allowed');
-      return;
+      showError('Maximum 3 images allowed')
+      return
     }
 
     const validFiles = files.filter(file => {
       if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
-        showError(`${file.name} is not a valid image (only JPG/PNG allowed)`);
-        return false;
+        showError(`${file.name} is not a valid image (only JPG/PNG allowed)`)
+        return false
       }
       if (file.size > 2 * 1024 * 1024) {
-        showError(`${file.name} exceeds 2MB limit`);
-        return false;
+        showError(`${file.name} exceeds 2MB limit`)
+        return false
       }
-      return true;
-    });
+      return true
+    })
 
     const newImages = validFiles.map(file => ({
-      file,
+      file: file,  // ✅ Store actual file object
       preview: URL.createObjectURL(file),
       name: file.name
-    }));
+    }))
 
-    setImages(prev => [...prev, ...newImages]);
-  };
+    setImages(prev => [...prev, ...newImages])
+  }
 
   // Remove image
   const removeImage = (index) => {
     setImages(prev => {
-      const newImages = [...prev];
-      URL.revokeObjectURL(newImages[index].preview);
-      newImages.splice(index, 1);
-      return newImages;
-    });
-  };
+      const newImages = [...prev]
+      URL.revokeObjectURL(newImages[index].preview)
+      newImages.splice(index, 1)
+      return newImages
+    })
+  }
 
   // Handle PDF upload
   const handlePdfChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const file = e.target.files[0]
+    if (!file) return
 
     if (file.type !== 'application/pdf') {
-      showError('Only PDF files are allowed');
-      return;
+      showError('Only PDF files are allowed')
+      return
     }
-
     if (file.size > 5 * 1024 * 1024) {
-      showError('PDF file must not exceed 5MB');
-      return;
+      showError('PDF file must not exceed 5MB')
+      return
     }
-
-    setPdf(file);
-  };
+    setPdf(file)
+  }
 
   // Remove PDF
   const removePdf = () => {
-    setPdf(null);
-  };
+    setPdf(null)
+  }
 
-  // Handle submit
+  // ✅ FIXED: Handle submit with FormData
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault()
 
     if (!validate()) {
-      showError('Please fix the errors before submitting');
-      return;
+      showError('Please fix the errors before submitting')
+      return
     }
 
-    setLoading(true);
+    setLoading(true)
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      const complaintData = {
-        ...formData,
-        images: images.map(img => img.preview),
-        verificationDocument: pdf ? {
-          filename: pdf.name,
-          size: pdf.size
-        } : null
-      };
-
-      const newComplaint = submitComplaint(complaintData);
-      success(`Complaint #${newComplaint.id} submitted successfully! 🎉`);
+      const token = localStorage.getItem('token')
       
-      setTimeout(() => {
-        navigate('/user/complaints');
-      }, 1000);
+      // ✅ Use FormData for file uploads
+      const submitData = new FormData()
+      
+      // Append text fields
+      submitData.append('subject', formData.subject)
+      submitData.append('category', formData.category)
+      submitData.append('location', formData.location)
+      submitData.append('priority', formData.priority)
+      submitData.append('description', formData.description)
+      submitData.append('isAnonymous', formData.isAnonymous)
+
+      // ✅ Append image files (actual file objects)
+      images.forEach((img) => {
+        submitData.append('images', img.file)
+      })
+
+      // ✅ Append PDF file with correct field name
+      if (pdf) {
+        submitData.append('pdfDocument', pdf)
+      }
+
+      // API call
+      const response = await api.submitComplaint(submitData, token)
+
+      success(`Complaint ${response.id || response.complaint?.complaintId || ''} submitted successfully!`)
+      setTimeout(() => navigate('/user/complaints'), 1000)
 
     } catch (err) {
-      showError('Failed to submit complaint. Please try again.');
-      setLoading(false);
+      console.error('Submit error:', err)
+      showError(err.response?.data?.message || 'Failed to submit complaint. Please try again.')
+    } finally {
+      setLoading(false)
     }
-  };
+  }
 
   // Character counter color
   const getCounterColor = (current, max) => {
-    const percentage = (current / max) * 100;
-    if (percentage < 50) return 'text-green-600 dark:text-green-400';
-    if (percentage < 80) return 'text-yellow-600 dark:text-yellow-400';
-    return 'text-red-600 dark:text-red-400';
-  };
+    const percentage = (current / max) * 100
+    if (percentage < 50) return 'text-green-600 dark:text-green-400'
+    if (percentage < 80) return 'text-yellow-600 dark:text-yellow-400'
+    return 'text-red-600 dark:text-red-400'
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-4xl mx-auto">
-        
-        {/* Header */}
-        <div className="mb-6 sm:mb-8 animate-fadeIn">
+      <div className="max-w-4xl mx-auto"> <div className="mb-6 sm:mb-8 animate-fadeIn">
           <button
             onClick={() => navigate(-1)}
             className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 mb-4 transition-colors group"
@@ -279,7 +261,6 @@ const SubmitComplaint = () => {
             <RiArrowLeftLine className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
             <span className="text-sm sm:text-base font-semibold">Back</span>
           </button>
-          
           <div className="mb-4">
             <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-800 dark:text-gray-200 mb-2">
               Submit New Complaint
@@ -290,11 +271,10 @@ const SubmitComplaint = () => {
           </div>
         </div>
 
-        {/* ✅ STICKY PROGRESS BAR */}
+        {/* STICKY PROGRESS BAR */}
         <div className="sticky top-16 z-40 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-4 bg-gradient-to-r from-white/95 to-gray-50/95 dark:from-gray-900/95 dark:to-gray-800/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 shadow-lg mb-6">
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center gap-4">
-              {/* Progress Bar */}
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">
@@ -305,7 +285,7 @@ const SubmitComplaint = () => {
                   </p>
                 </div>
                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-500 ease-out rounded-full relative"
                     style={{ width: `${progress}%` }}
                   >
@@ -313,9 +293,7 @@ const SubmitComplaint = () => {
                   </div>
                 </div>
               </div>
-
-              {/* Completion Indicator */}
-              {progress === 100 && (
+              {progress >= 100 && (
                 <div className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full animate-scaleIn">
                   <RiCheckLine className="h-4 w-4" />
                   <span className="text-xs font-bold hidden sm:inline">Ready to Submit!</span>
@@ -327,7 +305,6 @@ const SubmitComplaint = () => {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
-
           {/* Basic Information Card */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden animate-scaleIn">
             <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4">
@@ -336,9 +313,7 @@ const SubmitComplaint = () => {
                 Basic Information
               </h2>
             </div>
-
             <div className="p-6 space-y-6">
-              
               {/* Subject */}
               <div className="relative">
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
@@ -353,8 +328,8 @@ const SubmitComplaint = () => {
                     maxLength={100}
                     placeholder="Brief description of the issue"
                     className={`w-full px-4 py-3 pr-16 rounded-lg border-2 ${
-                      errors.subject 
-                        ? 'border-red-500 focus:ring-red-500' 
+                      errors.subject
+                        ? 'border-red-500 focus:ring-red-500'
                         : formData.subject.length >= 5
                         ? 'border-green-500 focus:ring-green-500'
                         : 'border-gray-300 dark:border-gray-600 focus:ring-indigo-500'
@@ -377,13 +352,13 @@ const SubmitComplaint = () => {
                 </div>
               </div>
 
-              {/* Category Selection - Interactive Cards */}
+              {/* Category Selection */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                   Category <span className="text-red-500">*</span>
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {CATEGORIES.map(cat => (
+                  {CATEGORIES.map((cat) => (
                     <button
                       key={cat}
                       type="button"
@@ -426,8 +401,8 @@ const SubmitComplaint = () => {
                   onChange={handleChange}
                   placeholder="e.g., Room 301, Block A"
                   className={`w-full px-4 py-3 rounded-lg border-2 ${
-                    errors.location 
-                      ? 'border-red-500 focus:ring-red-500' 
+                    errors.location
+                      ? 'border-red-500 focus:ring-red-500'
                       : formData.location.length >= 5
                       ? 'border-green-500 focus:ring-green-500'
                       : 'border-gray-300 dark:border-gray-600 focus:ring-indigo-500'
@@ -441,14 +416,14 @@ const SubmitComplaint = () => {
                 )}
               </div>
 
-              {/* Priority - Visual Selector */}
+              {/* Priority */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                   <RiFlagLine className="inline h-4 w-4 mr-1" />
                   Priority <span className="text-red-500">*</span>
                 </label>
                 <div className="grid grid-cols-3 gap-3">
-                  {PRIORITIES.filter(p => user?.role === 'faculty' || p !== 'High').map(priority => (
+                  {PRIORITIES.filter(p => user?.role === 'faculty' || p !== 'High').map((priority) => (
                     <button
                       key={priority}
                       type="button"
@@ -484,8 +459,8 @@ const SubmitComplaint = () => {
                   rows={5}
                   placeholder="Provide detailed description of the issue..."
                   className={`w-full px-4 py-3 rounded-lg border-2 ${
-                    errors.description 
-                      ? 'border-red-500 focus:ring-red-500' 
+                    errors.description
+                      ? 'border-red-500 focus:ring-red-500'
                       : formData.description.length >= 20
                       ? 'border-green-500 focus:ring-green-500'
                       : 'border-gray-300 dark:border-gray-600 focus:ring-indigo-500'
@@ -503,7 +478,6 @@ const SubmitComplaint = () => {
                   </p>
                 </div>
               </div>
-
             </div>
           </div>
 
@@ -515,16 +489,13 @@ const SubmitComplaint = () => {
                 Attachments (Optional)
               </h2>
             </div>
-
             <div className="p-6 space-y-6">
-              
-              {/* Image Upload - Drag & Drop */}
+              {/* Image Upload */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                   <RiImageAddLine className="inline h-4 w-4 mr-1" />
-                  Upload Images (Max 3 • 2MB each)
+                  Upload Images (Max 3, 2MB each)
                 </label>
-                
                 {images.length < 3 && (
                   <div
                     onDragEnter={handleDrag}
@@ -545,9 +516,7 @@ const SubmitComplaint = () => {
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     />
                     <div className="text-center">
-                      <RiUploadCloudLine className={`h-12 w-12 mx-auto mb-3 ${
-                        dragActive ? 'text-indigo-600 animate-bounce' : 'text-gray-400'
-                      }`} />
+                      <RiUploadCloudLine className={`h-12 w-12 mx-auto mb-3 ${dragActive ? 'text-indigo-600 animate-bounce' : 'text-gray-400'}`} />
                       <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
                         {dragActive ? 'Drop images here' : 'Drag & drop images here'}
                       </p>
@@ -562,10 +531,7 @@ const SubmitComplaint = () => {
                 {images.length > 0 && (
                   <div className="grid grid-cols-3 gap-4 mt-4">
                     {images.map((image, index) => (
-                      <div
-                        key={index}
-                        className="relative group aspect-square bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-600 hover:border-indigo-500 transition-all"
-                      >
+                      <div key={index} className="relative group aspect-square bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-600 hover:border-indigo-500 transition-all">
                         <img
                           src={image.preview}
                           alt={`Upload ${index + 1}`}
@@ -591,9 +557,8 @@ const SubmitComplaint = () => {
               <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                   <RiFilePdfLine className="inline h-4 w-4 mr-1" />
-                  Verification Document (PDF only • Max 5MB)
+                  Verification Document (PDF only, Max 5MB)
                 </label>
-                
                 {!pdf ? (
                   <label className="block border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-6 hover:border-indigo-400 transition-all cursor-pointer group">
                     <input
@@ -632,7 +597,6 @@ const SubmitComplaint = () => {
                   </div>
                 )}
               </div>
-
             </div>
           </div>
 
@@ -674,30 +638,30 @@ const SubmitComplaint = () => {
             </button>
             <button
               type="submit"
-              disabled={loading || progress < 100}
+              disabled={loading || progress < 83}
               className="w-full sm:flex-1 flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-2xl hover:scale-105 relative overflow-hidden group"
             >
               {loading ? (
                 <>
                   <LoadingSpinner />
-                  Submitting...
+                  <span>Submitting...</span>
                 </>
               ) : (
                 <>
                   <RiSendPlaneFill className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                  Submit Complaint
-                  {progress === 100 && (
-                    <span className="absolute inset-0 bg-white/20 animate-pulse"></span>
-                  )}
+                  <span>Submit Complaint</span>
                 </>
+              )}
+              {progress >= 83 && !loading && (
+                <span className="absolute inset-0 bg-white/20 animate-pulse"></span>
               )}
             </button>
           </div>
-
-        </form>
+  </form>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default SubmitComplaint;
+export default SubmitComplaint
+

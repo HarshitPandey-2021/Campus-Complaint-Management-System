@@ -1,4 +1,3 @@
-// src/pages/Dashboard.jsx - CLEAN VERSION (NO TEST BUTTONS)
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -7,7 +6,7 @@ import Badge from '../components/common/Badge';
 import RoleBadge from '../components/common/RoleBadge';
 import Loading from '../components/common/Loading';
 import useCountUp from '../hooks/useCountUp';
-import { getMyComplaints, getMyStats } from '../services/userService';
+import { getMyComplaints, getMyStats } from '../api';
 import { 
   RiFileListLine, 
   RiTimeLine, 
@@ -23,7 +22,6 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { info, success } = useToast();
-  
   const [loading, setLoading] = useState(true);
   const [recentComplaints, setRecentComplaints] = useState([]);
   const [stats, setStats] = useState({ total: 0, pending: 0, inProgress: 0, resolved: 0 });
@@ -33,33 +31,53 @@ const Dashboard = () => {
   const inProgressCount = useCountUp(stats.inProgress, 1200);
   const resolvedCount = useCountUp(stats.resolved, 1200);
 
-  // Load data
   useEffect(() => {
-    setTimeout(() => {
-      setRecentComplaints(getMyComplaints().slice(0, 5));
-      setStats(getMyStats());
+    const fetchData = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = 'http://localhost:5173/login';
+        return;
+      }
+      const complaints = await getMyComplaints(token);
+      const userStats = await getMyStats(token);
+      setRecentComplaints(complaints.slice(0, 5));
+      setStats(userStats);
       setLoading(false);
-    }, 800);
+    };
+    fetchData();
   }, []);
 
-  // Welcome message
-// Welcome message
-useEffect(() => {
-  if (!loading) {
-    setTimeout(() => {
-      if (stats.pending > 0) {
-        info(`👋 Welcome back! You have ${stats.pending} complaint${stats.pending > 1 ? 's' : ''} waiting to be reviewed by admin.`);
-      } else if (stats.total > 0) {
-        success(`🎉 Great! All your complaints are being handled or resolved!`);
-      } else {
-        info(`👋 Welcome! Submit your first complaint to get started.`);
-      }
-    }, 1500);
-  }
-}, [loading]);
+  useEffect(() => {
+    if (!loading && user) {
+      setTimeout(() => {
+        if (stats.pending > 0) {
+          info(`👋 Welcome back, ${user.name}! You have ${stats.pending} complaint${stats.pending > 1 ? 's' : ''} waiting to be reviewed.`);
+        } else if (stats.total > 0) {
+          success(`🎉 Great! All your complaints are being handled or resolved!`);
+        } else {
+          info(`👋 Welcome, ${user.name}! Submit your first complaint to get started.`);
+        }
+      }, 1500);
+    }
+  }, [loading, stats, info, success, user]);
 
   const handleStatClick = (status) => {
     navigate('/user/complaints', { state: { filterStatus: status } });
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      'Pending': 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+      'In Progress': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+      'Resolved': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+      'Rejected': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+    };
+    return colors[status] || 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   if (loading) {
@@ -68,187 +86,168 @@ useEffect(() => {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-4xl font-extrabold text-gray-800 dark:text-gray-200">
-                Welcome back, {user?.name?.split(' ')[0]}!
-              </h1>
-              <RoleBadge role={user?.role} />
-            </div>
-            <p className="text-gray-600 dark:text-gray-400 text-lg">
-              Track and manage your campus complaints all in one place.
-            </p>
+      {/* Welcome Section */}
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-800 dark:text-gray-200 mb-2">
+          Welcome back, {user?.name}! 👋
+        </h1>
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+          Here's an overview of your complaints and their current status
+        </p>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+        {/* Total Complaints */}
+        <div 
+          onClick={() => handleStatClick('all')}
+          className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-lg p-6 text-white cursor-pointer transform hover:scale-105 transition-all duration-300"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <RiFileListLine className="h-8 w-8 opacity-80" />
+            <div className="text-3xl font-bold">{totalCount}</div>
           </div>
-          
-          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 text-sm bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded-lg">
-            <RiCalendarLine className="h-4 w-4" />
-            <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+          <div className="text-sm font-medium opacity-90">Total Complaints</div>
+        </div>
+
+        {/* Pending */}
+        <div 
+          onClick={() => handleStatClick('Pending')}
+          className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl shadow-lg p-6 text-white cursor-pointer transform hover:scale-105 transition-all duration-300"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <RiTimeLine className="h-8 w-8 opacity-80" />
+            <div className="text-3xl font-bold">{pendingCount}</div>
           </div>
+          <div className="text-sm font-medium opacity-90">Pending</div>
+        </div>
+
+        {/* In Progress */}
+        <div 
+          onClick={() => handleStatClick('In Progress')}
+          className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white cursor-pointer transform hover:scale-105 transition-all duration-300"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <RiLoader4Line className="h-8 w-8 opacity-80" />
+            <div className="text-3xl font-bold">{inProgressCount}</div>
+          </div>
+          <div className="text-sm font-medium opacity-90">In Progress</div>
+        </div>
+
+        {/* Resolved */}
+        <div 
+          onClick={() => handleStatClick('Resolved')}
+          className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white cursor-pointer transform hover:scale-105 transition-all duration-300"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <RiCheckLine className="h-8 w-8 opacity-80" />
+            <div className="text-3xl font-bold">{resolvedCount}</div>
+          </div>
+          <div className="text-sm font-medium opacity-90">Resolved</div>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <section className="mb-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          
-          <div onClick={() => handleStatClick('all')} className="group bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md hover:shadow-2xl border border-gray-200 dark:border-gray-700 transition-all duration-300 hover:scale-105 cursor-pointer">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 group-hover:scale-110 transition-transform">
-                <RiFileListLine className="h-7 w-7 text-indigo-600 dark:text-indigo-400" />
-              </div>
-              <RiArrowRightLine className="h-5 w-5 text-gray-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-            </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 font-semibold uppercase tracking-wide mb-2">My Complaints</p>
-            <p className="text-4xl font-extrabold text-gray-800 dark:text-gray-200">{totalCount}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-500 mt-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">Click to view all →</p>
-          </div>
-
-          <div onClick={() => handleStatClick('Pending')} className="group bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-xl shadow-md hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-lg bg-white/20 backdrop-blur-sm group-hover:scale-110 transition-transform">
-                <RiTimeLine className="h-7 w-7 text-white" />
-              </div>
-              <RiArrowRightLine className="h-5 w-5 text-white/70 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-            </div>
-            <p className="text-sm text-white/90 font-semibold uppercase tracking-wide mb-2">Pending</p>
-            <p className="text-4xl font-extrabold text-white">{pendingCount}</p>
-            <p className="text-xs text-white/70 mt-2">{pendingCount > 0 ? 'Awaiting action' : 'All clear! 🎉'}</p>
-          </div>
-
-          <div onClick={() => handleStatClick('In Progress')} className="group bg-gradient-to-br from-yellow-500 to-yellow-600 p-6 rounded-xl shadow-md hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-lg bg-white/20 backdrop-blur-sm group-hover:scale-110 transition-transform">
-                <RiLoader4Line className="h-7 w-7 text-white" />
-              </div>
-              <RiArrowRightLine className="h-5 w-5 text-white/70 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-            </div>
-            <p className="text-sm text-gray-900 font-semibold uppercase tracking-wide mb-2">In Progress</p>
-            <p className="text-4xl font-extrabold text-gray-900">{inProgressCount}</p>
-            <p className="text-xs text-gray-800 mt-2">{inProgressCount > 0 ? 'Being worked on' : 'Nothing in progress'}</p>
-          </div>
-
-          <div onClick={() => handleStatClick('Resolved')} className="group bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-xl shadow-md hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-lg bg-white/20 backdrop-blur-sm group-hover:scale-110 transition-transform">
-                <RiCheckLine className="h-7 w-7 text-white" />
-              </div>
-              <RiArrowRightLine className="h-5 w-5 text-white/70 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-            </div>
-            <p className="text-sm text-white/90 font-semibold uppercase tracking-wide mb-2">Resolved</p>
-            <p className="text-4xl font-extrabold text-white">{resolvedCount}</p>
-            <p className="text-xs text-white/70 mt-2">Successfully closed</p>
-          </div>
-        </div>
-      </section>
-
       {/* Quick Actions */}
-      <section className="mb-8">
-        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl shadow-lg p-6 hover:shadow-2xl transition-all">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-white text-center sm:text-left">
-              <h3 className="text-2xl font-bold mb-2">Need to Report an Issue?</h3>
-              <p className="text-white/80">Submit a new complaint and we'll get it resolved quickly</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-8">
+        <button
+          onClick={() => navigate('/user/submit')}
+          className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-all group"
+        >
+          <div className="flex items-center">
+            <div className="flex-shrink-0 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg p-3 group-hover:bg-indigo-200 dark:group-hover:bg-indigo-900/50 transition-colors">
+              <RiAddCircleLine className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
             </div>
-            <div className="flex flex-wrap gap-3">
-              <button onClick={() => navigate('/user/submit')} className="flex items-center gap-2 px-6 py-3 bg-white text-indigo-600 font-semibold rounded-lg hover:bg-gray-100 transition-all hover:scale-105 shadow-md">
-                <RiAddCircleLine className="h-5 w-5" />
+            <div className="ml-4 text-left">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                 Submit New Complaint
-              </button>
-              <button onClick={() => navigate('/user/complaints')} className="flex items-center gap-2 px-6 py-3 bg-white/10 backdrop-blur-sm text-white font-semibold rounded-lg hover:bg-white/20 transition-all hover:scale-105 border border-white/30">
-                <RiFileListLine className="h-5 w-5" />
-                View My Complaints
-              </button>
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Report a new issue</p>
             </div>
+            <RiArrowRightLine className="ml-auto h-5 w-5 text-gray-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
           </div>
-        </div>
-      </section>
+        </button>
+
+        <button
+          onClick={() => navigate('/user/complaints')}
+          className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-all group"
+        >
+          <div className="flex items-center">
+            <div className="flex-shrink-0 bg-purple-100 dark:bg-purple-900/30 rounded-lg p-3 group-hover:bg-purple-200 dark:group-hover:bg-purple-900/50 transition-colors">
+              <RiFileListLine className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div className="ml-4 text-left">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                View All Complaints
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Manage your submissions</p>
+            </div>
+            <RiArrowRightLine className="ml-auto h-5 w-5 text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 group-hover:translate-x-1 transition-all" />
+          </div>
+        </button>
+      </div>
 
       {/* Recent Complaints */}
-      <section>
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Recent Complaints</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Your last {recentComplaints.length} submitted complaints</p>
-          </div>
-          {stats.total > 5 && (
-            <button onClick={() => navigate('/user/complaints')} className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 font-semibold text-sm transition-all hover:gap-3 group">
+          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">
+            Recent Complaints
+          </h2>
+          {recentComplaints.length > 0 && (
+            <button
+              onClick={() => navigate('/user/complaints')}
+              className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
+            >
               View All
-              <RiArrowRightLine className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
             </button>
           )}
         </div>
 
         {recentComplaints.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border-2 border-dashed border-gray-300 dark:border-gray-600 p-12 text-center">
+          <div className="text-center py-12">
             <RiFileListLine className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">No Complaints Yet</h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">You haven't submitted any complaints yet.</p>
-            <button onClick={() => navigate('/user/submit')} className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-all hover:scale-105">
-              <RiAddCircleLine className="h-5 w-5" />
-              Submit Your First Complaint
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
+              No Complaints Yet
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Start by submitting your first complaint
+            </p>
+            <button
+              onClick={() => navigate('/user/submit')}
+              className="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-all"
+            >
+              Submit Complaint
             </button>
           </div>
         ) : (
           <div className="space-y-4">
             {recentComplaints.map((complaint) => (
-              <div key={complaint.id} onClick={() => navigate(`/user/complaints/${complaint.id}`)} className="group bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-indigo-300 transition-all cursor-pointer">
-                <div className="flex items-start justify-between mb-3 flex-wrap gap-2">
-                  <span className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">#{complaint.id}</span>
-                  <Badge status={complaint.status} />
-                </div>
-                
-                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-3 group-hover:text-indigo-600 transition-colors">{complaint.subject}</h3>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-gray-700">Category:</span>
-                    <span className="text-gray-600 bg-gray-100 px-2 py-1 rounded">{complaint.category}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-gray-700">Priority:</span>
-                    <span className={`px-2 py-1 rounded font-semibold ${
-                      complaint.priority === 'High' ? 'bg-red-100 text-red-600' :
-                      complaint.priority === 'Medium' ? 'bg-yellow-100 text-yellow-600' :
-                      'bg-green-100 text-green-600'
-                    }`}>{complaint.priority}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <RiMapPinLine className="h-4 w-4 text-gray-500" />
-                    <span className="font-semibold text-gray-700">Location:</span>
-                    <span className="text-gray-600">{complaint.location}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <RiCalendarLine className="h-3 w-3" />
-                    <span className="font-semibold">Submitted:</span>
-                    <span>{new Date(complaint.submittedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                  </div>
-                </div>
+              <div
+                key={complaint._id}
+                onClick={() => navigate(`/user/complaints/${complaint._id}`)}
+                className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-indigo-500 dark:hover:border-indigo-500 hover:shadow-md transition-all cursor-pointer"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <h3 className="font-semibold text-gray-800 dark:text-gray-200 flex-1 pr-4">
+                    {complaint.subject}
+                  </h3>
+        <Badge status={complaint.status} />
 
-                {complaint.adminRemarks && (
-                  <div className="mt-3 pt-3 border-t border-gray-200">
-                    <p className="text-xs text-gray-500 font-semibold mb-1">Admin Remarks:</p>
-                    <p className="text-sm text-gray-700 italic">"{complaint.adminRemarks}"</p>
-                  </div>
-                )}
-
-                <div className="mt-4 flex justify-end">
-                  <span className="flex items-center gap-1 text-xs text-indigo-600 font-semibold group-hover:gap-2 transition-all">
-                    View Details
-                    <RiArrowRightLine className="h-4 w-4" />
+                </div>
+                <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 space-x-4">
+                  <span className="flex items-center">
+                    <RiMapPinLine className="h-4 w-4 mr-1" />
+                    {complaint.location}
+                  </span>
+                  <span className="flex items-center">
+                    <RiCalendarLine className="h-4 w-4 mr-1" />
+                    {formatDate(complaint.submittedAt)}
                   </span>
                 </div>
               </div>
             ))}
           </div>
         )}
-      </section>
+      </div>
     </div>
   );
 };

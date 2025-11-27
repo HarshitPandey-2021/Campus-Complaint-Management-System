@@ -4,44 +4,79 @@ import React, { createContext, useState, useEffect } from 'react';
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  // Mock user data (Student example)
-  const [user, setUser] = useState({
-    id: 1,
-    name: "Rahul Sharma",
-    email: "rahul@college.edu",
-    role: "student", // or "faculty"
-    rollNo: "2021CS101",
-    department: "Computer Science",
-    phone: "+91 9876543210",
-    avatar: null
-  });
+  const [user, setUser] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // For testing Faculty role, uncomment this:
-  // const [user, setUser] = useState({
-  //   id: 2,
-  //   name: "Dr. Priya Patel",
-  //   email: "priya@college.edu",
-  //   role: "faculty",
-  //   employeeId: "FAC2019042",
-  //   department: "Computer Science",
-  //   designation: "Assistant Professor",
-  //   phone: "+91 9876543211",
-  //   avatar: null
-  // });
+  useEffect(() => {
+    // Check for auth data in URL first
+    const urlParams = new URLSearchParams(window.location.search);
+    const authParam = urlParams.get('auth');
+    
+    console.log('🔍 Checking auth...');
+    console.log('Auth param in URL:', !!authParam);
+    
+    if (authParam) {
+      try {
+        // Decode and save auth data from URL
+        const authData = JSON.parse(decodeURIComponent(authParam));
+        console.log('✅ Auth data from URL:', authData);
+        
+        localStorage.setItem('token', authData.token);
+        localStorage.setItem('user', JSON.stringify(authData.user));
+        
+        setUser(authData.user);
+        setIsAuthenticated(true);
+        
+        // Remove auth param from URL for security
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        console.log('✅ Auth saved, URL cleaned');
+        setLoading(false);
+        return;
+      } catch (error) {
+        console.error('❌ Failed to parse auth from URL:', error);
+      }
+    }
+    
+    // If no URL param, check localStorage
+    const token = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    
+    console.log('Checking localStorage:', { hasToken: !!token, hasUser: !!storedUser });
+    
+    if (token && storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        console.log('✅ User loaded from localStorage:', parsedUser.name);
+        setUser(parsedUser);
+        setIsAuthenticated(true);
+        setLoading(false);
+      } catch (error) {
+        console.error('❌ Failed to parse user:', error);
+        localStorage.clear();
+        setLoading(false);
+        window.location.href = 'http://localhost:5174';
+      }
+    } else {
+      console.log('❌ No auth found, redirecting...');
+      setLoading(false);
+      window.location.href = 'http://localhost:5174';
+    }
+  }, []);
 
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
-
-  const login = (userData) => {
+  const login = (userData, token) => {
     setUser(userData);
     setIsAuthenticated(true);
     localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('token', token);
   };
 
   const logout = () => {
     setUser(null);
     setIsAuthenticated(false);
-    localStorage.removeItem('user');
-    window.location.href = '/'; // Redirect to login (when implemented)
+    localStorage.clear();
+    window.location.href = 'http://localhost:5174';
   };
 
   const updateUser = (updates) => {
@@ -50,14 +85,21 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
-  // Load user from localStorage on mount
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-      setIsAuthenticated(true);
-    }
-  }, []);
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-xl font-semibold text-gray-600 dark:text-gray-400">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-xl font-semibold text-gray-600 dark:text-gray-400">Redirecting to login...</div>
+      </div>
+    );
+  }
 
   return (
     <AuthContext.Provider value={{ user, isAuthenticated, login, logout, updateUser }}>

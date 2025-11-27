@@ -1,5 +1,3 @@
-// src/pages/EditComplaint.jsx - COMPLETE EDIT PAGE
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -7,21 +5,11 @@ import { useToast } from '../hooks/useToast';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Loading from '../components/common/Loading';
 import { CATEGORIES, PRIORITIES } from '../utils/constants';
-import { getComplaintById, updateComplaint } from '../services/userService';
-import { 
-  RiSaveLine, 
-  RiArrowLeftLine,
-  RiErrorWarningLine,
-  RiCheckLine,
-  RiUploadCloudLine,
-  RiImageAddLine,
-  RiFilePdfLine,
-  RiCloseLine,
-  RiAlertLine,
-  RiMapPinLine,
-  RiFileTextLine,
-  RiEyeOffLine,
-  RiEditLine
+import { getComplaintById, updateComplaint } from '../api';
+import {
+  RiSaveLine, RiArrowLeftLine, RiErrorWarningLine, RiCheckLine,
+  RiUploadCloudLine, RiCloseLine, RiMapPinLine, RiFileTextLine,
+  RiEyeOffLine, RiFlagLine, RiAlertLine, RiImageLine
 } from 'react-icons/ri';
 
 const EditComplaint = () => {
@@ -33,7 +21,7 @@ const EditComplaint = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [complaint, setComplaint] = useState(null);
-  
+
   const [formData, setFormData] = useState({
     subject: '',
     category: '',
@@ -42,564 +30,534 @@ const EditComplaint = () => {
     description: '',
     isAnonymous: false
   });
-
-  const [images, setImages] = useState([]);
-  const [pdf, setPdf] = useState(null);
   const [errors, setErrors] = useState({});
-  const [dragActive, setDragActive] = useState(false);
+  const [existingImages, setExistingImages] = useState([]);
+  const [existingPdf, setExistingPdf] = useState(null);
+  const [newImages, setNewImages] = useState([]);
+  const [imagePreviews, setImagePreviews] = useState([]);
+  const [newPdf, setNewPdf] = useState(null);
+  const [pdfPreview, setPdfPreview] = useState(null);
 
-  // Category icons
   const categoryIcons = {
-    'Fan': '🌀',
-    'Light': '💡',
-    'Projector': '📽️',
-    'Furniture': '🪑',
-    'Washroom': '🚽',
-    'Water': '💧',
-    'Internet': '📡',
-    'Other': '📌'
+    Fan: '🌀', Light: '💡', Projector: '📽️', Furniture: '🪑',
+    Washroom: '🚽', Water: '💧', Internet: '📡', Other: '📌'
   };
-
-  // Priority colors
   const priorityColors = {
-    'Low': 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700',
-    'Medium': 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700',
-    'High': 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-700'
+    Low: 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700',
+    Medium: 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700',
+    High: 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-700'
   };
 
-  // Load complaint data
   useEffect(() => {
-    setTimeout(() => {
-      const data = getComplaintById(id);
-      
-      if (!data) {
-        showError('Complaint not found');
+    const fetchComplaint = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('token');
+        const data = await getComplaintById(id, token);
+        if (!data) {
+          showError('Complaint not found');
+          navigate('/user/complaints');
+          return;
+        }
+        // Case-insensitive eligibility
+        if (!data.status || data.status.toLowerCase() !== 'pending') {
+          warning('This complaint cannot be edited anymore');
+          navigate(`/user/complaints/${id}`);
+          return;
+        }
+        if (data.assignedTo) {
+          warning('Assigned complaints cannot be edited');
+          navigate(`/user/complaints/${id}`);
+          return;
+        }
+        setComplaint(data);
+        setFormData({
+          subject: data.subject || '',
+          category: data.category || '',
+          location: data.location || '',
+          priority: data.priority || 'Medium',
+          description: data.description || '',
+          isAnonymous: data.isAnonymous || false
+        });
+        if (data.images && Array.isArray(data.images)) setExistingImages(data.images);
+        if (data.pdfDocument) setExistingPdf(data.pdfDocument);
+      } catch (err) {
+        console.error('Fetch error:', err);
+        showError('Failed to load complaint');
         navigate('/user/complaints');
-        return;
+      } finally {
+        setLoading(false);
       }
+    };
+    fetchComplaint();
+  }, [id, navigate, showError, warning]);
 
-      // Check if can edit
-      if (data.status !== 'Pending' || data.assignedTo) {
-        warning('This complaint cannot be edited anymore');
-        navigate(`/user/complaints/${id}`);
-        return;
-      }
-
-      setComplaint(data);
-      setFormData({
-        subject: data.subject,
-        category: data.category,
-        location: data.location,
-        priority: data.priority,
-        description: data.description,
-        isAnonymous: data.isAnonymous
-      });
-      
-      // Set existing images
-      if (data.images && data.images.length > 0) {
-        setImages(data.images.map((img, index) => ({
-          file: null,
-          preview: img,
-          name: `existing-${index}.jpg`,
-          isExisting: true
-        })));
-      }
-
-      // Set existing PDF
-      if (data.verificationDocument) {
-        setPdf(data.verificationDocument);
-      }
-
-      setLoading(false);
-    }, 500);
-  }, [id, navigate]);
-
-  // Calculate progress
-  const calculateProgress = () => {
-    let completed = 0;
-    if (formData.subject.length >= 5) completed += 16.66;
-    if (formData.category) completed += 16.66;
-    if (formData.location.length >= 5) completed += 16.66;
-    if (formData.priority) completed += 16.66;
-    if (formData.description.length >= 20) completed += 16.66;
-    if (images.length > 0 || pdf) completed += 16.66;
-    return Math.round(completed);
-  };
-
-  const progress = calculateProgress();
-
-  // Handle input change
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
   };
 
-  // Handle category selection
-  const handleCategorySelect = (category) => {
-    setFormData(prev => ({ ...prev, category }));
-    if (errors.category) {
-      setErrors(prev => ({ ...prev, category: '' }));
-    }
-  };
-
-  // Handle priority selection
-  const handlePrioritySelect = (priority) => {
-    if (priority === 'High' && user?.role === 'student') {
-      showError('Only faculty can set High priority');
-      return;
-    }
-    setFormData(prev => ({ ...prev, priority }));
-  };
-
-  // Validate form
-  const validate = () => {
-    const newErrors = {};
-
-    if (!formData.subject.trim()) {
-      newErrors.subject = 'Subject is required';
-    } else if (formData.subject.length < 5) {
-      newErrors.subject = 'Subject must be at least 5 characters';
-    } else if (formData.subject.length > 100) {
-      newErrors.subject = 'Subject must not exceed 100 characters';
-    }
-
-    if (!formData.category) {
-      newErrors.category = 'Please select a category';
-    }
-
-    if (!formData.location.trim()) {
-      newErrors.location = 'Location is required';
-    } else if (formData.location.length < 5) {
-      newErrors.location = 'Location must be at least 5 characters';
-    }
-
-    if (!formData.description.trim()) {
-      newErrors.description = 'Description is required';
-    } else if (formData.description.length < 20) {
-      newErrors.description = 'Description must be at least 20 characters';
-    } else if (formData.description.length > 500) {
-      newErrors.description = 'Description must not exceed 500 characters';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  // Handle drag events
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
-    }
-  };
-
-  // Handle drop
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-
-    const files = Array.from(e.dataTransfer.files);
-    handleImageFiles(files);
-  };
-
-  // Handle image files
-  const handleImageFiles = (files) => {
-    if (images.length + files.length > 3) {
-      showError('Maximum 3 images allowed');
-      return;
-    }
-
+  // ---- Image handling ----
+  const handleImageChange = (e) => {
+    const files = Array.from(e.target.files);
     const validFiles = files.filter(file => {
-      if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
-        showError(`${file.name} is not a valid image`);
-        return false;
-      }
-      if (file.size > 2 * 1024 * 1024) {
-        showError(`${file.name} exceeds 2MB limit`);
+      if (file.size > 5 * 1024 * 1024) {
+        showError(`${file.name} is too large. Max 5MB per image.`);
         return false;
       }
       return true;
     });
-
-    const newImages = validFiles.map(file => ({
-      file,
-      preview: URL.createObjectURL(file),
-      name: file.name,
-      isExisting: false
-    }));
-
-    setImages(prev => [...prev, ...newImages]);
+    if (validFiles.length > 0) {
+      setNewImages(prev => [...prev, ...validFiles]);
+      validFiles.forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => setImagePreviews(prev => [...prev, reader.result]);
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+  const handleRemoveExistingImage = (index) => setExistingImages(prev => prev.filter((_, i) => i !== index));
+  const handleRemoveNewImage = (index) => {
+    setNewImages(prev => prev.filter((_, i) => i !== index));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Remove image
-  const removeImage = (index) => {
-    setImages(prev => {
-      const newImages = [...prev];
-      if (!newImages[index].isExisting) {
-        URL.revokeObjectURL(newImages[index].preview);
-      }
-      newImages.splice(index, 1);
-      return newImages;
-    });
-  };
-
-  // Handle PDF upload
+  // ---- PDF handling ----
   const handlePdfChange = (e) => {
     const file = e.target.files[0];
-    if (!file) return;
-
-    if (file.type !== 'application/pdf') {
-      showError('Only PDF files are allowed');
-      return;
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        showError('PDF file is too large. Max 10MB.');
+        return;
+      }
+      setNewPdf(file);
+      setPdfPreview({ name: file.name, size: file.size });
     }
+  };
+  const handleRemoveExistingPdf = () => setExistingPdf(null);
+  const handleRemoveNewPdf = () => { setNewPdf(null); setPdfPreview(null); };
 
-    if (file.size > 5 * 1024 * 1024) {
-      showError('PDF file must not exceed 5MB');
-      return;
-    }
-
-    setPdf(file);
+  const validate = () => {
+    const newErrors = {};
+    if (formData.subject.trim().length < 5) newErrors.subject = 'Subject must be at least 5 characters';
+    if (!formData.category) newErrors.category = 'Please select a category';
+    if (formData.location.trim().length < 5) newErrors.location = 'Location must be at least 5 characters';
+    if (formData.description.trim().length < 20) newErrors.description = 'Description must be at least 20 characters';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  // Remove PDF
-  const removePdf = () => {
-    setPdf(null);
-  };
-
-  // Handle submit
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!validate()) {
       showError('Please fix the errors before saving');
       return;
     }
-
     setSaving(true);
-
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const token = localStorage.getItem('token');
+      const submitData = new FormData();
+      submitData.append('subject', formData.subject);
+      submitData.append('category', formData.category);
+      submitData.append('location', formData.location);
+      submitData.append('priority', formData.priority);
+      submitData.append('description', formData.description);
+      submitData.append('isAnonymous', formData.isAnonymous);
+      existingImages.forEach(url => submitData.append('existingImages[]', url));
+      if (existingPdf) submitData.append('existingPdf', existingPdf);
+      newImages.forEach(file => submitData.append('images', file));
+      if (newPdf) submitData.append('pdfDocument', newPdf);
 
-      const updatedData = {
-        ...formData,
-        images: images.map(img => img.preview),
-        verificationDocument: pdf
-      };
-
-      const result = updateComplaint(id, updatedData);
-
+      const result = await updateComplaint(id, submitData, token);
       if (result) {
-        success(`Complaint #${id} updated successfully! 🎉`);
-        setTimeout(() => {
-          navigate(`/user/complaints/${id}`);
-        }, 500);
+        success('Complaint updated successfully! 🎉');
+        setTimeout(() => { navigate(`/user/complaints/${id}`); }, 500);
       } else {
         showError('Failed to update complaint');
-        setSaving(false);
       }
-
     } catch (err) {
-      showError('Failed to update complaint. Please try again.');
+      console.error('Update error:', err);
+      showError(err.response?.data?.message || 'Failed to update complaint. Please try again.');
+    } finally {
       setSaving(false);
     }
   };
 
-  // Character counter color
-  const getCounterColor = (current, max) => {
-    const percentage = (current / max) * 100;
-    if (percentage < 50) return 'text-green-600 dark:text-green-400';
-    if (percentage < 80) return 'text-yellow-600 dark:text-yellow-400';
-    return 'text-red-600 dark:text-red-400';
-  };
-
-  if (loading) {
-    return <Loading />;
+  if (loading) return <Loading />;
+  if (!complaint) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-600 dark:text-gray-400">Complaint not found</p>
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-4 sm:p-6 lg:p-8">
       <div className="max-w-4xl mx-auto">
-        
         {/* Header */}
-        <div className="mb-6 sm:mb-8 animate-fadeIn">
+        <div className="mb-6 animate-fadeIn">
           <button
             onClick={() => navigate(`/user/complaints/${id}`)}
-            className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 mb-4 transition-colors group"
+            className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors mb-4 group"
           >
             <RiArrowLeftLine className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
             <span className="text-sm sm:text-base font-semibold">Back to Details</span>
           </button>
-          
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-3">
-                <RiEditLine className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
-                Edit Complaint #{id}
-              </h1>
-              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-                Update your complaint details below
-              </p>
-            </div>
-            
-            {/* Progress Circle */}
-            <div className="hidden sm:flex items-center justify-center w-20 h-20 rounded-full bg-white dark:bg-gray-800 shadow-lg border-4 border-indigo-600 dark:border-indigo-400">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{progress}%</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Done</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Progress Bar */}
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden shadow-inner">
-            <div 
-              className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 transition-all duration-500 ease-out rounded-full"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-800 dark:text-gray-200 mb-2">
+            Edit Complaint
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+            Update your complaint information
+          </p>
         </div>
 
-        {/* Form - Reuse same structure as SubmitComplaint */}
+        {/* FORM */}
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Subject */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+              <RiFileTextLine className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+              Subject *
+            </label>
+            <input
+              type="text"
+              name="subject"
+              value={formData.subject}
+              onChange={handleChange}
+              placeholder="Brief summary of the issue..."
+              className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+            />
+            {errors.subject && (
+              <p className="mt-2 text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
+                <RiErrorWarningLine className="h-4 w-4" />
+                {errors.subject}
+              </p>
+            )}
+          </div>
 
-          {/* Basic Information Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden animate-scaleIn">
-            <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <RiFileTextLine className="h-6 w-6" />
-                Basic Information
-              </h2>
+          {/* Category */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 block">
+              Category *
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {CATEGORIES.map(cat => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => handleChange({ target: { name: 'category', value: cat } })}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    formData.category === cat
+                      ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30'
+                      : 'border-gray-300 dark:border-gray-600 hover:border-indigo-300'
+                  }`}
+                >
+                  <div className="text-2xl mb-1">{categoryIcons[cat]}</div>
+                  <div className="text-sm font-semibold text-gray-800 dark:text-gray-200">{cat}</div>
+                </button>
+              ))}
             </div>
+            {errors.category && (
+              <p className="mt-2 text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
+                <RiErrorWarningLine className="h-4 w-4" />
+                {errors.category}
+              </p>
+            )}
+          </div>
 
-            <div className="p-6 space-y-6">
-              
-              {/* Subject */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  Subject <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="subject"
-                  value={formData.subject}
-                  onChange={handleChange}
-                  maxLength={100}
-                  className={`w-full px-4 py-3 rounded-lg border-2 ${
-                    errors.subject 
-                      ? 'border-red-500 focus:ring-red-500' 
-                      : formData.subject.length >= 5
-                      ? 'border-green-500 focus:ring-green-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:ring-indigo-500'
-                  } bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 transition-all`}
-                />
-                <div className="flex justify-between items-center mt-2">
-                  {errors.subject && (
-                    <p className="text-sm text-red-500 flex items-center gap-1">
-                      <RiErrorWarningLine className="h-4 w-4" />
-                      {errors.subject}
-                    </p>
-                  )}
-                  <p className={`text-xs ml-auto font-semibold ${getCounterColor(formData.subject.length, 100)}`}>
-                    {formData.subject.length}/100
-                  </p>
-                </div>
-              </div>
+          {/* Location */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+              <RiMapPinLine className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+              Location *
+            </label>
+            <input
+              type="text"
+              name="location"
+              value={formData.location}
+              onChange={handleChange}
+              placeholder="Building, Room, Floor..."
+              className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+            />
+            {errors.location && (
+              <p className="mt-2 text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
+                <RiErrorWarningLine className="h-4 w-4" />
+                {errors.location}
+              </p>
+            )}
+          </div>
 
-              {/* Category Selection */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                  Category <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {CATEGORIES.map(cat => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => handleCategorySelect(cat)}
-                      className={`p-4 rounded-xl border-2 transition-all duration-300 ${
-                        formData.category === cat
-                          ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 shadow-lg scale-105'
-                          : 'border-gray-300 dark:border-gray-600 hover:border-indigo-400 hover:shadow-md'
-                      }`}
-                    >
-                      <div className="text-3xl mb-2">{categoryIcons[cat]}</div>
-                      <p className={`text-sm font-semibold ${
-                        formData.category === cat
-                          ? 'text-indigo-600 dark:text-indigo-400'
-                          : 'text-gray-700 dark:text-gray-300'
-                      }`}>
-                        {cat}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Location */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  <RiMapPinLine className="inline h-4 w-4 mr-1" />
-                  Location <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="location"
-                  value={formData.location}
-                  onChange={handleChange}
-                  className={`w-full px-4 py-3 rounded-lg border-2 ${
-                    errors.location 
-                      ? 'border-red-500 focus:ring-red-500' 
-                      : formData.location.length >= 5
-                      ? 'border-green-500 focus:ring-green-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:ring-indigo-500'
-                  } bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 transition-all`}
-                />
-              </div>
-
-              {/* Priority */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                  Priority <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-3 gap-3">
-                  {PRIORITIES.filter(p => user?.role === 'faculty' || p !== 'High').map(priority => (
-                    <button
-                      key={priority}
-                      type="button"
-                      onClick={() => handlePrioritySelect(priority)}
-                      className={`px-4 py-3 rounded-lg border-2 font-semibold transition-all ${
-                        formData.priority === priority
-                          ? `${priorityColors[priority]} shadow-lg scale-105`
-                          : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'
-                      }`}
-                    >
-                      {priority}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  Description <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  maxLength={500}
-                  rows={5}
-                  className={`w-full px-4 py-3 rounded-lg border-2 ${
-                    errors.description 
-                      ? 'border-red-500 focus:ring-red-500' 
-                      : formData.description.length >= 20
-                      ? 'border-green-500 focus:ring-green-500'
-                      : 'border-gray-300 dark:border-gray-600 focus:ring-indigo-500'
-                  } bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 transition-all resize-none`}
-                />
-                <div className="flex justify-between items-center mt-2">
-                  {errors.description && (
-                    <p className="text-sm text-red-500 flex items-center gap-1">
-                      <RiErrorWarningLine className="h-4 w-4" />
-                      {errors.description}
-                    </p>
-                  )}
-                  <p className={`text-xs ml-auto font-semibold ${getCounterColor(formData.description.length, 500)}`}>
-                    {formData.description.length}/500
-                  </p>
-                </div>
-              </div>
-
+          {/* Priority */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+              <RiFlagLine className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+              Priority *
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              {PRIORITIES.map(pri => (
+                <button
+                  key={pri}
+                  type="button"
+                  onClick={() => handleChange({ target: { name: 'priority', value: pri } })}
+                  className={`p-4 rounded-lg border-2 transition-all font-semibold ${
+                    formData.priority === pri
+                      ? priorityColors[pri]
+                      : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  {pri}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Images & PDF - Same as submit, but with existing files shown */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="bg-gradient-to-r from-purple-500 to-pink-600 px-6 py-4">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <RiUploadCloudLine className="h-6 w-6" />
-                Attachments (Optional)
-              </h2>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* Image previews */}
-              {images.length > 0 && (
-                <div className="grid grid-cols-3 gap-4">
-                  {images.map((image, index) => (
-                    <div key={index} className="relative group aspect-square bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
-                      <img src={image.preview} alt={`Image ${index + 1}`} className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all"
-                      >
-                        <RiCloseLine className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+          {/* Description */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+              <RiAlertLine className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+              Description *
+            </label>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              rows="6"
+              placeholder="Provide detailed information about the issue..."
+              className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
+              maxLength="500"
+            />
+            <div className="flex items-center justify-between mt-2">
+              {errors.description ? (
+                <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
+                  <RiErrorWarningLine className="h-4 w-4" />
+                  {errors.description}
+                </p>
+              ) : (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {formData.description.length}/500 characters
+                </p>
+              )}
+              {formData.description.length >= 20 && (
+                <RiCheckLine className="h-5 w-5 text-green-500" />
               )}
             </div>
           </div>
 
-          {/* Privacy */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-            <label className="flex items-start gap-4 cursor-pointer">
+          {/* Anonymous Checkbox */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
                 name="isAnonymous"
                 checked={formData.isAnonymous}
                 onChange={handleChange}
-                className="w-5 h-5 mt-1 rounded text-indigo-600 focus:ring-2"
+                className="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
               />
-              <div>
-                <span className="font-bold text-gray-800 dark:text-gray-200">Submit Anonymously</span>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Hide your identity from public view</p>
+              <div className="flex items-center gap-2">
+                <RiEyeOffLine className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Submit this complaint anonymously
+                </span>
               </div>
             </label>
           </div>
 
-          {/* Buttons */}
-          <div className="flex gap-4">
+          {/* Existing Images Section */}
+          {existingImages.length > 0 && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+                <RiImageLine className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                Current Images
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {existingImages.map((url, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={url}
+                      alt={`Existing ${index + 1}`}
+                      className="w-full h-32 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveExistingImage(index)}
+                      className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                    >
+                      <RiCloseLine className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* New Images Upload */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+              <RiUploadCloudLine className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+              Add New Images (Optional)
+            </label>
+            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-indigo-500 dark:hover:border-indigo-400 transition-colors cursor-pointer">
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+                id="new-images"
+              />
+              <label htmlFor="new-images" className="cursor-pointer">
+                <RiImageLine className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Click to upload new images
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                  PNG, JPG up to 5MB each
+                </p>
+              </label>
+            </div>
+
+            {/* New Image Previews */}
+            {imagePreviews.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+                {imagePreviews.map((preview, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={preview}
+                      alt={`New preview ${index + 1}`}
+                      className="w-full h-32 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveNewImage(index)}
+                      className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                    >
+                      <RiCloseLine className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+         {/* Existing PDF Section */}
+{existingPdf && (
+  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+      <RiFileTextLine className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+      Current PDF Document
+    </label>
+    <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+      <RiFileTextLine className="w-8 h-8 text-red-500" />
+      <div className="flex-1">
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          Current document.pdf
+        </p>
+        {/* ✅ FIXED: Use Google Docs Viewer for raw URLs */}
+        <a
+          href={existingPdf.includes('/raw/upload/') 
+            ? `https://docs.google.com/viewer?url=${encodeURIComponent(existingPdf)}&embedded=true`
+            : existingPdf
+          }
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+        >
+          View current PDF
+        </a>
+      </div>
+      <button
+        type="button"
+        onClick={handleRemoveExistingPdf}
+        className="text-red-500 hover:text-red-700 dark:hover:text-red-400"
+      >
+        <RiCloseLine className="w-5 h-5" />
+      </button>
+    </div>
+  </div>
+)}
+
+
+          {/* New PDF Upload */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+              <RiUploadCloudLine className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+              {existingPdf ? 'Replace PDF Document (Optional)' : 'Upload PDF Document (Optional)'}
+            </label>
+            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-indigo-500 dark:hover:border-indigo-400 transition-colors cursor-pointer">
+              <input
+                type="file"
+                accept=".pdf"
+                onChange={handlePdfChange}
+                className="hidden"
+                id="new-pdf"
+              />
+              <label htmlFor="new-pdf" className="cursor-pointer">
+                <RiFileTextLine className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Click to upload {existingPdf ? 'new' : 'a'} PDF
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                  PDF up to 10MB
+                </p>
+              </label>
+            </div>
+
+            {/* New PDF Preview */}
+            {pdfPreview && (
+              <div className="flex items-center gap-3 p-4 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg border border-indigo-200 dark:border-indigo-700 mt-4">
+                <RiFileTextLine className="w-8 h-8 text-indigo-500 dark:text-indigo-400" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {pdfPreview.name}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {(pdfPreview.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemoveNewPdf}
+                  className="text-red-500 hover:text-red-700 dark:hover:text-red-400"
+                >
+                  <RiCloseLine className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Form Actions */}
+          <div className="flex flex-col sm:flex-row gap-4 pt-4">
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex-1 bg-indigo-600 text-white py-3 px-6 rounded-lg hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-semibold"
+            >
+              {saving ? (
+                <>
+                  <LoadingSpinner className="w-5 h-5" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <RiSaveLine className="w-5 h-5" />
+                  Update Complaint
+                </>
+              )}
+            </button>
             <button
               type="button"
               onClick={() => navigate(`/user/complaints/${id}`)}
               disabled={saving}
-              className="flex-1 px-6 py-4 border-2 border-gray-300 dark:border-gray-600 rounded-xl font-bold hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
+              className="px-6 py-3 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex-1 flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl hover:shadow-2xl transition-all"
-            >
-              {saving ? (
-                <>
-                  <LoadingSpinner />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <RiSaveLine className="h-5 w-5" />
-                  Save Changes
-                </>
-              )}
-            </button>
           </div>
-
         </form>
       </div>
     </div>
