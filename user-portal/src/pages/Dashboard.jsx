@@ -1,83 +1,130 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { useToast } from '../hooks/useToast';
-import Badge from '../components/common/Badge';
-import RoleBadge from '../components/common/RoleBadge';
-import Loading from '../components/common/Loading';
-import useCountUp from '../hooks/useCountUp';
-import { getMyComplaints, getMyStats } from '../api';
-import { 
-  RiFileListLine, 
-  RiTimeLine, 
-  RiLoader4Line, 
+// src/pages/Dashboard.jsx (user portal - 3001)
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
+import { useToast } from "../hooks/useToast";
+import Badge from "../components/common/Badge";
+import RoleBadge from "../components/common/RoleBadge";
+import Loading from "../components/common/Loading";
+import useCountUp from "../hooks/useCountUp";
+import { getMyComplaints, getMyStats } from "../api";
+import {
+  RiFileListLine,
+  RiTimeLine,
+  RiLoader4Line,
   RiCheckLine,
   RiArrowRightLine,
   RiCalendarLine,
   RiAddCircleLine,
-  RiMapPinLine
-} from 'react-icons/ri';
+  RiMapPinLine,
+} from "react-icons/ri";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { info, success } = useToast();
+
   const [loading, setLoading] = useState(true);
   const [recentComplaints, setRecentComplaints] = useState([]);
-  const [stats, setStats] = useState({ total: 0, pending: 0, inProgress: 0, resolved: 0 });
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    inProgress: 0,
+    resolved: 0,
+  });
 
-  const totalCount = useCountUp(stats.total, 1200);
-  const pendingCount = useCountUp(stats.pending, 1200);
-  const inProgressCount = useCountUp(stats.inProgress, 1200);
-  const resolvedCount = useCountUp(stats.resolved, 1200);
+  const totalCount = useCountUp(stats.total, 1200, 0);
+  const pendingCount = useCountUp(stats.pending, 1200, 0);
+  const inProgressCount = useCountUp(stats.inProgress, 1200, 0);
+  const resolvedCount = useCountUp(stats.resolved, 1200, 0);
 
   useEffect(() => {
     const fetchData = async () => {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        window.location.href = 'http://localhost:5173/login';
-        return;
+      try {
+        setLoading(true);
+        
+        const token = localStorage.getItem("token");
+        
+        if (!token) {
+          console.warn("No token found, redirecting to landing login");
+          // ✅ Student portal ke landing page par redirect (5174), not 5173
+          window.location.href = "http://localhost:5174/login";
+          return;
+        }
+
+        const complaints = await getMyComplaints(token);
+        const userStats = await getMyStats(token);
+
+        if (Array.isArray(complaints)) {
+          setRecentComplaints(complaints.slice(0, 5));
+        }
+
+        if (userStats) {
+          setStats({
+            total: userStats.total || 0,
+            pending: userStats.pending || 0,
+            inProgress: userStats.inProgress || 0,
+            resolved: userStats.resolved || 0,
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching dashboard data:", err);
+        info("Failed to fetch data. Please try again.");
+      } finally {
+        setLoading(false);
       }
-      const complaints = await getMyComplaints(token);
-      const userStats = await getMyStats(token);
-      setRecentComplaints(complaints.slice(0, 5));
-      setStats(userStats);
-      setLoading(false);
     };
+
     fetchData();
-  }, []);
+  }, [info]);
 
   useEffect(() => {
     if (!loading && user) {
       setTimeout(() => {
         if (stats.pending > 0) {
-          info(`👋 Welcome back, ${user.name}! You have ${stats.pending} complaint${stats.pending > 1 ? 's' : ''} waiting to be reviewed.`);
+          info(
+            `Welcome back, ${user.name}! You have ${stats.pending} complaint${
+              stats.pending > 1 ? "s" : ""
+            } waiting to be reviewed.`
+          );
         } else if (stats.total > 0) {
-          success(`🎉 Great! All your complaints are being handled or resolved!`);
+          success("Great! All your complaints are being handled or resolved!");
         } else {
-          info(`👋 Welcome, ${user.name}! Submit your first complaint to get started.`);
+          info(`Welcome, ${user.name}! Submit your first complaint to get started.`);
         }
       }, 1500);
     }
   }, [loading, stats, info, success, user]);
 
   const handleStatClick = (status) => {
-    navigate('/user/complaints', { state: { filterStatus: status } });
+    navigate("/user/complaints", { state: { filterStatus: status } });
   };
 
   const getStatusColor = (status) => {
     const colors = {
-      'Pending': 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-      'In Progress': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-      'Resolved': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-      'Rejected': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+      Pending:
+        "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+      "In Progress":
+        "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+      Resolved:
+        "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+      Rejected:
+        "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
     };
-    return colors[status] || 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
+    return (
+      colors[status] ||
+      "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+    );
   };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
   };
 
   if (loading) {
@@ -99,8 +146,8 @@ const Dashboard = () => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
         {/* Total Complaints */}
-        <div 
-          onClick={() => handleStatClick('all')}
+        <div
+          onClick={() => handleStatClick("all")}
           className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-lg p-6 text-white cursor-pointer transform hover:scale-105 transition-all duration-300"
         >
           <div className="flex items-center justify-between mb-4">
@@ -111,8 +158,8 @@ const Dashboard = () => {
         </div>
 
         {/* Pending */}
-        <div 
-          onClick={() => handleStatClick('Pending')}
+        <div
+          onClick={() => handleStatClick("Pending")}
           className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl shadow-lg p-6 text-white cursor-pointer transform hover:scale-105 transition-all duration-300"
         >
           <div className="flex items-center justify-between mb-4">
@@ -123,8 +170,8 @@ const Dashboard = () => {
         </div>
 
         {/* In Progress */}
-        <div 
-          onClick={() => handleStatClick('In Progress')}
+        <div
+          onClick={() => handleStatClick("In Progress")}
           className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white cursor-pointer transform hover:scale-105 transition-all duration-300"
         >
           <div className="flex items-center justify-between mb-4">
@@ -135,8 +182,8 @@ const Dashboard = () => {
         </div>
 
         {/* Resolved */}
-        <div 
-          onClick={() => handleStatClick('Resolved')}
+        <div
+          onClick={() => handleStatClick("Resolved")}
           className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white cursor-pointer transform hover:scale-105 transition-all duration-300"
         >
           <div className="flex items-center justify-between mb-4">
@@ -150,7 +197,7 @@ const Dashboard = () => {
       {/* Quick Actions */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-8">
         <button
-          onClick={() => navigate('/user/submit')}
+          onClick={() => navigate("/user/submit")}
           className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-all group"
         >
           <div className="flex items-center">
@@ -161,14 +208,16 @@ const Dashboard = () => {
               <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                 Submit New Complaint
               </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Report a new issue</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Report a new issue
+              </p>
             </div>
             <RiArrowRightLine className="ml-auto h-5 w-5 text-gray-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
           </div>
         </button>
 
         <button
-          onClick={() => navigate('/user/complaints')}
+          onClick={() => navigate("/user/complaints")}
           className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-all group"
         >
           <div className="flex items-center">
@@ -179,7 +228,9 @@ const Dashboard = () => {
               <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
                 View All Complaints
               </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Manage your submissions</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Manage your submissions
+              </p>
             </div>
             <RiArrowRightLine className="ml-auto h-5 w-5 text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 group-hover:translate-x-1 transition-all" />
           </div>
@@ -194,7 +245,7 @@ const Dashboard = () => {
           </h2>
           {recentComplaints.length > 0 && (
             <button
-              onClick={() => navigate('/user/complaints')}
+              onClick={() => navigate("/user/complaints")}
               className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
             >
               View All
@@ -212,7 +263,7 @@ const Dashboard = () => {
               Start by submitting your first complaint
             </p>
             <button
-              onClick={() => navigate('/user/submit')}
+              onClick={() => navigate("/user/submit")}
               className="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-all"
             >
               Submit Complaint
@@ -228,20 +279,23 @@ const Dashboard = () => {
               >
                 <div className="flex items-start justify-between mb-2">
                   <h3 className="font-semibold text-gray-800 dark:text-gray-200 flex-1 pr-4">
-                    {complaint.subject}
+                    {complaint.title || complaint.subject}
                   </h3>
-        <Badge status={complaint.status} />
-
+                  <Badge status={complaint.status} />
                 </div>
-                <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 space-x-4">
-                  <span className="flex items-center">
-                    <RiMapPinLine className="h-4 w-4 mr-1" />
-                    {complaint.location}
-                  </span>
-                  <span className="flex items-center">
-                    <RiCalendarLine className="h-4 w-4 mr-1" />
-                    {formatDate(complaint.submittedAt)}
-                  </span>
+                <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 space-x-4 flex-wrap gap-2">
+                  {complaint.location && (
+                    <span className="flex items-center">
+                      <RiMapPinLine className="h-4 w-4 mr-1" />
+                      {complaint.location}
+                    </span>
+                  )}
+                  {complaint.submittedAt && (
+                    <span className="flex items-center">
+                      <RiCalendarLine className="h-4 w-4 mr-1" />
+                      {formatDate(complaint.submittedAt || complaint.createdAt)}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
@@ -249,7 +303,5 @@ const Dashboard = () => {
         )}
       </div>
     </div>
-  );
-};
-
+  );};
 export default Dashboard;

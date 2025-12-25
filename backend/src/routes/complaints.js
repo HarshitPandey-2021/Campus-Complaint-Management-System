@@ -8,9 +8,55 @@ const {
 } = require("../middlewares/authMiddleware");
 const upload = require("../middlewares/upload");
 
-// 🧑‍🎓 STUDENT ROUTES
+// =========================================================
+// 🧑‍💼 ADMIN ROUTES (Place BEFORE generic routes to avoid conflicts)
+// =========================================================
 
-// Students submit new complaint WITH FILE UPLOAD
+// Admin: View all complaints
+router.get(
+  "/admin/all",
+  verifyToken,
+  authorizeRoles("admin"),
+  complaintsController.getAllComplaints
+);
+
+// Admin: Get complaint analytics
+router.get(
+  "/admin/analytics",
+  verifyToken,
+  authorizeRoles("admin"),
+  complaintsController.getAnalyticsData
+);
+
+// Admin: Update complaint status
+router.put(
+  "/admin/:id/status",
+  verifyToken,
+  authorizeRoles("admin"),
+  complaintsController.updateComplaintStatus
+);
+
+// Admin: Mark complaint as read
+router.patch(
+  "/admin/:id/read",
+  verifyToken,
+  authorizeRoles("admin"),
+  complaintsController.markComplaintAsRead
+);
+
+// Admin: Get complaint by ID
+router.get(
+  "/admin/:id",
+  verifyToken,
+  authorizeRoles("admin"),
+  complaintsController.getComplaintById
+);
+
+// =========================================================
+// 🧑‍🎓 STUDENT ROUTES
+// =========================================================
+
+// Students: Submit new complaint WITH FILE UPLOAD
 router.post(
   "/",
   verifyToken,
@@ -22,15 +68,15 @@ router.post(
   complaintsController.createComplaint
 );
 
-// Students view all complaints which they submitted
+// Students: View their own complaints
 router.get(
-  "/mine",  // Changed from "/my" to "/mine"
+  "/mine",
   verifyToken,
   authorizeRoles("student"),
   complaintsController.getUserComplaints
 );
 
-// Students can update their pending complaints
+// Students: Update their pending complaints
 router.put(
   "/:id",
   verifyToken,
@@ -42,53 +88,14 @@ router.put(
   complaintsController.updateComplaint
 );
 
-// Students can check the status/details of a complaint they made
+// =========================================================
+// 🔄 SHARED ROUTES (Student + Admin with role-based logic)
+// =========================================================
+
+// Get complaint by ID (role-based access control inside controller)
 router.get(
   "/:id",
   verifyToken,
-  authorizeRoles("student"),
-  complaintsController.getComplaintById
-);
-
-// 🧑‍💼 ADMIN ROUTES
-
-// Admins view all complaints
-router.get(
-  "/admin/all",
-  verifyToken,
-  authorizeRoles("admin"),
-  complaintsController.getAllComplaints
-);
-
-// Admins update the status of complaint (e.g., mark as resolved)
-router.put(
-  "/admin/:id/status",
-  verifyToken,
-  authorizeRoles("admin"),
-  complaintsController.updateComplaintStatus
-);
-
-// Admin: Get complaint analytics
-router.get(
-  "/admin/analytics",
-  verifyToken,
-  authorizeRoles("admin"),
-  complaintsController.getAnalyticsData
-);
-
-// Mark a complaint as read (for notifications)
-router.patch(
-  "/admin/:id/read",
-  verifyToken,
-  authorizeRoles("admin"),
-  complaintsController.markComplaintAsRead
-);
-
-// Admins can check the status/details of any complaint
-router.get(
-  "/admin/:id",
-  verifyToken,
-  authorizeRoles("admin"),
   complaintsController.getComplaintById
 );
 

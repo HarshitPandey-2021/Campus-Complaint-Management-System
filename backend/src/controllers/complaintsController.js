@@ -32,86 +32,111 @@ async function createComplaint(req, res) {
     // ✅ Handle file uploads to Cloudinary
     let imageUrls = [];
     let pdfUrl = null;
+    let pdfPublicId = null;
 
     // Upload images
     if (req.files && req.files.images) {
       for (const file of req.files.images) {
+        try {
+          const result = await new Promise((resolve, reject) => {
+            const uploadStream = cloudinary.uploader.upload_stream(
+              {
+                folder: 'campus-complaints/images',
+                resource_type: 'image',
+                transformation: [{ width: 1200, quality: 'auto', crop: 'limit' }]
+              },
+              (error, result) => {
+                if (error) reject(error);
+                else resolve(result);
+              }
+            );
+            uploadStream.end(file.buffer);
+          });
+          imageUrls.push(result.secure_url);
+        } catch (imgError) {
+          console.error('❌ Image upload failed:', imgError.message);
+        }
+      }
+    }
+
+    // Upload PDF
+    if (req.files && req.files.pdfDocument && req.files.pdfDocument[0]) {
+      const pdfFile = req.files.pdfDocument[0];
+      try {
         const result = await new Promise((resolve, reject) => {
           const uploadStream = cloudinary.uploader.upload_stream(
-            { 
-              folder: 'campus-complaints/images',
-              resource_type: 'image'
+            {
+              folder: 'campus-complaints/documents',
+              resource_type: 'raw',
+              format: 'pdf',
+              type: 'upload',
+              access_mode: 'public'
             },
             (error, result) => {
               if (error) reject(error);
               else resolve(result);
             }
           );
-          uploadStream.end(file.buffer);
+          uploadStream.end(pdfFile.buffer);
         });
-        imageUrls.push(result.secure_url);
+        pdfUrl = result.secure_url;
+        pdfPublicId = result.public_id;
+        console.log('✅ PDF uploaded:', pdfUrl);
+      } catch (pdfError) {
+        console.error('❌ PDF upload failed:', pdfError.message);
       }
     }
-
-    // Upload PDF
-if (req.files && req.files.pdfDocument && req.files.pdfDocument[0]) {
-  const pdfFile = req.files.pdfDocument[0];
-  const result = await new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        folder: 'campus-complaints/documents',
-        resource_type: 'raw',
-        format: 'pdf',
-        flags: 'attachment',
-      },
-      (error, result) => {
-        if (error) reject(error);
-        else resolve(result);
-      }
-    );
-    uploadStream.end(pdfFile.buffer);
-  });
-  pdfUrl = result.secure_url;
-}
-
 
     // ✅ Generate complaint ID
     const complaintCount = await db.collection("Complaints").countDocuments();
     const complaintId = `CMP${String(complaintCount + 1).padStart(5, '0')}`;
 
-    // ✅ Build complaint document
+    const now = new Date();
+
+    // ✅ Build complaint document with both title & subject
     const newComplaint = {
       complaintId,
       userId: req.user.userId,
       submittedBy: isAnonymous === 'true' ? 'Anonymous' : user.name,
       email: isAnonymous === 'true' ? null : user.email,
-      subject,
+      subject,              // ✅ Backend field
+      title: subject,       // ✅ Frontend field (same value)
       description,
       category,
       location,
       priority: priority || "Medium",
       images: imageUrls,
       pdfDocument: pdfUrl,
+      pdfPublicId: pdfPublicId,
       status: "Pending",
       assignedTo: null,
       adminRemarks: "",
       isAnonymous: isAnonymous === 'true',
-      submittedAt: new Date(),
-      updatedAt: new Date(),
+      submittedAt: now,
+      createdAt: now,       // ✅ Frontend expects this
+      updatedAt: now,
       resolvedAt: null,
       readByAdmin: false,
       readAt: null,
-      createdAt: new Date()
+      timeline: [
+        {
+          status: 'Pending',
+          timestamp: now,
+          message: 'Complaint submitted'
+        }
+      ]
     };
 
     const result = await db.collection("Complaints").insertOne(newComplaint);
+
+    console.log('✅ Complaint created:', result.insertedId);
 
     res.status(201).json({
       message: "Complaint submitted successfully",
       complaint: { _id: result.insertedId, ...newComplaint },
     });
   } catch (error) {
-    console.error("Error creating complaint:", error);
+    console.error("❌ Error creating complaint:", error);
     res.status(500).json({ message: "Internal server error", error: error.message });
   }
 }
@@ -128,8 +153,8 @@ async function updateComplaint(req, res) {
     }
 
     // Find the complaint
-    const complaint = await db.collection('Complaints').findOne({ 
-      _id: new ObjectId(complaintId) 
+    const complaint = await db.collection('Complaints').findOne({
+      _id: new ObjectId(complaintId)
     });
 
     if (!complaint) {
@@ -157,7 +182,10 @@ async function updateComplaint(req, res) {
       updatedAt: new Date()
     };
 
-    if (subject) updateFields.subject = subject;
+    if (subject) {
+      updateFields.subject = subject;
+      updateFields.title = subject; // ✅ Keep title in sync
+    }
     if (category) updateFields.category = category;
     if (location) updateFields.location = location;
     if (priority) updateFields.priority = priority;
@@ -179,46 +207,61 @@ async function updateComplaint(req, res) {
     // Upload new images if provided
     if (req.files && req.files.images) {
       for (const file of req.files.images) {
-        const result = await new Promise((resolve, reject) => {
-          const uploadStream = cloudinary.uploader.upload_stream(
-            { 
-              folder: 'campus-complaints/images',
-              resource_type: 'image'
-            },
-            (error, result) => {
-              if (error) reject(error);
-              else resolve(result);
-            }
-          );
-          uploadStream.end(file.buffer);
-        });
-        finalImages.push(result.secure_url);
+        try {
+          const result = await new Promise((resolve, reject) => {
+            const uploadStream = cloudinary.uploader.upload_stream(
+              {
+                folder: 'campus-complaints/images',
+                resource_type: 'image',
+                transformation: [{ width: 1200, quality: 'auto', crop: 'limit' }]
+              },
+              (error, result) => {
+                if (error) reject(error);
+                else resolve(result);
+              }
+            );
+            uploadStream.end(file.buffer);
+          });
+          finalImages.push(result.secure_url);
+        } catch (imgError) {
+          console.error('❌ Image upload failed:', imgError.message);
+        }
       }
     }
 
     updateFields.images = finalImages;
 
     // Handle PDF
-    if (existingPdf) {
+    if (existingPdf && existingPdf !== 'null' && existingPdf !== '') {
       updateFields.pdfDocument = existingPdf;
     } else if (req.files && req.files.pdfDocument && req.files.pdfDocument[0]) {
       const pdfFile = req.files.pdfDocument[0];
-      const result = await new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          { 
-            folder: 'campus-complaints/documents',
-            resource_type: 'raw'
-          },
-          (error, result) => {
-            if (error) reject(error);
-            else resolve(result);
-          }
-        );
-        uploadStream.end(pdfFile.buffer);
-      });
-      updateFields.pdfDocument = result.secure_url;
-    } else if (!existingPdf) {
+      try {
+        const result = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            {
+              folder: 'campus-complaints/documents',
+              resource_type: 'raw',
+              format: 'pdf',
+              type: 'upload',
+              access_mode: 'public'
+            },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          uploadStream.end(pdfFile.buffer);
+        });
+        updateFields.pdfDocument = result.secure_url;
+        updateFields.pdfPublicId = result.public_id;
+        console.log('✅ PDF updated:', result.secure_url);
+      } catch (pdfError) {
+        console.error('❌ PDF upload failed:', pdfError.message);
+      }
+    } else if (!existingPdf || existingPdf === 'null' || existingPdf === '') {
       updateFields.pdfDocument = null;
+      updateFields.pdfPublicId = null;
     }
 
     // Update the complaint
@@ -232,16 +275,23 @@ async function updateComplaint(req, res) {
     }
 
     // Fetch updated complaint
-    const updatedComplaint = await db.collection('Complaints').findOne({ 
-      _id: new ObjectId(complaintId) 
+    const updatedComplaint = await db.collection('Complaints').findOne({
+      _id: new ObjectId(complaintId)
     });
+
+    // ✅ Transform response
+    const transformed = {
+      ...updatedComplaint,
+      title: updatedComplaint.title || updatedComplaint.subject,
+      createdAt: updatedComplaint.createdAt || updatedComplaint.submittedAt
+    };
 
     res.status(200).json({
       message: 'Complaint updated successfully',
-      complaint: updatedComplaint
+      complaint: transformed
     });
   } catch (error) {
-    console.error('Update complaint error:', error);
+    console.error('❌ Update complaint error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 }
@@ -256,14 +306,21 @@ async function getUserComplaints(req, res) {
       .sort({ submittedAt: -1 })
       .toArray();
 
-    res.status(200).json(complaints);
+    // ✅ Transform for frontend
+    const transformed = complaints.map((c) => ({
+      ...c,
+      title: c.title || c.subject,
+      createdAt: c.createdAt || c.submittedAt,
+    }));
+
+    res.status(200).json(transformed);
   } catch (error) {
-    console.error("Error fetching user complaints:", error);
+    console.error("❌ Error fetching user complaints:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 }
 
-// 🧑‍🎓 STUDENT: Get complaint by ID (only if belongs to student)
+// 🔍 Get complaint by ID (Student or Admin)
 async function getComplaintById(req, res) {
   try {
     const db = req.app.locals.db;
@@ -273,8 +330,8 @@ async function getComplaintById(req, res) {
       return res.status(400).json({ message: "Invalid complaint ID format" });
     }
 
-    const complaint = await db.collection('Complaints').findOne({ 
-      _id: new ObjectId(complaintId) 
+    const complaint = await db.collection('Complaints').findOne({
+      _id: new ObjectId(complaintId)
     });
 
     if (!complaint) {
@@ -286,9 +343,16 @@ async function getComplaintById(req, res) {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    res.status(200).json(complaint);
+    // ✅ Transform for frontend
+    const transformed = {
+      ...complaint,
+      title: complaint.title || complaint.subject,
+      createdAt: complaint.createdAt || complaint.submittedAt
+    };
+
+    res.status(200).json(transformed);
   } catch (error) {
-    console.error("Error fetching complaint by ID:", error);
+    console.error("❌ Error fetching complaint by ID:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 }
@@ -303,10 +367,18 @@ async function getAllComplaints(req, res) {
       .find({})
       .sort({ submittedAt: -1 })
       .toArray();
-      
-    res.status(200).json(complaints);
+
+    // ✅ Transform: Add title & createdAt for frontend
+    const transformed = complaints.map((c) => ({
+      ...c,
+      title: c.title || c.subject,
+      createdAt: c.createdAt || c.submittedAt,
+    }));
+
+    console.log(`✅ Returning ${transformed.length} complaints to admin`);
+    res.status(200).json(transformed);
   } catch (error) {
-    console.error("Error fetching complaints:", error);
+    console.error("❌ Error fetching complaints:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 }
@@ -332,7 +404,7 @@ async function markComplaintAsRead(req, res) {
 
     res.status(200).json({ message: "Complaint marked as read" });
   } catch (error) {
-    console.error("Error marking complaint as read:", error);
+    console.error("❌ Error marking complaint as read:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 }
@@ -359,6 +431,21 @@ async function updateComplaintStatus(req, res) {
     if (status) {
       updateFields.status = status;
       if (status === "Resolved") updateFields.resolvedAt = new Date();
+      
+      // ✅ Add to timeline
+      await db.collection("Complaints").updateOne(
+        { _id: new ObjectId(complaintId) },
+        {
+          $push: {
+            timeline: {
+              status,
+              timestamp: new Date(),
+              message: `Status changed to ${status}`,
+              updatedBy: req.user.userId
+            }
+          }
+        }
+      );
     }
     if (adminRemarks) updateFields.adminRemarks = adminRemarks;
     if (assignedTo) updateFields.assignedTo = assignedTo;
@@ -372,9 +459,19 @@ async function updateComplaintStatus(req, res) {
       return res.status(404).json({ message: "Complaint not found" });
     }
 
-    res.status(200).json({ message: "Complaint updated successfully" });
+    // ✅ Log admin action
+    await db.collection("AdminLogs").insertOne({
+      adminId: req.user.userId,
+      action: 'UPDATE_COMPLAINT_STATUS',
+      complaintId: complaintId,
+      details: { status, adminRemarks, assignedTo },
+      timestamp: new Date()
+    });
+
+    console.log(`✅ Complaint ${complaintId} updated to status: ${status}`);
+    res.status(200).json({ message: "Complaint updated successfully", success: true });
   } catch (error) {
-    console.error("Error updating complaint:", error);
+    console.error("❌ Error updating complaint:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 }
@@ -396,6 +493,16 @@ async function getAnalyticsData(req, res) {
     const high = await Complaints.countDocuments({ priority: "High" });
     const medium = await Complaints.countDocuments({ priority: "Medium" });
     const low = await Complaints.countDocuments({ priority: "Low" });
+
+    // Category-wise breakdown
+    const categories = await Complaints.aggregate([
+      { $group: { _id: '$category', count: { $sum: 1 } } }
+    ]).toArray();
+
+    // Priority-wise breakdown
+    const priorities = await Complaints.aggregate([
+      { $group: { _id: '$priority', count: { $sum: 1 } } }
+    ]).toArray();
 
     // Optional: Average resolution time
     const resolvedComplaints = await Complaints.find({ status: "Resolved" }).toArray();
@@ -423,18 +530,15 @@ async function getAnalyticsData(req, res) {
         Medium: medium,
         Low: low,
       },
+      categories,
+      priorities,
       avgResolutionTime,
     });
   } catch (error) {
     console.error("❌ Error fetching analytics data:", error);
-    res.status(500).json({ message: "Failed to fetch analytics data", error });
+    res.status(500).json({ message: "Failed to fetch analytics data", error: error.message });
   }
-}
-
-/*
-
-
-/* =========================================================
+}/* =========================================================
    📦 EXPORTS
 ========================================================= */
 module.exports = {
@@ -446,3 +550,4 @@ module.exports = {
   getAnalyticsData,
   markComplaintAsRead,
 };
+

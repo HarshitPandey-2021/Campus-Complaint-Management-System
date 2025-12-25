@@ -1,104 +1,184 @@
-const API_BASE = import.meta.env.VITE_API_URL;
+// admin/src/api.js
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
 
-// -------- Complaints --------
+function authHeaders(token) {
+  return {
+    Authorization: `Bearer ${token}`,
+  };
+}
+
+async function handleResponse(res) {
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `Request failed with status ${res.status}`);
+  }
+  return res.json();
+}
+
+// -------- Complaints (Admin) --------
+
+// ✅ Fix: Backend route is /complaints (not /complaints/admin/all)
 export async function getAllComplaints(token) {
   const res = await fetch(`${API_BASE}/complaints`, {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: authHeaders(token),
   });
-  return res.json();
+  const data = await handleResponse(res);
+  
+  // ✅ Transform: subject → title for frontend compatibility
+  if (Array.isArray(data)) {
+    return data.map(complaint => ({
+      ...complaint,
+      title: complaint.title || complaint.subject, // Backend uses 'subject'
+      createdAt: complaint.createdAt || complaint.submittedAt,
+    }));
+  }
+  return data;
 }
 
 export async function getComplaintById(id, token) {
   const res = await fetch(`${API_BASE}/complaints/${id}`, {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: authHeaders(token),
   });
-  return res.json();
+  const data = await handleResponse(res);
+  
+  // ✅ Transform for consistency
+  return {
+    ...data,
+    title: data.title || data.subject,
+    createdAt: data.createdAt || data.submittedAt,
+  };
 }
 
-export async function updateComplaintStatus(id, status, token, remarks) {
-  // If "remarks" is used for your backend DB, else remove it!
-  const body = remarks !== undefined
-    ? JSON.stringify({ status, remarks })
-    : JSON.stringify({ status });
+export async function updateComplaintStatus(
+  id,
+  status,
+  token,
+  adminRemarks,
+  assignedTo
+) {
+  const body = { status };
+  if (adminRemarks !== undefined) body.adminRemarks = adminRemarks;
+  if (assignedTo !== undefined) body.assignedTo = assignedTo;
 
-  const res = await fetch(`${API_BASE}/complaints/${id}/status`, {
-    method: 'PATCH',
+  const res = await fetch(`${API_BASE}/admin/complaints/${id}/status`, {
+    method: "PUT",
     headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json'
+      ...authHeaders(token),
+      "Content-Type": "application/json",
     },
-    body
+    body: JSON.stringify(body),
   });
-  return res.json();
+  return handleResponse(res);
 }
 
-// -------- Stats/Analytics --------
-export async function getStats(token) {
-  const res = await fetch(`${API_BASE}/stats`, {
-    headers: { Authorization: `Bearer ${token}` }
+export async function markComplaintAsRead(id, token) {
+  const res = await fetch(`${API_BASE}/admin/complaints/${id}/read`, {
+    method: "PUT",
+    headers: authHeaders(token),
   });
-  return res.json();
+  return handleResponse(res);
+}
+
+// -------- Stats/Analytics (Admin) --------
+
+export async function getStats(token) {
+  const res = await fetch(`${API_BASE}/admin/stats`, {
+    headers: authHeaders(token),
+  });
+  return handleResponse(res);
 }
 
 export async function getComplaintsByCategory(token) {
-  const res = await fetch(`${API_BASE}/analytics/category`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  return res.json();
+  try {
+    const stats = await getStats(token);
+    const categories = stats.categories || [];
+    const map = {};
+    categories.forEach((c) => {
+      map[c._id || "Unknown"] = c.count;
+    });
+    return map;
+  } catch (err) {
+    console.error("Error in getComplaintsByCategory:", err);
+    return {};
+  }
 }
 
 export async function getComplaintsByStatus(token) {
-  const res = await fetch(`${API_BASE}/analytics/status`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  return res.json();
-}
-
-export async function getComplaintsTrend(token) {
-  const res = await fetch(`${API_BASE}/analytics/trend`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  return res.json();
+  try {
+    const stats = await getStats(token);
+    return {
+      Pending: stats.pending || 0,
+      "In Progress": stats.inProgress || 0,
+      Resolved: stats.resolved || 0,
+      Rejected: stats.rejected || 0,
+    };
+  } catch (err) {
+    console.error("Error in getComplaintsByStatus:", err);
+    return {};
+  }
 }
 
 export async function getPriorityDistribution(token) {
-  const res = await fetch(`${API_BASE}/analytics/priority`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  return res.json();
+  try {
+    const stats = await getStats(token);
+    const priorities = stats.priorities || [];
+    const map = {};
+    priorities.forEach((p) => {
+      map[p._id || "Unknown"] = p.count;
+    });
+    return map;
+  } catch (err) {
+    console.error("Error in getPriorityDistribution:", err);
+    return {};
+  }
+}
+
+export async function getComplaintsTrend(token) {
+  try {
+    const stats = await getStats(token);
+    return stats.trend || {};
+  } catch (err) {
+    console.error("Error in getComplaintsTrend:", err);
+    return {};
+  }
 }
 
 export async function getAverageResolutionTime(token) {
-  const res = await fetch(`${API_BASE}/analytics/average-resolution-time`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  return res.json();
+  try {
+    const stats = await getStats(token);
+    return stats.avgResolutionTime || 0;
+  } catch (err) {
+    console.error("Error in getAverageResolutionTime:", err);
+    return 0;
+  }
 }
 
 // -------- Activity Logs --------
+
 export async function getAllLogs(token) {
-  const res = await fetch(`${API_BASE}/logs`, {
-    headers: { Authorization: `Bearer ${token}` }
+  const res = await fetch(`${API_BASE}/admin/logs`, {
+    headers: authHeaders(token),
   });
-  return res.json();
+  return handleResponse(res);
 }
 
 // -------- Profile --------
+
 export async function getProfile(token) {
   const res = await fetch(`${API_BASE}/profile`, {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: authHeaders(token),
   });
-  return res.json();
+  return handleResponse(res);
 }
 
 export async function updateProfile(data, token) {
   const res = await fetch(`${API_BASE}/profile`, {
-    method: 'PUT',
+    method: "PUT",
     headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json'
+      ...authHeaders(token),
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
   });
-  return res.json();
+  return handleResponse(res);
 }

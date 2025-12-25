@@ -1,4 +1,6 @@
+// src/components/NotificationPanel.jsx (complete corrected)
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   RiBellLine,
   RiCheckLine,
@@ -6,13 +8,16 @@ import {
   RiErrorWarningLine,
   RiCloseLine,
 } from "react-icons/ri";
-import { getUnreadComplaints, markComplaintAsRead } from "../services/adminService";
+import { getAllComplaints } from "../api";
+import { getAdminToken } from "../utils/tokenUtils";
 
 export default function NotificationPanel() {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const panelRef = useRef(null);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(false);
 
   const colorClasses = {
     blue: "bg-blue-500 text-white shadow-blue-200 dark:shadow-blue-900/50",
@@ -20,118 +25,136 @@ export default function NotificationPanel() {
     red: "bg-red-500 text-white shadow-red-200 dark:shadow-red-900/50",
   };
 
-  // Define the icon selection logic here
-  const iconMap = {
-    new: RiTimeLine,        // Clock icon for new complaints
-    resolved: RiCheckLine,  // Check icon for resolved complaints
-    urgent: RiErrorWarningLine, // Exclamation mark icon for urgent complaints
-    rejected: RiErrorWarningLine, // Same icon for rejected complaints
-  };
-
   /* =========================================================
      🧩 FETCH NOTIFICATIONS
   ========================================================= */
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      console.log("Fetching notifications...");
-      try {
-        const token = localStorage.getItem("token");
+  const fetchNotifications = async () => {
+    console.log("Fetching notifications...");
+    try {
+      const token = getAdminToken() || localStorage.getItem("token");
 
-        if (!token) {
-          console.error("No token found in localStorage");
-          return;
-        }
+      if (!token) {
+        console.log("No token found in localStorage");
+        return;
+      }
 
-        const res = await getUnreadComplaints(token);
+      setLoading(true);
+      const res = await getAllComplaints(token);
 
-        console.log("Raw Complaint Data:", res);  // Log raw response data
+      console.log("Raw Complaint Data:", res);
 
-        if (!Array.isArray(res)) {
-          console.error("Expected an array of complaints, but got:", res);
-          return;
-        }
+      if (!Array.isArray(res)) {
+        console.error("Expected an array of complaints, but got:", res);
+        return;
+      }
 
-        if (res.length === 0) {
-          console.log("No notifications returned from the API.");
-        }
+      if (res.length === 0) {
+        console.log("No notifications returned from the API.");
+        setNotifications([]);
+        setUnreadCount(0);
+        return;
+      }
 
-        const formatted = res
-          .map((c) => {
-            console.log("Complaint Data:", c);  // Log individual complaint data
+      const formatted = res
+        .map((c) => {
+          let type = "new";
+          let icon = RiTimeLine;
+          let color = "blue";
+          let title = "Complaint Pending";
 
-            let type = "new";
-            let icon = RiTimeLine;
-            let color = "blue";
-            let title = "Complaint Pending";
+          const status = c.status ? c.status.toLowerCase() : "pending";
+          const priority = c.priority ? c.priority.toLowerCase() : "low";
 
-            const status = c.status ? c.status.toLowerCase() : "pending";
-            const priority = c.priority ? c.priority.toLowerCase() : "low";
-
-            console.log("Status:", status, "Priority:", priority);
-
-            // Logic based on priority and status
-            if (status === "resolved") {
-              type = "resolved";
-              icon = RiCheckLine;
-              color = "green";
-              title = "Complaint Resolved";
-            } else if (status === "rejected") {
-              type = "rejected";
+          if (status === "resolved") {
+            type = "resolved";
+            icon = RiCheckLine;
+            color = "green";
+            title = "Complaint Resolved";
+          } else if (status === "rejected") {
+            type = "rejected";
+            icon = RiErrorWarningLine;
+            color = "red";
+            title = "Complaint Rejected";
+          } else if (status === "pending") {
+            if (priority === "high") {
+              type = "urgent";
               icon = RiErrorWarningLine;
               color = "red";
-              title = "Complaint Rejected";
-            } else if (status === "pending") {
-              if (priority === "high") {
-                type = "urgent";
-                icon = RiErrorWarningLine;
-                color = "red";
-                title = "Urgent Complaint Pending";
-              } else {
-                type = "new";
-                icon = RiTimeLine;
-                color = "blue";
-                title = "Complaint Pending";
-              }
+              title = "Urgent Complaint Pending";
+            } else {
+              type = "new";
+              icon = RiTimeLine;
+              color = "blue";
+              title = "Complaint Pending";
             }
+          } else if (status === "in progress") {
+            type = "new";
+            icon = RiTimeLine;
+            color = "blue";
+            title = "Complaint In Progress";
+          }
 
-            const time = new Date(c.createdAt || c.submittedAt);
-            if (isNaN(time)) {
-              console.warn("Invalid date:", c.createdAt, c.submittedAt);
-              return null;
-            }
+          const time = new Date(c.createdAt || c.submittedAt);
+          if (isNaN(time)) {
+            console.warn("Invalid date:", c.createdAt, c.submittedAt);
+            return null;
+          }
 
-            return {
-              id: c._id,
-              type,
-              icon,
-              color,
-              title,
-              message: c.subject || c.description || "No description provided",
-              time: time.toLocaleString(),
-              read: c.readByAdmin || false,
-            };
-          })
-          .filter(Boolean) // Filter out null values
-          .sort((a, b) => new Date(b.time) - new Date(a.time));
+          return {
+            id: c._id,
+            type,
+            icon,
+            color,
+            title,
+            message: c.title || c.description || "No description provided",
+            time: time.toLocaleString(),
+            read: c.readByAdmin || false,
+          };
+        })
+        .filter(Boolean)
+        .sort((a, b) => new Date(b.time) - new Date(a.time));
 
-        console.log("Formatted Notifications:", formatted); // Log formatted notifications
+      console.log("Formatted Notifications:", formatted);
 
-        setNotifications(formatted);
-        setUnreadCount(formatted.filter((n) => !n.read).length);
-      } catch (err) {
-        console.error("Failed to load notifications:", err);
+      setNotifications(formatted);
+      const unread = formatted.filter((n) => !n.read).length;
+      setUnreadCount(unread);
+    } catch (err) {
+      console.error("Failed to load notifications:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ Fetch only after token is available
+  useEffect(() => {
+    const checkAndFetch = () => {
+      const token = localStorage.getItem("token");
+      if (token) {
+        fetchNotifications();
       }
     };
 
-    fetchNotifications();
-  }, []);
+    // Wait 500ms for auth to be processed from URL
+    const timer = setTimeout(checkAndFetch, 500);
+
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => {
+      const token = localStorage.getItem("token");
+      if (token) fetchNotifications();
+    }, 30000);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+  }, []); // ✅ Empty dependency array
 
   /* =========================================================
      🧩 MARK READ
   ========================================================= */
   const markAsRead = async (id) => {
     try {
-      await markComplaintAsRead(id);
       setNotifications((prev) => {
         const updated = prev.map((n) =>
           n.id === id ? { ...n, read: true } : n
@@ -146,9 +169,6 @@ export default function NotificationPanel() {
 
   const markAllAsRead = async () => {
     try {
-      await Promise.all(
-        notifications.filter((n) => !n.read).map((n) => markComplaintAsRead(n.id))
-      );
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
     } catch (err) {
@@ -162,6 +182,11 @@ export default function NotificationPanel() {
       setIsOpen(false);
       setUnreadCount(0);
     }
+  };
+
+  const handleViewAll = () => {
+    setIsOpen(false);
+    navigate("/complaints");
   };
 
   /* =========================================================
@@ -281,7 +306,14 @@ export default function NotificationPanel() {
 
           {/* Notifications List */}
           <div className="overflow-y-auto overflow-x-hidden max-h-[calc(100vh-16rem)] lg:max-h-[28rem] custom-scrollbar flex-1">
-            {notifications.length === 0 ? (
+            {loading ? (
+              <div className="p-8 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+                <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm">
+                  Loading notifications...
+                </p>
+              </div>
+            ) : notifications.length === 0 ? (
               <div className="p-12 text-center">
                 <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-full flex items-center justify-center shadow-inner">
                   <RiBellLine className="h-10 w-10 text-gray-400 dark:text-gray-500" />
@@ -295,7 +327,7 @@ export default function NotificationPanel() {
               </div>
             ) : (
               notifications.map((notif) => {
-                const Icon = iconMap[notif.type]; // Dynamically select the icon
+                const Icon = notif.icon;
                 return (
                   <div
                     key={notif.id}
@@ -308,7 +340,9 @@ export default function NotificationPanel() {
                   >
                     <div className="flex gap-3">
                       <div
-                        className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center shadow-md ${colorClasses[notif.color] || colorClasses.blue} transition-all duration-300`}
+                        className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center shadow-md ${
+                          colorClasses[notif.color] || colorClasses.blue
+                        } transition-all duration-300`}
                       >
                         <Icon className="h-5 w-5" />
                       </div>
@@ -347,7 +381,7 @@ export default function NotificationPanel() {
           {notifications.length > 0 && (
             <div className="sticky bottom-0 p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex-shrink-0">
               <button
-                onClick={() => setIsOpen(false)}
+                onClick={handleViewAll}
                 className="w-full text-center text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-semibold py-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all"
               >
                 View all notifications →
@@ -359,3 +393,4 @@ export default function NotificationPanel() {
     </div>
   );
 }
+
