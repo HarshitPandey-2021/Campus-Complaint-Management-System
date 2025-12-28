@@ -1,6 +1,6 @@
-// src/api.js  (Landing + simple user app ke liye)
+// src/api.js
 
-// Backend base URL: env se le lo, fallback /api (agar reverse proxy se aa raha ho)
+// Backend base URL:
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
 // Small helper to handle responses
@@ -14,14 +14,17 @@ async function handleResponse(res) {
 
 // ---------- AUTH ----------
 
-// LOGIN (POST /api/auth/login)
+// 
 export async function login(email, password, role = "student") {
+  console.log("🔗 API Login CALL:", { email, role }); // ✅ DEBUG
+  
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    // Backend loginUser role nahi leta, par tum yaha bhej sakte ho, ignore ho jayega
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, role }),
   });
+  
+  console.log("📤 Backend received role:", role); // ✅ DEBUG
   // Expect: { message, user, token }
   return handleResponse(res);
 }
@@ -34,6 +37,8 @@ export async function signup(
   password,
   role = "student"
 ) {
+  console.log("📝 Signup CALL:", { name, email, role }); // ✅ DEBUG
+  
   const res = await fetch(`${API_BASE}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -47,6 +52,8 @@ export async function signup(
 
 // Get all personal complaints
 export async function getMyComplaints(token) {
+  console.log("📋 Fetching my complaints"); // ✅ DEBUG
+  
   const res = await fetch(`${API_BASE}/complaints/mine`, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -57,6 +64,8 @@ export async function getMyComplaints(token) {
 
 // Get a specific complaint by id
 export async function getComplaintById(id, token) {
+  console.log("📄 Fetching complaint:", id); // ✅ DEBUG
+  
   const res = await fetch(`${API_BASE}/complaints/${id}`, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -66,9 +75,10 @@ export async function getComplaintById(id, token) {
 }
 
 // Submit a new complaint (JSON body)
-// NOTE: Agar tum images/PDF upload nahi kar rahe is entry se to yeh sahi hai.
-// File upload wali jagah par alag FormData-based function use karo.
+//
 export async function submitComplaint(data, token) {
+  console.log("📤 Submitting complaint:", data.subject?.substring(0, 50) + "..."); // ✅ DEBUG
+  
   const res = await fetch(`${API_BASE}/complaints`, {
     method: "POST",
     headers: {
@@ -78,4 +88,20 @@ export async function submitComplaint(data, token) {
     body: JSON.stringify(data),
   });
   return handleResponse(res);
+}
+
+// ---------- UTILITY FUNCTIONS ----------
+
+// Check if token is valid
+export async function checkAuth(token) {
+  try {
+    const res = await fetch(`${API_BASE}/profile`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }

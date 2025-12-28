@@ -260,34 +260,56 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 // --- Auth: Login ---
+// ✅ FIX 1: ROLE LOGIN - BLOCK WRONG ROLE (CRITICAL)
 app.post('/api/auth/login', async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, role: requestedRole } = req.body; // ✅ requestedRole from frontend
+  
   if (!email || !password) {
     return res.status(400).json({ message: 'Email and password required' });
   }
+
   try {
     const user = await Users.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const isPwd = await bcrypt.compare(password, user.password);
-    if (!isPwd) {
+    const isPwdValid = await bcrypt.compare(password, user.password);
+    if (!isPwdValid) {
       return res.status(401).json({ message: 'Invalid password' });
     }
 
+    // ✅ CRITICAL FIX: BLOCK WRONG ROLE LOGIN
+    console.log(`🔐 Login attempt: ${email} requested ${requestedRole}, actual ${user.role}`);
+    
+    if (requestedRole && user.role !== requestedRole) {
+      return res.status(403).json({ 
+        message: `Access denied! This account (${email}) is registered as **${user.role}**, not **${requestedRole}**. Please use correct role selection.` 
+      });
+    }
+
     const token = jwt.sign(
-      { userId: user._id.toString(), email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
+      { 
+        userId: user._id.toString(), 
+        email: user.email, 
+        role: user.role 
+      }, 
+      process.env.JWT_SECRET, 
+      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
     );
 
     const { password: _, ...safeUser } = user;
-    res.status(200).json({ user: safeUser, token });
+    
+    res.status(200).json({ 
+      user: safeUser, 
+      token,
+      role: user.role // ✅ Explicit role return
+    });
   } catch (e) {
     res.status(500).json({ message: 'Internal server error' });
   }
 });
+
 
 // --- Get Profile ---
 app.get('/api/profile', auth, async (req, res) => {
@@ -755,6 +777,94 @@ app.put('/api/admin/complaints/:id/assign', auth, requireRole('admin'), async (r
   }
 });
 
+
+app.get('/api/complaints/admin/analytics', auth, requireRole('admin'), async (req, res) => {
+  try {
+    console.log("📊 Analytics request received");
+    
+    // Basic stats
+    const total = await Complaints.countDocuments();
+    const pending = await Complaints.countDocuments({ status: 'Pending' });
+    const inProgress = await Complaints.countDocuments({ status: 'In Progress' });
+    const resolved = await Complaints.countDocuments({ status: 'Resolved' });
+    const rejected = await Complaints.countDocuments({ status: 'Rejected' });
+
+    // Categories
+    const categories = await Complaints.aggregate([
+      { $group: { _id: '$category', count: { $sum: 1 } } }
+    ]).toArray();
+
+    // Priorities
+    const priorities = await Complaints.aggregate([
+      { $group: { _id: '$priority', count: { $sum: 1 } } }
+    ]).toArray();
+
+    // ✅ FIXED: Average Resolution Time - ROBUST CALCULATION
+    const resolvedComplaints = await Complaints.find({ 
+      status: 'Resolved', 
+      resolvedAt: { $exists: true, $ne: null },
+      submittedAt: { $exists: true, $ne: null }
+    }).toArray();
+    
+    let avgResolutionTime = 0;
+    
+    if (resolvedComplaints.length > 0) {
+      const validComplaints = resolvedComplaints.filter(complaint => {
+        const submitted = new Date(complaint.submittedAt);
+        const resolved = new Date(complaint.resolvedAt);
+        return submitted.getTime() > 0 && resolved.getTime() > 0 && resolved > submitted;
+      });
+      
+      if (validComplaints.length > 0) {
+        const totalTimeMs = validComplaints.reduce((sum, complaint) => {
+          const start = new Date(complaint.submittedAt);
+          const end = new Date(complaint.resolvedAt);
+          const diffMs = Math.max(0, end.getTime() - start.getTime()); // Ensure non-negative
+          console.log(`⏱️ Complaint ${complaint.complaintId}: ${Math.round(diffMs/(1000*60*60), 1)} hrs`);
+          return sum + diffMs;
+        }, 0);
+        
+        avgResolutionTime = (totalTimeMs / validComplaints.length / (1000 * 60 * 60)).toFixed(1);
+        console.log(`✅ AVG RESOLUTION: ${avgResolutionTime} hrs (${validComplaints.length}/${resolvedComplaints.length} valid)`);
+      } else {
+        console.log("⚠️ No valid timestamp pairs found in resolved complaints");
+      }
+    }
+
+    const response = {
+      stats: { 
+        total, 
+        pending, 
+        inProgress, 
+        resolved, 
+        rejected 
+      },
+      avgResolutionTime: parseFloat(avgResolutionTime) || 0,
+      categories,
+      priorities,
+      byPriority: {
+        High: priorities.find(p => p._id === 'High')?.count || 0,
+        Medium: priorities.find(p => p._id === 'Medium')?.count || 0,
+        Low: priorities.find(p => p._id === 'Low')?.count || 0,
+      }
+    };
+
+    console.log("📊 Analytics response:", {
+      total,
+      avgResolutionTime,
+      categories: categories.length,
+      resolvedComplaints: resolvedComplaints.length
+    });
+
+    res.json(response);
+  } catch (error) {
+    console.error('❌ Analytics error:', error);
+    res.status(500).json({ message: 'Analytics fetch failed' });
+  }
+});
+
+
+
 // Get admin dashboard stats
 app.get('/api/admin/stats', auth, requireRole('admin'), async (req, res) => {
   try {
@@ -790,15 +900,24 @@ app.get('/api/admin/users/admins', auth, requireRole('admin'), async (req, res) 
   }
 });
 
-// Get admin logs
+// ✅  Current Admin's Logs
 app.get('/api/admin/logs', auth, requireRole('admin'), async (req, res) => {
   try {
-    const logs = await AdminLogs.find().sort({ timestamp: -1 }).limit(100).toArray();
+    console.log('📋 Fetching logs for admin:', req.user.userId);
+    
+    const logs = await AdminLogs.find({ adminId: req.user.userId })
+      .sort({ timestamp: -1 })
+      .limit(50)
+      .toArray();
+    
+    console.log(`📋 Returning ${logs.length} personal logs for ${req.user.email}`);
     res.json(logs);
-  } catch {
+  } catch (error) {
+    console.error('❌ Error fetching admin logs:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
+
 
 // Delete complaint (soft delete)
 app.delete('/api/admin/complaints/:id', auth, requireRole('admin'), async (req, res) => {
@@ -838,24 +957,43 @@ app.delete('/api/admin/complaints/:id', auth, requireRole('admin'), async (req, 
 });
 
 // Mark complaint as read
-app.put('/api/admin/complaints/:id/read', auth, requireRole('admin'), async (req, res) => {
+// ✅ BACKEND FIX: Change PUT → PATCH
+app.patch('/api/complaints/admin/:id/read', auth, requireRole('admin'), async (req, res) => {  // ✅ PATCH + CORRECT ROUTE
   try {
     const { id } = req.params;
     if (!ObjectId.isValid(id)) {
       return res.status(400).json({ message: 'Invalid complaint ID' });
     }
-    await Complaints.updateOne(
+
+    const result = await Complaints.updateOne(
       { _id: toObjectId(id) },
-      { $set: { readByAdmin: true, readAt: new Date() } }
+      { 
+        $set: { 
+          readByAdmin: true, 
+          readAt: new Date() 
+        } 
+      }
     );
 
+    if (!result.matchedCount) {
+      return res.status(404).json({ message: 'Complaint not found' });
+    }
+
+    // ✅ Log admin action
+    await AdminLogs.insertOne({
+      adminId: req.user.userId,
+      action: 'MARK_COMPLAINT_READ',
+      complaintId: id,
+      timestamp: new Date(),
+    });
+
+    console.log(`✅ Complaint ${id} marked as read by ${req.user.email}`); // DEBUG
     res.json({ message: 'Marked as read' });
-  } catch {
+  } catch (error) {
+    console.error('❌ Error marking as read:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
-});
-
-// Get complaints by status
+});// Get complaints by status
 app.get('/api/complaints/status/:status', auth, async (req, res) => {
   try {
     const { status } = req.params;

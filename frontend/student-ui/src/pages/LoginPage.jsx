@@ -1,4 +1,4 @@
-// src/pages/LoginPage.jsx (landing - 5174)
+// src/pages/LoginPage.jsx (landing - 5174) - ✅ FIXED WITH ROLE PARAM
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { login } from "../api";
@@ -32,21 +32,24 @@ export default function LoginPage() {
       console.log("📥 Login Response:", resp);
 
       if (resp.token && resp.user) {
+        // ✅ CRITICAL FIX: Role param add kiya URL me
         const authData = encodeURIComponent(
           JSON.stringify({
             token: resp.token,
             user: resp.user,
+            role: form.role, // ✅ REQUESTED ROLE send kar rahe hain
           })
         );
 
-        console.log("👤 Role:", resp.user.role);
+        console.log("👤 Role (requested):", form.role);
+        console.log("👤 Role (actual):", resp.user.role);
+        console.log("🔗 Redirecting with role:", form.role);
 
         if (resp.user.role === "admin") {
           console.log("🔗 Redirecting admin to:", `${ADMIN_URL}/?auth=${authData}`);
           window.location.href = `${ADMIN_URL}/?auth=${authData}`;
         } else if (resp.user.role === "student") {
           console.log("🔗 Redirecting student to:", `${USER_URL}/user/dashboard?auth=${authData}`);
-          // ✅ Student: auth ko URL se pass kar (different origin)
           window.location.href = `${USER_URL}/user/dashboard?auth=${authData}`;
         } else {
           setError("Unknown user role: " + resp.user.role);
@@ -56,7 +59,13 @@ export default function LoginPage() {
       }
     } catch (err) {
       console.error("❌ Login error:", err);
-      setError(err.message || "Login failed. Try again.");
+      
+      // ✅ Backend se proper error message show karo
+      if (err.message.includes("Access denied") || err.message.includes("registered as")) {
+        setError(err.message);
+      } else {
+        setError("Login failed. Try again.");
+      }
     }
     setLoading(false);
   }
@@ -88,7 +97,7 @@ export default function LoginPage() {
         </h2>
 
         {error && (
-          <div className="text-red-500 mb-2 text-center font-semibold">
+          <div className="text-red-500 mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
             {error}
           </div>
         )}
@@ -122,34 +131,39 @@ export default function LoginPage() {
             />
           </div>
 
-          <select
-            name="role"
-            value={form.role}
-            onChange={handleChange}
-            className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#008080] outline-none"
-          >
-            <option value="student">Student</option>
-            <option value="admin">Admin</option>
-          </select>
+          {/* ✅ Role selector with clear visual feedback */}
+          <div>
+            <label className="block mb-1 font-medium text-gray-700">
+              Login As
+            </label>
+            <select
+              name="role"
+              value={form.role}
+              onChange={handleChange}
+              className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#008080] outline-none font-semibold text-lg"
+            >
+              <option value="student">👨‍🎓 Student Portal</option>
+              <option value="admin">🛡️ Admin Panel</option>
+            </select>
+          </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full text-white py-2 rounded-lg font-semibold shadow-lg transition transform hover:scale-[1.02]"
+            className="w-full text-white py-3 rounded-lg font-bold shadow-lg transition transform hover:scale-[1.02] text-lg"
             style={{
               background:
                 "linear-gradient(90deg, #c026d3, #0ea5e9, #008080)",
             }}
           >
-            {loading ? "Logging in..." : "Login"}
+            {loading ? "🔄 Logging in..." : `🚀 Login as ${form.role === 'admin' ? 'Admin' : 'Student'}`}
           </button>
 
-          <p className="text-center text-gray-700 mt-4">
+          <p className="text-center text-gray-700 mt-4 text-sm">
             Don't have an account?{" "}
             <Link
               to="/signup"
-              className="font-semibold"
-              style={{ color: "#c026d3" }}
+              className="font-semibold text-[#c026d3] hover:underline"
             >
               Sign Up
             </Link>

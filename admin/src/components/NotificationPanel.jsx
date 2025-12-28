@@ -1,5 +1,5 @@
-// src/components/NotificationPanel.jsx (complete corrected)
-import { useState, useRef, useEffect } from "react";
+// src/components/NotificationPanel.jsx - COMPLETE FIXED VERSION
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   RiBellLine,
@@ -8,7 +8,7 @@ import {
   RiErrorWarningLine,
   RiCloseLine,
 } from "react-icons/ri";
-import { getAllComplaints } from "../api";
+import { getAllComplaints, markComplaintAsRead } from "../api"; // ✅ Import backend API
 import { getAdminToken } from "../utils/tokenUtils";
 
 export default function NotificationPanel() {
@@ -28,7 +28,7 @@ export default function NotificationPanel() {
   /* =========================================================
      🧩 FETCH NOTIFICATIONS
   ========================================================= */
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     console.log("Fetching notifications...");
     try {
       const token = getAdminToken() || localStorage.getItem("token");
@@ -124,7 +124,7 @@ export default function NotificationPanel() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // ✅ Fetch only after token is available
   useEffect(() => {
@@ -148,13 +148,19 @@ export default function NotificationPanel() {
       clearTimeout(timer);
       clearInterval(interval);
     };
-  }, []); // ✅ Empty dependency array
+  }, [fetchNotifications]); // ✅ Proper dependency
 
   /* =========================================================
-     🧩 MARK READ
+     🧩 MARK READ - BACKEND API CALL (FIXED)
   ========================================================= */
   const markAsRead = async (id) => {
     try {
+      const token = getAdminToken() || localStorage.getItem("token");
+      
+      // ✅ BACKEND API CALL - CRITICAL FIX
+      await markComplaintAsRead(id, token);
+
+      // Update local state optimistically
       setNotifications((prev) => {
         const updated = prev.map((n) =>
           n.id === id ? { ...n, read: true } : n
@@ -162,17 +168,30 @@ export default function NotificationPanel() {
         setUnreadCount(updated.filter((n) => !n.read).length);
         return updated;
       });
+      
+      console.log("✅ Marked as read:", id);
     } catch (err) {
-      console.error("Failed to mark as read:", err);
+      console.error("❌ Failed to mark as read:", err);
+      // Revert optimistic update on error
+      fetchNotifications();
     }
   };
 
   const markAllAsRead = async () => {
     try {
+      const token = getAdminToken() || localStorage.getItem("token");
+      
+      // Mark all unread notifications
+      const unreadNotifications = notifications.filter((n) => !n.read);
+      await Promise.all(
+        unreadNotifications.map((n) => markComplaintAsRead(n.id, token))
+      );
+      
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
     } catch (err) {
       console.error("Failed to mark all as read:", err);
+      fetchNotifications();
     }
   };
 
@@ -393,4 +412,3 @@ export default function NotificationPanel() {
     </div>
   );
 }
-
