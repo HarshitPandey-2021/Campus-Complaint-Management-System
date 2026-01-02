@@ -1,25 +1,25 @@
-// Assuming you're using a simple class to represent the AdminLog model
-class AdminLog {
-  constructor(id, complaintId, adminId, action, remarks, timestamp) {
-    this._id = id;
-    this.complaintId = complaintId;
-    this.adminId = adminId;
-    this.action = action;
-    this.remarks = remarks;
-    this.timestamp = timestamp;
-  }
+// src/models/adminLogsModel.js
 
-  // Method to convert raw database document into an AdminLog instance
-  static fromDb(doc) {
-    return new AdminLog(
-      doc._id,         // _id from MongoDB
-      doc.complaintId,  // Complaint ID
-      doc.adminId,      // Admin ID
-      doc.action,       // Action taken by admin
-      doc.remarks,      // Optional remarks
-      doc.timestamp     // Timestamp of the action
-    );
-  }
+const ADMIN_LOGS_COLLECTION = "AdminLogs";
+
+// Get AdminLogs collection
+function getAdminLogsCollection(db) {
+  return db.collection(ADMIN_LOGS_COLLECTION);
 }
 
-module.exports = AdminLog;
+// Create indexes for AdminLogs
+async function ensureAdminLogsIndexes(db) {
+  const logs = getAdminLogsCollection(db);
+
+  // Index by adminId for fast filtering
+  await logs.createIndex({ adminId: 1 });
+
+  // Index by timestamp (newest first queries)
+  await logs.createIndex({ timestamp: -1 });
+}
+
+module.exports = {
+  ADMIN_LOGS_COLLECTION,
+  getAdminLogsCollection,
+  ensureAdminLogsIndexes,
+};

@@ -2,15 +2,11 @@
 const express = require("express");
 const router = express.Router();
 const complaintsController = require("../controllers/complaintsController");
-const {
-  verifyToken,
-  authorizeRoles,
-} = require("../middlewares/authMiddleware");
+const { verifyToken, authorizeRoles } = require("../middlewares/authMiddleware");
 const upload = require("../middlewares/upload");
 
-// =========================================================
-// 🧑‍💼 ADMIN ROUTES (Place BEFORE generic routes to avoid conflicts)
-// =========================================================
+// ==================== ADMIN ROUTES ====================
+// Place BEFORE generic routes to avoid conflicts
 
 // Admin: View all complaints
 router.get(
@@ -52,9 +48,7 @@ router.get(
   complaintsController.getComplaintById
 );
 
-// =========================================================
-// 🧑‍🎓 STUDENT ROUTES
-// =========================================================
+// ==================== STUDENT ROUTES ====================
 
 // Students: Submit new complaint WITH FILE UPLOAD
 router.post(
@@ -62,8 +56,8 @@ router.post(
   verifyToken,
   authorizeRoles("student"),
   upload.fields([
-    { name: 'images', maxCount: 5 },
-    { name: 'pdfDocument', maxCount: 1 }
+    { name: "images", maxCount: 5 },
+    { name: "pdfDocument", maxCount: 1 },
   ]),
   complaintsController.createComplaint
 );
@@ -82,15 +76,13 @@ router.put(
   verifyToken,
   authorizeRoles("student"),
   upload.fields([
-    { name: 'images', maxCount: 5 },
-    { name: 'pdfDocument', maxCount: 1 }
+    { name: "images", maxCount: 5 },
+    { name: "pdfDocument", maxCount: 1 },
   ]),
   complaintsController.updateComplaint
 );
 
-// =========================================================
-// 🔄 SHARED ROUTES (Student + Admin with role-based logic)
-// =========================================================
+// ==================== SHARED ROUTES ====================
 
 // Get complaint by ID (role-based access control inside controller)
 router.get(

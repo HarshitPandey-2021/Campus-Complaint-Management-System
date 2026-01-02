@@ -1,41 +1,25 @@
 // src/models/usersModel.js
-const bcrypt = require('bcrypt');
 
-class User {
-  constructor({ name, email, password, role, createdAt, updatedAt }) {
-    if (!email || !email.includes('@')) throw new Error('Invalid email');
-    this.name = name;
-    this.email = email;
-    this.password = password;
-    this.role = role || 'user';
-    this.createdAt = createdAt || new Date();
-    this.updatedAt = updatedAt || new Date();
-  }
+const USERS_COLLECTION = "Users";
 
-  async hashPassword() {
-    const saltRounds = 10;
-    this.password = await bcrypt.hash(this.password, saltRounds);
-  }
-
-  checkPassword(password) {
-    return bcrypt.compare(password, this.password);
-  }
-
-  toJSON() {
-    const { password, ...userWithoutPassword } = this;
-    return userWithoutPassword;
-  }
-
-  static fromDb(document) {
-    return new User({
-      name: document.name,
-      email: document.email,
-      password: document.password,
-      role: document.role,
-      createdAt: document.createdAt,
-      updatedAt: document.updatedAt,
-    });
-  }
+// Get Users collection
+function getUsersCollection(db) {
+  return db.collection(USERS_COLLECTION);
 }
 
-module.exports = User;
+// Create indexes for Users
+async function ensureUsersIndexes(db) {
+  const users = getUsersCollection(db);
+
+  // Unique email
+  await users.createIndex({ email: 1 }, { unique: true });
+
+  // Unique roll (only where roll exists)
+  await users.createIndex({ roll: 1 }, { unique: true, sparse: true });
+}
+
+module.exports = {
+  USERS_COLLECTION,
+  getUsersCollection,
+  ensureUsersIndexes,
+};

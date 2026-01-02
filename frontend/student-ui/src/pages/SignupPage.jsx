@@ -1,3 +1,5 @@
+// src/pages/SignupPage.jsx
+
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { signup } from "../api";
@@ -10,7 +12,7 @@ export default function SignupPage() {
     email: "",
     password: "",
     confirmPassword: "",
-    role: "student",
+    role: "student", // default student
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -75,9 +77,11 @@ export default function SignupPage() {
         >
           Sign Up
         </h2>
+
         {error && (
           <div className="text-red-500 mb-2 text-center">{error}</div>
         )}
+
         <form onSubmit={handleSubmit} className="space-y-4 text-gray-800">
           <input
             name="name"
@@ -87,6 +91,7 @@ export default function SignupPage() {
             value={form.name}
             required
           />
+
           <input
             name="roll"
             placeholder="Roll Number"
@@ -96,6 +101,7 @@ export default function SignupPage() {
             required={form.role === "student"}
             disabled={form.role === "admin"}
           />
+
           <input
             name="email"
             type="email"
@@ -105,6 +111,7 @@ export default function SignupPage() {
             value={form.email}
             required
           />
+
           <input
             name="password"
             type="password"
@@ -114,6 +121,7 @@ export default function SignupPage() {
             value={form.password}
             required
           />
+
           <input
             name="confirmPassword"
             type="password"
@@ -123,26 +131,43 @@ export default function SignupPage() {
             value={form.confirmPassword}
             required
           />
-          <select
-            name="role"
-            value={form.role}
-            onChange={handleChange}
-            className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#008080] outline-none"
-          >
-            <option value="student">Student</option>
-            <option value="admin">Admin</option>
-          </select>
+
+          {/* Role radio buttons */}
+          <div className="flex gap-6 mt-2">
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="role"
+                value="student"
+                checked={form.role === "student"}
+                onChange={handleChange}
+              />
+              <span>Student</span>
+            </label>
+
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="role"
+                value="admin"
+                checked={form.role === "admin"}
+                onChange={handleChange}
+              />
+              <span>Admin</span>
+            </label>
+          </div>
+
           <button
             type="submit"
             disabled={loading}
             className="w-full text-white py-2 rounded-lg font-semibold shadow-lg transition transform hover:scale-[1.02]"
             style={{
-              background:
-                "linear-gradient(90deg,#c026d3,#0ea5e9,#008080)",
+              background: "linear-gradient(90deg,#c026d3,#0ea5e9,#008080)",
             }}
           >
             {loading ? "Creating..." : "Sign Up"}
           </button>
+
           <p className="text-center text-gray-700 mt-4">
             Already registered?{" "}
             <Link

@@ -1,4 +1,6 @@
-// src/pages/LoginPage.jsx (landing - 5174) - ✅ FIXED WITH ROLE PARAM
+// src/pages/LoginPage.jsx
+
+// src/pages/LoginPage.jsx (landing - 5174) - with role radio
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { login } from "../api";
@@ -9,12 +11,17 @@ const USER_URL = import.meta.env.VITE_USER_APP_URL || "http://localhost:3001";
 console.log("🔧 Login URLs:", { ADMIN_URL, USER_URL });
 
 export default function LoginPage() {
-  const [form, setForm] = useState({ email: "", password: "", role: "student" });
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+    role: "student", // default student
+  });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   function handleChange(e) {
     setForm({ ...form, [e.target.name]: e.target.value });
+    setError("");
   }
 
   async function handleLogin(e) {
@@ -32,24 +39,27 @@ export default function LoginPage() {
       console.log("📥 Login Response:", resp);
 
       if (resp.token && resp.user) {
-        // ✅ CRITICAL FIX: Role param add kiya URL me
         const authData = encodeURIComponent(
           JSON.stringify({
             token: resp.token,
-            user: resp.user,
-            role: form.role, // ✅ REQUESTED ROLE send kar rahe hain
+            role: resp.user.role, // actual role from backend
           })
         );
 
-        console.log("👤 Role (requested):", form.role);
-        console.log("👤 Role (actual):", resp.user.role);
-        console.log("🔗 Redirecting with role:", form.role);
+        console.log("👤 Requested role:", form.role);
+        console.log("👤 Actual role:", resp.user.role);
 
         if (resp.user.role === "admin") {
-          console.log("🔗 Redirecting admin to:", `${ADMIN_URL}/?auth=${authData}`);
+          console.log(
+            "🔗 Redirecting admin to:",
+            `${ADMIN_URL}/?auth=${authData}`
+          );
           window.location.href = `${ADMIN_URL}/?auth=${authData}`;
         } else if (resp.user.role === "student") {
-          console.log("🔗 Redirecting student to:", `${USER_URL}/user/dashboard?auth=${authData}`);
+          console.log(
+            "🔗 Redirecting student to:",
+            `${USER_URL}/user/dashboard?auth=${authData}`
+          );
           window.location.href = `${USER_URL}/user/dashboard?auth=${authData}`;
         } else {
           setError("Unknown user role: " + resp.user.role);
@@ -59,9 +69,10 @@ export default function LoginPage() {
       }
     } catch (err) {
       console.error("❌ Login error:", err);
-      
-      // ✅ Backend se proper error message show karo
-      if (err.message.includes("Access denied") || err.message.includes("registered as")) {
+      if (
+        err.message.includes("Access denied") ||
+        err.message.includes("registered as")
+      ) {
         setError(err.message);
       } else {
         setError("Login failed. Try again.");
@@ -75,7 +86,7 @@ export default function LoginPage() {
       className="min-h-screen flex items-center justify-center px-4"
       style={{
         background:
-          "linear-gradient(135deg, rgba(192,38,211,0.15), rgba(14,165,233,0.12), rgba(0,128,128,0.12))",
+          "linear-gradient(135deg, rgba(192,38,211,0.15), rgba(14,165,233,0.12), rgba(0,128,128,0.10))",
       }}
     >
       <div
@@ -97,75 +108,75 @@ export default function LoginPage() {
         </h2>
 
         {error && (
-          <div className="text-red-500 mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-            {error}
-          </div>
+          <div className="text-red-500 mb-2 text-center">{error}</div>
         )}
 
-        <form className="space-y-4 text-gray-800" onSubmit={handleLogin}>
-          <div>
-            <label className="block mb-1 font-medium text-gray-700">
-              Email
-            </label>
-            <input
-              type="email"
-              name="email"
-              className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#c026d3] outline-none"
-              required
-              value={form.email}
-              onChange={handleChange}
-            />
-          </div>
+        <form onSubmit={handleLogin} className="space-y-4 text-gray-800">
+          <input
+            name="email"
+            type="email"
+            placeholder="Email"
+            className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#c026d3] outline-none"
+            onChange={handleChange}
+            value={form.email}
+            required
+          />
 
-          <div>
-            <label className="block mb-1 font-medium text-gray-700">
-              Password
-            </label>
-            <input
-              type="password"
-              name="password"
-              className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#0ea5e9] outline-none"
-              required
-              value={form.password}
-              onChange={handleChange}
-            />
-          </div>
+          <input
+            name="password"
+            type="password"
+            placeholder="Password"
+            className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#0ea5e9] outline-none"
+            onChange={handleChange}
+            value={form.password}
+            required
+          />
 
-          {/* ✅ Role selector with clear visual feedback */}
-          <div>
-            <label className="block mb-1 font-medium text-gray-700">
-              Login As
+          {/* Role radio buttons */}
+          <div className="flex gap-6 mt-2">
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="role"
+                value="student"
+                checked={form.role === "student"}
+                onChange={handleChange}
+              />
+              <span>Student</span>
             </label>
-            <select
-              name="role"
-              value={form.role}
-              onChange={handleChange}
-              className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#008080] outline-none font-semibold text-lg"
-            >
-              <option value="student">👨‍🎓 Student Portal</option>
-              <option value="admin">🛡️ Admin Panel</option>
-            </select>
+
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="role"
+                value="admin"
+                checked={form.role === "admin"}
+                onChange={handleChange}
+              />
+              <span>Admin</span>
+            </label>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full text-white py-3 rounded-lg font-bold shadow-lg transition transform hover:scale-[1.02] text-lg"
+            className="w-full text-white py-2 rounded-lg font-semibold shadow-lg transition transform hover:scale-[1.02]"
             style={{
               background:
-                "linear-gradient(90deg, #c026d3, #0ea5e9, #008080)",
+                "linear-gradient(90deg,#c026d3,#0ea5e9,#008080)",
             }}
           >
-            {loading ? "🔄 Logging in..." : `🚀 Login as ${form.role === 'admin' ? 'Admin' : 'Student'}`}
+            {loading ? "Logging in..." : "Login"}
           </button>
 
-          <p className="text-center text-gray-700 mt-4 text-sm">
-            Don't have an account?{" "}
+          <p className="text-center text-gray-700 mt-4">
+            New user?{" "}
             <Link
               to="/signup"
-              className="font-semibold text-[#c026d3] hover:underline"
+              className="font-semibold"
+              style={{ color: "#c026d3" }}
             >
-              Sign Up
+              Create an account
             </Link>
           </p>
         </form>

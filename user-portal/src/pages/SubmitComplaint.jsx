@@ -1,259 +1,267 @@
-// src/pages/SubmitComplaint.jsx - FIXED VERSION
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../hooks/useAuth'
-import { useToast } from '../hooks/useToast'
-import LoadingSpinner from '../components/common/LoadingSpinner'
-import { CATEGORIES, PRIORITIES } from '../utils/constants'
-import api from '../api'  // ✅ Import api instead of userService
+// src/pages/SubmitComplaint.jsx
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../hooks/useToast';
+import LoadingSpinner from '../components/common/LoadingSpinner';
+import { CATEGORIES, PRIORITIES } from '../utils/constants';
+import api from '../api';
 import {
-  RiSendPlaneFill, RiArrowLeftLine, RiErrorWarningLine, RiCheckLine,
-  RiUploadCloudLine, RiImageAddLine, RiFilePdfLine, RiCloseLine,
-  RiAlertLine, RiFlagLine, RiMapPinLine, RiFileTextLine, RiEyeOffLine
-} from 'react-icons/ri'
+  RiSendPlaneFill,
+  RiArrowLeftLine,
+  RiErrorWarningLine,
+  RiCheckLine,
+  RiUploadCloudLine,
+  RiImageAddLine,
+  RiFilePdfLine,
+  RiCloseLine,
+  RiAlertLine,
+  RiFlagLine,
+  RiMapPinLine,
+  RiFileTextLine,
+  RiEyeOffLine,
+} from 'react-icons/ri';
 
 const SubmitComplaint = () => {
-  const navigate = useNavigate()
-  const { user } = useAuth()
-  const { success, error: showError } = useToast()
+  const navigate = useNavigate();
+  const { user } = useAuth(); // Agar kahin use na ho to bhi rehne de, future ke liye
+  const { success, error: showError } = useToast();
 
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     subject: '',
     category: '',
     location: '',
     priority: 'Medium',
     description: '',
-    isAnonymous: false
-  })
-  const [images, setImages] = useState([])
-  const [pdf, setPdf] = useState(null)
-  const [errors, setErrors] = useState({})
-  const [dragActive, setDragActive] = useState(false)
+    isAnonymous: false,
+  });
+  const [images, setImages] = useState([]);
+  const [pdf, setPdf] = useState(null);
+  const [errors, setErrors] = useState({});
+  const [dragActive, setDragActive] = useState(false);
 
   // Category icons mapping
   const categoryIcons = {
-    'Fan': '🌀', 'Light': '💡', 'Projector': '📽️', 'Furniture': '🪑',
-    'Washroom': '🚻', 'Water': '💧', 'Internet': '📶', 'Other': '📋'
-  }
+    Fan: '🌀',
+    Light: '💡',
+    Projector: '📽️',
+    Furniture: '🪑',
+    Washroom: '🚻',
+    Water: '💧',
+    Internet: '📶',
+    Other: '📋',
+  };
 
   // Priority colors
   const priorityColors = {
-    'Low': 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700',
-    'Medium': 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700',
-    'High': 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-700'
-  }
+    Low: 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700',
+    Medium:
+      'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700',
+    High: 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-700',
+  };
 
   // Calculate form completion percentage
   const calculateProgress = () => {
-    let completed = 0
-    if (formData.subject.length >= 5) completed += 16.66
-    if (formData.category) completed += 16.66
-    if (formData.location.length >= 5) completed += 16.66
-    if (formData.priority) completed += 16.66
-    if (formData.description.length >= 20) completed += 16.66
-    if (images.length > 0 || pdf) completed += 16.66
-    return Math.round(completed)
-  }
+    let completed = 0;
+    if (formData.subject.length >= 5) completed += 16.66;
+    if (formData.category) completed += 16.66;
+    if (formData.location.length >= 5) completed += 16.66;
+    if (formData.priority) completed += 16.66;
+    if (formData.description.length >= 20) completed += 16.66;
+    if (images.length > 0 || pdf) completed += 16.66;
+    return Math.round(completed);
+  };
 
-  const progress = calculateProgress()
+  const progress = calculateProgress();
 
   // Handle input change
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target
-    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }))
+      setErrors((prev) => ({ ...prev, [name]: '' }));
     }
-  }
+  };
 
   // Handle category selection
   const handleCategorySelect = (category) => {
-    setFormData(prev => ({ ...prev, category }))
+    setFormData((prev) => ({ ...prev, category }));
     if (errors.category) {
-      setErrors(prev => ({ ...prev, category: '' }))
+      setErrors((prev) => ({ ...prev, category: '' }));
     }
-  }
+  };
 
-  // Handle priority selection
+  // Handle priority selection – koi role check nahi
   const handlePrioritySelect = (priority) => {
-    if (priority === 'High' && user?.role === 'student') {
-      showError('Only faculty can set High priority')
-      return
-    }
-    setFormData(prev => ({ ...prev, priority }))
-  }
+    setFormData((prev) => ({ ...prev, priority }));
+  };
 
   // Validate form
   const validate = () => {
-    const newErrors = {}
+    const newErrors = {};
+
     if (!formData.subject.trim()) {
-      newErrors.subject = 'Subject is required'
+      newErrors.subject = 'Subject is required';
     } else if (formData.subject.length < 5) {
-      newErrors.subject = 'Subject must be at least 5 characters'
+      newErrors.subject = 'Subject must be at least 5 characters';
     } else if (formData.subject.length > 100) {
-      newErrors.subject = 'Subject must not exceed 100 characters'
+      newErrors.subject = 'Subject must not exceed 100 characters';
     }
 
-    if (!formData.category) newErrors.category = 'Please select a category'
+    if (!formData.category) newErrors.category = 'Please select a category';
 
     if (!formData.location.trim()) {
-      newErrors.location = 'Location is required'
+      newErrors.location = 'Location is required';
     } else if (formData.location.length < 5) {
-      newErrors.location = 'Location must be at least 5 characters'
+      newErrors.location = 'Location must be at least 5 characters';
     }
 
     if (!formData.description.trim()) {
-      newErrors.description = 'Description is required'
+      newErrors.description = 'Description is required';
     } else if (formData.description.length < 20) {
-      newErrors.description = 'Description must be at least 20 characters'
+      newErrors.description = 'Description must be at least 20 characters';
     } else if (formData.description.length > 500) {
-      newErrors.description = 'Description must not exceed 500 characters'
+      newErrors.description = 'Description must not exceed 500 characters';
     }
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   // Handle drag events
   const handleDrag = (e) => {
-    e.preventDefault()
-    e.stopPropagation()
+    e.preventDefault();
+    e.stopPropagation();
     if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true)
+      setDragActive(true);
     } else if (e.type === 'dragleave') {
-      setDragActive(false)
+      setDragActive(false);
     }
-  }
+  };
 
   // Handle drop
   const handleDrop = (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setDragActive(false)
-    const files = Array.from(e.dataTransfer.files)
-    handleImageFiles(files)
-  }
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    const files = Array.from(e.dataTransfer.files);
+    handleImageFiles(files);
+  };
 
-  // ✅ FIXED: Handle image files - store actual file object
+  // Handle image files - store actual file object
   const handleImageFiles = (files) => {
     if (images.length + files.length > 3) {
-      showError('Maximum 3 images allowed')
-      return
+      showError('Maximum 3 images allowed');
+      return;
     }
 
-    const validFiles = files.filter(file => {
+    const validFiles = files.filter((file) => {
       if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
-        showError(`${file.name} is not a valid image (only JPG/PNG allowed)`)
-        return false
+        showError(`${file.name} is not a valid image (only JPG/PNG allowed)`);
+        return false;
       }
       if (file.size > 2 * 1024 * 1024) {
-        showError(`${file.name} exceeds 2MB limit`)
-        return false
+        showError(`${file.name} exceeds 2MB limit`);
+        return false;
       }
-      return true
-    })
+      return true;
+    });
 
-    const newImages = validFiles.map(file => ({
-      file: file,  // ✅ Store actual file object
+    const newImages = validFiles.map((file) => ({
+      file,
       preview: URL.createObjectURL(file),
-      name: file.name
-    }))
+      name: file.name,
+    }));
 
-    setImages(prev => [...prev, ...newImages])
-  }
+    setImages((prev) => [...prev, ...newImages]);
+  };
 
   // Remove image
   const removeImage = (index) => {
-    setImages(prev => {
-      const newImages = [...prev]
-      URL.revokeObjectURL(newImages[index].preview)
-      newImages.splice(index, 1)
-      return newImages
-    })
-  }
+    setImages((prev) => {
+      const newImages = [...prev];
+      URL.revokeObjectURL(newImages[index].preview);
+      newImages.splice(index, 1);
+      return newImages;
+    });
+  };
 
   // Handle PDF upload
   const handlePdfChange = (e) => {
-    const file = e.target.files[0]
-    if (!file) return
+    const file = e.target.files[0];
+    if (!file) return;
 
     if (file.type !== 'application/pdf') {
-      showError('Only PDF files are allowed')
-      return
+      showError('Only PDF files are allowed');
+      return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      showError('PDF file must not exceed 5MB')
-      return
+      showError('PDF file must not exceed 5MB');
+      return;
     }
-    setPdf(file)
-  }
+    setPdf(file);
+  };
 
   // Remove PDF
   const removePdf = () => {
-    setPdf(null)
-  }
+    setPdf(null);
+  };
 
-  // ✅ FIXED: Handle submit with FormData
+  // Handle submit with FormData
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!validate()) {
-      showError('Please fix the errors before submitting')
-      return
+      showError('Please fix the errors before submitting');
+      return;
     }
 
-    setLoading(true)
+    setLoading(true);
 
     try {
-      const token = localStorage.getItem('token')
-      
-      // ✅ Use FormData for file uploads
-      const submitData = new FormData()
-      
-      // Append text fields
-      submitData.append('subject', formData.subject)
-      submitData.append('category', formData.category)
-      submitData.append('location', formData.location)
-      submitData.append('priority', formData.priority)
-      submitData.append('description', formData.description)
-      submitData.append('isAnonymous', formData.isAnonymous)
+      const token = localStorage.getItem('token');
 
-      // ✅ Append image files (actual file objects)
+      const submitData = new FormData();
+      submitData.append('subject', formData.subject);
+      submitData.append('category', formData.category);
+      submitData.append('location', formData.location);
+      submitData.append('priority', formData.priority);
+      submitData.append('description', formData.description);
+      submitData.append('isAnonymous', formData.isAnonymous);
+
       images.forEach((img) => {
-        submitData.append('images', img.file)
-      })
+        submitData.append('images', img.file);
+      });
 
-      // ✅ Append PDF file with correct field name
       if (pdf) {
-        submitData.append('pdfDocument', pdf)
+        submitData.append('pdfDocument', pdf);
       }
 
-      // API call
-      const response = await api.submitComplaint(submitData, token)
-
-      success(`Complaint ${response.id || response.complaint?.complaintId || ''} submitted successfully!`)
-      setTimeout(() => navigate('/user/complaints'), 1000)
-
+      const response = await api.submitComplaint(submitData, token);
+      success(`Complaint ${response.id || response.complaint?.complaintId || ''} submitted successfully!`);
+      setTimeout(() => navigate('/user/complaints'), 1000);
     } catch (err) {
-      console.error('Submit error:', err)
-      showError(err.response?.data?.message || 'Failed to submit complaint. Please try again.')
+      console.error('Submit error:', err);
+      showError(err.response?.data?.message || 'Failed to submit complaint. Please try again.');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   // Character counter color
   const getCounterColor = (current, max) => {
-    const percentage = (current / max) * 100
-    if (percentage < 50) return 'text-green-600 dark:text-green-400'
-    if (percentage < 80) return 'text-yellow-600 dark:text-yellow-400'
-    return 'text-red-600 dark:text-red-400'
-  }
+    const percentage = (current / max) * 100;
+    if (percentage < 50) return 'text-green-600 dark:text-green-400';
+    if (percentage < 80) return 'text-yellow-600 dark:text-yellow-400';
+    return 'text-red-600 dark:text-red-400';
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-4xl mx-auto"> <div className="mb-6 sm:mb-8 animate-fadeIn">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="mb-6 sm:mb-8 animate-fadeIn">
           <button
             onClick={() => navigate(-1)}
             className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 mb-4 transition-colors group"
@@ -271,15 +279,13 @@ const SubmitComplaint = () => {
           </div>
         </div>
 
-        {/* STICKY PROGRESS BAR */}
+        {/* Sticky Progress Bar */}
         <div className="sticky top-16 z-40 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-4 bg-gradient-to-r from-white/95 to-gray-50/95 dark:from-gray-900/95 dark:to-gray-800/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 shadow-lg mb-6">
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center gap-4">
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    Form Progress
-                  </p>
+                  <p className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">Form Progress</p>
                   <p className="text-xs sm:text-sm font-bold text-indigo-600 dark:text-indigo-400">
                     {progress}%
                   </p>
@@ -370,11 +376,13 @@ const SubmitComplaint = () => {
                       }`}
                     >
                       <div className="text-3xl mb-2">{categoryIcons[cat]}</div>
-                      <p className={`text-sm font-semibold ${
-                        formData.category === cat
-                          ? 'text-indigo-600 dark:text-indigo-400'
-                          : 'text-gray-700 dark:text-gray-300'
-                      }`}>
+                      <p
+                        className={`text-sm font-semibold ${
+                          formData.category === cat
+                            ? 'text-indigo-600 dark:text-indigo-400'
+                            : 'text-gray-700 dark:text-gray-300'
+                        }`}
+                      >
                         {cat}
                       </p>
                     </button>
@@ -416,14 +424,14 @@ const SubmitComplaint = () => {
                 )}
               </div>
 
-              {/* Priority */}
+              {/* Priority – 3 buttons */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                   <RiFlagLine className="inline h-4 w-4 mr-1" />
                   Priority <span className="text-red-500">*</span>
                 </label>
                 <div className="grid grid-cols-3 gap-3">
-                  {PRIORITIES.filter(p => user?.role === 'faculty' || p !== 'High').map((priority) => (
+                  {PRIORITIES.map((priority) => (
                     <button
                       key={priority}
                       type="button"
@@ -438,12 +446,6 @@ const SubmitComplaint = () => {
                     </button>
                   ))}
                 </div>
-                {user?.role === 'student' && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 flex items-center gap-1">
-                    <RiAlertLine className="h-4 w-4" />
-                    High priority is only available for faculty members
-                  </p>
-                )}
               </div>
 
               {/* Description */}
@@ -473,7 +475,12 @@ const SubmitComplaint = () => {
                       {errors.description}
                     </p>
                   )}
-                  <p className={`text-xs ml-auto font-semibold ${getCounterColor(formData.description.length, 500)}`}>
+                  <p
+                    className={`text-xs ml-auto font-semibold ${getCounterColor(
+                      formData.description.length,
+                      500
+                    )}`}
+                  >
                     {formData.description.length}/500
                   </p>
                 </div>
@@ -482,7 +489,10 @@ const SubmitComplaint = () => {
           </div>
 
           {/* Attachments Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden animate-scaleIn" style={{ animationDelay: '0.1s' }}>
+          <div
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden animate-scaleIn"
+            style={{ animationDelay: '0.1s' }}
+          >
             <div className="bg-gradient-to-r from-purple-500 to-pink-600 px-6 py-4">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <RiUploadCloudLine className="h-6 w-6" />
@@ -516,7 +526,11 @@ const SubmitComplaint = () => {
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     />
                     <div className="text-center">
-                      <RiUploadCloudLine className={`h-12 w-12 mx-auto mb-3 ${dragActive ? 'text-indigo-600 animate-bounce' : 'text-gray-400'}`} />
+                      <RiUploadCloudLine
+                        className={`h-12 w-12 mx-auto mb-3 ${
+                          dragActive ? 'text-indigo-600 animate-bounce' : 'text-gray-400'
+                        }`}
+                      />
                       <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
                         {dragActive ? 'Drop images here' : 'Drag & drop images here'}
                       </p>
@@ -531,7 +545,10 @@ const SubmitComplaint = () => {
                 {images.length > 0 && (
                   <div className="grid grid-cols-3 gap-4 mt-4">
                     {images.map((image, index) => (
-                      <div key={index} className="relative group aspect-square bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-600 hover:border-indigo-500 transition-all">
+                      <div
+                        key={index}
+                        className="relative group aspect-square bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-600 hover:border-indigo-500 transition-all"
+                      >
                         <img
                           src={image.preview}
                           alt={`Upload ${index + 1}`}
@@ -601,7 +618,10 @@ const SubmitComplaint = () => {
           </div>
 
           {/* Privacy Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden animate-scaleIn" style={{ animationDelay: '0.2s' }}>
+          <div
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden animate-scaleIn"
+            style={{ animationDelay: '0.2s' }}
+          >
             <div className="p-6">
               <label className="flex items-start gap-4 cursor-pointer group">
                 <input
@@ -627,7 +647,10 @@ const SubmitComplaint = () => {
           </div>
 
           {/* Submit Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 animate-scaleIn" style={{ animationDelay: '0.3s' }}>
+          <div
+            className="flex flex-col sm:flex-row gap-4 animate-scaleIn"
+            style={{ animationDelay: '0.3s' }}
+          >
             <button
               type="button"
               onClick={() => navigate(-1)}
@@ -657,11 +680,10 @@ const SubmitComplaint = () => {
               )}
             </button>
           </div>
-  </form>
+        </form>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default SubmitComplaint
-
+export default SubmitComplaint;

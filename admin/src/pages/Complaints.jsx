@@ -1,8 +1,8 @@
-// src/pages/Complaints.jsx - COMPLETE FIXED
+// src/pages/Complaints.jsx
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import ComplaintFilters from "../components/ComplaintFilters";
-import ComplaintTable from "../components/ComplaintTable/myComplaintTable";
+import ComplaintTable from "../components/ComplaintTable/ComplaintTable";
 import ComplaintDetails from "../components/ComplaintDetails";
 import Loading from "../components/Loading";
 import EmptyState from "../components/EmptyState";
@@ -25,6 +25,7 @@ const Complaints = () => {
   const location = useLocation();
   const { success, error } = useToast();
 
+  // Initialize filters from URL state or defaults
   const initialFilters = useMemo(() => {
     if (location.state?.filterStatus) {
       const filterValue = location.state.filterStatus;
@@ -33,41 +34,68 @@ const Complaints = () => {
         status: filterValue === "all" ? "" : filterValue,
         search: "",
         dateRange: "all",
+        priority: "",
       };
     }
-    return { status: "", search: "", dateRange: "all" };
+    return { status: "", search: "", dateRange: "all", priority: "" };
   }, [location.state]);
 
+  // State management
   const [complaints, setComplaints] = useState([]);
   const [filteredComplaints, setFilteredComplaints] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState(initialFilters);
   const [selectedComplaint, setSelectedComplaint] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false); // ✅ NEW: Track edit mode
   const [filterHighlight, setFilterHighlight] = useState(
     !!location.state?.filterStatus
   );
 
   const token = getAdminToken() || localStorage.getItem("token");
 
+  // Apply filters to complaints list
   const applyFilters = useCallback((complaintsToFilter, currentFilters) => {
     let filtered = [...complaintsToFilter];
 
+    // Filter by status
     if (currentFilters.status && currentFilters.status !== "All") {
-      filtered = filtered.filter((c) => c.status === currentFilters.status);
-    }
-
-    if (currentFilters.search && currentFilters.search.trim() !== "") {
-      const term = currentFilters.search.toLowerCase();
       filtered = filtered.filter(
         (c) =>
-          c.title?.toLowerCase().includes(term) ||
-          c.subject?.toLowerCase().includes(term) ||
-          c.description?.toLowerCase().includes(term) ||
-          c.category?.toLowerCase().includes(term)
+          (c.status || c.Status || "").toString() === currentFilters.status
       );
     }
 
+    // Filter by priority
+    if (currentFilters.priority && currentFilters.priority !== "all") {
+      const target = currentFilters.priority.toLowerCase();
+      filtered = filtered.filter((c) => {
+        const p = (c.priority || c.Priority || "").toString().toLowerCase();
+        if (target === "high") return p.includes("high") || p.includes("urgent");
+        if (target === "medium") return p.includes("medium");
+        if (target === "low") return p.includes("low");
+        return true;
+      });
+    }
+
+    // Filter by search term
+    if (currentFilters.search && currentFilters.search.trim() !== "") {
+      const term = currentFilters.search.toLowerCase();
+      filtered = filtered.filter((c) => {
+        const title = (c.title || c.subject || "").toString().toLowerCase();
+        const desc = (c.description || "").toString().toLowerCase();
+        const cat = (c.category || c.department || "").toString().toLowerCase();
+        const loc = (c.location || "").toString().toLowerCase();
+        return (
+          title.includes(term) ||
+          desc.includes(term) ||
+          cat.includes(term) ||
+          loc.includes(term)
+        );
+      });
+    }
+
+    // Filter by date range
     if (currentFilters.dateRange && currentFilters.dateRange !== "all") {
       const now = new Date();
       let threshold = new Date();
@@ -100,6 +128,7 @@ const Complaints = () => {
     setFilteredComplaints(filtered);
   }, []);
 
+  // Fetch all complaints from backend
   useEffect(() => {
     const fetchComplaints = async () => {
       try {
@@ -139,23 +168,32 @@ const Complaints = () => {
     }
   }, [token, applyFilters, initialFilters, error]);
 
+  // Re-apply filters when they change
   useEffect(() => {
     applyFilters(complaints, filters);
   }, [filters, complaints, applyFilters]);
 
+  // Handle filter changes
   const handleFilterChange = useCallback((newFilters) => {
-    setFilters(newFilters);
+    setFilters((prev) => ({
+      ...prev,
+      ...newFilters,
+    }));
   }, []);
 
+  // Clear all filters
   const handleClearFilters = useCallback(() => {
-    setFilters({ status: "", search: "", dateRange: "all" });
+    const cleared = { status: "", search: "", dateRange: "all", priority: "" };
+    setFilters(cleared);
     setFilterHighlight(false);
+    applyFilters(complaints, cleared);
     success("🔄 Filters cleared!");
-  }, [success]);
+  }, [applyFilters, complaints, success]);
 
-  const handleRowClick = useCallback(
-    async (complaintId) => {
-      console.log("🎯 handleRowClick FIRED with ID:", complaintId);
+  // Open complaint details modal (view mode)
+  const openComplaintDetails = useCallback(
+    async (complaintId, editMode = false) => {
+      console.log("🎯 openComplaintDetails with ID:", complaintId, "Edit mode:", editMode);
 
       try {
         if (!complaintId) {
@@ -169,15 +207,15 @@ const Complaints = () => {
         console.log("✅ Complaint details fetched:", complaintDetails);
 
         setSelectedComplaint(complaintDetails);
+        setIsEditMode(editMode); // ✅ Set edit mode
         setIsModalOpen(true);
-        console.log("✅ Modal state set - isOpen: true");
 
         logActivity(ACTIVITY_TYPES.COMPLAINT_VIEW, {
           page: "Complaints",
           complaintId,
           complaintTitle:
             complaintDetails?.title || complaintDetails?.subject || "Unknown",
-          action: "Viewed complaint details",
+          action: editMode ? "Editing complaint" : "Viewed complaint details",
         });
       } catch (err) {
         console.error("❌ Error loading complaint:", err);
@@ -187,9 +225,36 @@ const Complaints = () => {
     [token, error]
   );
 
+  // Handle row click (view mode)
+  const handleRowClick = useCallback(
+    (complaintId) => {
+      openComplaintDetails(complaintId, false);
+    },
+    [openComplaintDetails]
+  );
+
+  // ✅ Handle action click from 3-dot menu (view/edit)
+  const handleActionClick = useCallback(
+    (action, complaint) => {
+      if (!complaint?._id) return;
+
+      if (action === "view") {
+        openComplaintDetails(complaint._id, false); // View mode
+      } else if (action === "edit") {
+        openComplaintDetails(complaint._id, true); // Edit mode
+      }
+    },
+    [openComplaintDetails]
+  );
+
+  // Handle status update from modal
   const handleStatusUpdate = useCallback(
     async (complaintId, newStatus, remarks) => {
-      console.log("📝 handleStatusUpdate called:", { complaintId, newStatus, remarks });
+      console.log("📝 handleStatusUpdate called:", {
+        complaintId,
+        newStatus,
+        remarks,
+      });
 
       try {
         const updateSuccess = await updateComplaintStatus(
@@ -214,7 +279,9 @@ const Complaints = () => {
           success(`✅ Complaint updated to ${newStatus}`);
           setIsModalOpen(false);
           setSelectedComplaint(null);
+          setIsEditMode(false);
 
+          // Refresh complaints list
           const refreshed = await getAllComplaints(token);
           if (Array.isArray(refreshed)) {
             setComplaints(refreshed);
@@ -231,15 +298,44 @@ const Complaints = () => {
     [token, selectedComplaint, filters, applyFilters, success, error]
   );
 
+  // ✅ NEW: Handle complaint update (from edit mode)
+  const handleComplaintUpdate = useCallback(async () => {
+    console.log("🔄 Complaint updated, refreshing list...");
+    
+    try {
+      // Close modal
+      setIsModalOpen(false);
+      setSelectedComplaint(null);
+      setIsEditMode(false);
+
+      // Refresh complaints
+      const refreshed = await getAllComplaints(token);
+      if (Array.isArray(refreshed)) {
+        setComplaints(refreshed);
+        applyFilters(refreshed, filters);
+      }
+
+      success("✅ Complaint updated successfully!");
+    } catch (err) {
+      console.error("Error refreshing complaints:", err);
+      error("⚠️ Failed to refresh complaints list.");
+    }
+  }, [token, filters, applyFilters, success, error]);
+
+  // Close modal
   const handleCloseModal = useCallback(() => {
     console.log("🚪 Closing modal");
     setIsModalOpen(false);
     setSelectedComplaint(null);
+    setIsEditMode(false);
   }, []);
 
+  // Export to CSV
   const handleExportCSV = useCallback(() => {
     try {
-      const filename = `complaints_${new Date().toISOString().split("T")[0]}.csv`;
+      const filename = `complaints_${new Date()
+        .toISOString()
+        .split("T")[0]}.csv`;
       exportToCSV(filteredComplaints, filename);
 
       logActivity(ACTIVITY_TYPES.COMPLAINT_EXPORT, {
@@ -260,6 +356,7 @@ const Complaints = () => {
     }
   }, [filteredComplaints, filters, success, error]);
 
+  // Print complaints
   const handlePrint = useCallback(() => {
     try {
       exportToPrint(filteredComplaints);
@@ -277,12 +374,19 @@ const Complaints = () => {
     }
   }, [filteredComplaints, filters, success, error]);
 
+  // Get empty state type
   const getEmptyStateType = () => {
     if (filters.search) return "search";
-    if (filters.status || filters.dateRange !== "all") return "filter";
+    if (
+      filters.status ||
+      filters.dateRange !== "all" ||
+      (filters.priority && filters.priority !== "")
+    )
+      return "filter";
     return "complaints";
   };
 
+  // Show loading state
   if (isLoading) {
     return (
       <div className="p-4 sm:p-6 lg:p-8">
@@ -293,9 +397,8 @@ const Complaints = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Page Container */}
       <div className="p-4 sm:p-6 lg:p-8">
-        {/* Header */}
+        {/* Page Header */}
         <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-gray-200">
             Manage Complaints
@@ -305,7 +408,7 @@ const Complaints = () => {
           </p>
         </div>
 
-        {/* Filters */}
+        {/* Filters Component */}
         <div className="mb-4">
           <ComplaintFilters
             onFilterChange={handleFilterChange}
@@ -356,7 +459,7 @@ const Complaints = () => {
           </div>
         )}
 
-        {/* Table Header with Export */}
+        {/* Table Header with Export Buttons */}
         <div className="bg-white dark:bg-gray-800 p-4 rounded-t-lg shadow-sm border border-gray-200 dark:border-gray-700 border-b-0">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-200">
@@ -384,7 +487,7 @@ const Complaints = () => {
           </div>
         </div>
 
-        {/* Table Content */}
+        {/* Table or Empty State */}
         {filteredComplaints.length === 0 ? (
           <EmptyState
             type={getEmptyStateType()}
@@ -394,10 +497,9 @@ const Complaints = () => {
           />
         ) : (
           <ComplaintTable
-            complaints={
-filteredComplaints}
+            complaints={filteredComplaints}
             onRowClick={handleRowClick}
-            onActionClick={handleRowClick}
+            onActionClick={handleActionClick}
           />
         )}
       </div>
@@ -409,6 +511,8 @@ filteredComplaints}
           isOpen={isModalOpen}
           onClose={handleCloseModal}
           onStatusUpdate={handleStatusUpdate}
+          onComplaintUpdate={handleComplaintUpdate} // ✅ NEW: Pass update handler
+          isEditMode={isEditMode} // ✅ NEW: Pass edit mode flag
         />
       )}
     </div>
@@ -416,3 +520,4 @@ filteredComplaints}
 };
 
 export default Complaints;
+

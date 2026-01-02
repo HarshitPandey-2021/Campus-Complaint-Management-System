@@ -1,5 +1,6 @@
+// src/pages/MyComplaints.jsx
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   RiSearchLine,
   RiFilterLine,
@@ -10,22 +11,37 @@ import {
   RiAlertLine,
   RiCloseCircleLine,
   RiLoader4Line,
-  RiDownloadLine
+  RiDownloadLine,
 } from 'react-icons/ri';
 import Sidebar from '../components/layout/Sidebar';
 import api from '../api';
 
 const MyComplaints = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // initial status from Dashboard navigate state (if any)
+  const initialStatus =
+    location.state?.filterStatus
+      ? location.state.filterStatus.toLowerCase()
+      : 'all';
+
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [categoryFilter, setCategoryFilter] = useState('all');
 
   useEffect(() => {
     fetchComplaints();
   }, []);
+
+  // optional: clear state in URL after applying filter once
+  useEffect(() => {
+    if (location.state?.filterStatus) {
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, location.pathname, navigate]);
 
   const fetchComplaints = async () => {
     try {
@@ -33,7 +49,6 @@ const MyComplaints = () => {
       const token = localStorage.getItem('token');
       const data = await api.getMyComplaints(token);
       setComplaints(data);
-      // For debugging
       if (data && data.length) {
         console.log('Sample Complaint:', data[0]);
       }
@@ -99,7 +114,8 @@ const MyComplaints = () => {
       complaint.complaintId?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus =
-      statusFilter === 'all' || complaint.status?.toLowerCase() === statusFilter.toLowerCase();
+      statusFilter === 'all' ||
+      complaint.status?.toLowerCase() === statusFilter.toLowerCase();
 
     const matchesCategory =
       categoryFilter === 'all' || complaint.category === categoryFilter;
@@ -156,11 +172,13 @@ const MyComplaints = () => {
         <div>
           <span className="text-gray-500 dark:text-gray-400">Date:</span>
           <span className="ml-2 font-medium text-gray-700 dark:text-gray-300">
-            {complaint.submittedAt? new Date(complaint.submittedAt).toLocaleDateString('en-IN'): 'N/A'}
-</span>
-
+            {complaint.submittedAt
+              ? new Date(complaint.submittedAt).toLocaleDateString('en-IN')
+              : 'N/A'}
+          </span>
         </div>
       </div>
+
       {complaint.assignedTo && (
         <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-sm border border-blue-200 dark:border-blue-700">
           <span className="text-gray-600 dark:text-gray-400">Assigned to:</span>
@@ -191,7 +209,7 @@ const MyComplaints = () => {
           <RiEyeLine className="w-4 h-4" />
           View Details
         </button>
-        {(complaint.status?.toLowerCase() === 'pending' && !complaint.assignedTo) && (
+        {complaint.status?.toLowerCase() === 'pending' && !complaint.assignedTo && (
           <button
             onClick={() => navigate(`/user/complaints/${complaint._id}/edit`)}
             className="flex items-center justify-center gap-2 px-4 py-2.5 border-2 border-indigo-600 text-indigo-600 dark:border-indigo-500 dark:text-indigo-400 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors font-semibold"
@@ -216,6 +234,8 @@ const MyComplaints = () => {
             View and manage all your submitted complaints
           </p>
         </div>
+
+        {/* Filters */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 sm:p-6 mb-6 border border-gray-200 dark:border-gray-700 animate-fadeIn">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Search */}
@@ -229,6 +249,7 @@ const MyComplaints = () => {
                 className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-200 transition-all"
               />
             </div>
+
             {/* Status Filter */}
             <div className="relative">
               <RiFilterLine className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
@@ -239,11 +260,12 @@ const MyComplaints = () => {
               >
                 <option value="all">All Status</option>
                 <option value="pending">Pending</option>
-                <option value="in-progress">In Progress</option>
+                <option value="in progress">In Progress</option>
                 <option value="resolved">Resolved</option>
                 <option value="rejected">Rejected</option>
               </select>
             </div>
+
             {/* Category Filter */}
             <div className="relative">
               <RiFilterLine className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
@@ -265,6 +287,8 @@ const MyComplaints = () => {
             </div>
           </div>
         </div>
+
+        {/* List / Empty / Loading */}
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64">
             <RiLoader4Line className="w-12 h-12 animate-spin text-indigo-600 dark:text-indigo-400 mb-4" />
@@ -279,7 +303,7 @@ const MyComplaints = () => {
             <p className="text-gray-600 dark:text-gray-400 mb-6">
               {searchTerm || statusFilter !== 'all' || categoryFilter !== 'all'
                 ? 'Try adjusting your filters to see more results'
-                : 'You haven\'t submitted any complaints yet'}
+                : "You haven't submitted any complaints yet"}
             </p>
             {!searchTerm && statusFilter === 'all' && categoryFilter === 'all' && (
               <button
@@ -294,7 +318,11 @@ const MyComplaints = () => {
           <div className="animate-fadeIn">
             <div className="mb-4 flex items-center justify-between">
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Showing <span className="font-semibold text-indigo-600 dark:text-indigo-400">{filteredComplaints.length}</span> of <span className="font-semibold">{complaints.length}</span> complaints
+                Showing{' '}
+                <span className="font-semibold text-indigo-600 dark:text-indigo-400">
+                  {filteredComplaints.length}
+                </span>{' '}
+                of <span className="font-semibold">{complaints.length}</span> complaints
               </p>
               {(searchTerm || statusFilter !== 'all' || categoryFilter !== 'all') && (
                 <button

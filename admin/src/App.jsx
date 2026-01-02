@@ -1,4 +1,4 @@
-// src/App.jsx (admin - 5173)
+// src/App.jsx (admin - 5173) - FIXED VERSION
 import React, { useState, useEffect } from "react";
 import {
   BrowserRouter as Router,
@@ -11,8 +11,6 @@ import {
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
 import Breadcrumb from "./components/Breadcrumb";
-
-
 
 import useKeyboardShortcuts from "./hooks/useKeyboardShortcuts";
 import { ToastProvider } from "./context/ToastContext";
@@ -41,6 +39,7 @@ function useAuthFromQuery() {
     const authParam = params.get("auth");
 
     if (!authParam) {
+      // No auth param → just mark as ready
       setAuthReady(true);
       return;
     }
@@ -50,20 +49,28 @@ function useAuthFromQuery() {
       console.log("✅ Parsed auth from URL:", { token, user });
 
       if (token && user) {
-        // Admin origin ke localStorage me token + user save
+        // ✅ Save token in all expected keys for admin portal
+        localStorage.setItem("adminToken", token);
         localStorage.setItem("token", token);
+        localStorage.setItem("authToken", token);
+
+        // ✅ Cache user in multiple keys for compatibility
+        localStorage.setItem("adminProfile", JSON.stringify(user));
         localStorage.setItem("user", JSON.stringify(user));
+        localStorage.setItem("ccms-admin-session", JSON.stringify(user));
+        
+        console.log("✅ Token saved to localStorage");
       }
     } catch (e) {
-      console.error("Invalid auth data in URL", e);
+      console.error("❌ Invalid auth data in URL", e);
     } finally {
-      // URL se ?auth hata do
+      // Remove ?auth from URL to keep clean URLs after first load
       params.delete("auth");
       const newQuery = params.toString();
       const newUrl = location.pathname + (newQuery ? `?${newQuery}` : "");
       window.history.replaceState({}, "", newUrl);
-      
-      // ✅ Mark auth as ready after processing
+
+      // ✅ Mark auth as processed
       setAuthReady(true);
     }
   }, [location.search, location.pathname]);
@@ -71,27 +78,50 @@ function useAuthFromQuery() {
   return authReady;
 }
 
-/* ------------------ ProtectedRoute (localStorage token) ------------------ */
+/* ------------------ ✅ FIXED ProtectedRoute ------------------ */
 
 function ProtectedRoute({ children, authReady }) {
-  const token = localStorage.getItem("token");
+  // ✅ Check multiple token sources
+  const token = 
+    localStorage.getItem("token") || 
+    localStorage.getItem("adminToken") || 
+    localStorage.getItem("authToken");
 
-  // ✅ Wait for auth to be processed
+  // ✅ Also check if user data exists
+  const user = 
+    localStorage.getItem("user") || 
+    localStorage.getItem("adminProfile");
+
+  console.log("🔒 ProtectedRoute:", {
+    authReady,
+    hasToken: !!token,
+    hasUser: !!user,
+    tokenPreview: token ? token.substring(0, 20) + "..." : "none"
+  });
+
+  // Wait until URL auth is processed
   if (!authReady) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4" />
           <p className="text-gray-600 dark:text-gray-400">Authenticating...</p>
         </div>
       </div>
     );
   }
 
-  if (!token) {
+  // ✅ Check both token AND user data
+  if (!token || !user) {
+    console.error("❌ Missing credentials:", {
+      token: !!token,
+      user: !!user
+    });
     return <Navigate to="/unauthorized" replace />;
   }
 
+  // ✅ All checks passed
+  console.log("✅ Access granted");
   return children;
 }
 

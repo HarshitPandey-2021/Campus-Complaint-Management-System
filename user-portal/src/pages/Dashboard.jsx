@@ -1,10 +1,9 @@
 // src/pages/Dashboard.jsx (user portal - 3001)
-import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useToast } from "../hooks/useToast";
 import Badge from "../components/common/Badge";
-import RoleBadge from "../components/common/RoleBadge";
 import Loading from "../components/common/Loading";
 import useCountUp from "../hooks/useCountUp";
 import { getMyComplaints, getMyStats } from "../api";
@@ -21,7 +20,6 @@ import {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useAuth();
   const { info, success } = useToast();
 
@@ -39,16 +37,16 @@ const Dashboard = () => {
   const inProgressCount = useCountUp(stats.inProgress, 1200, 0);
   const resolvedCount = useCountUp(stats.resolved, 1200, 0);
 
+  // Fetch complaints + stats
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
+
         const token = localStorage.getItem("token");
-        
+
         if (!token) {
           console.warn("No token found, redirecting to landing login");
-          // ✅ Student portal ke landing page par redirect (5174), not 5173
           window.location.href = "http://localhost:5174/login";
           return;
         }
@@ -79,43 +77,59 @@ const Dashboard = () => {
     fetchData();
   }, [info]);
 
+  // ONE-TIME welcome toast PER SESSION
+  const welcomeShownRef = useRef(false);
+
   useEffect(() => {
-    if (!loading && user) {
-      setTimeout(() => {
-        if (stats.pending > 0) {
-          info(
-            `Welcome back, ${user.name}! You have ${stats.pending} complaint${
-              stats.pending > 1 ? "s" : ""
-            } waiting to be reviewed.`
-          );
-        } else if (stats.total > 0) {
-          success("Great! All your complaints are being handled or resolved!");
-        } else {
-          info(`Welcome, ${user.name}! Submit your first complaint to get started.`);
-        }
-      }, 1500);
+    console.log("💡 Dashboard toast effect:", {
+      loading,
+      hasUser: !!user,
+      stats,
+      flag: sessionStorage.getItem("user-dashboard-welcome-seen"),
+    });
+
+    if (loading) return;
+    if (!user) return;
+
+    if (welcomeShownRef.current) return;
+
+    const hasSeenWelcome =
+      sessionStorage.getItem("user-dashboard-welcome-seen") === "true";
+
+    if (hasSeenWelcome) {
+      welcomeShownRef.current = true;
+      return;
     }
-  }, [loading, stats, info, success, user]);
+
+    const timer = setTimeout(() => {
+      if (stats.pending > 0) {
+        info(
+          `Welcome back, ${user.name}! You have ${stats.pending} complaint${
+            stats.pending > 1 ? "s" : ""
+          } waiting to be reviewed.`
+        );
+      } else if (stats.total > 0) {
+        success("Great! All your complaints are being handled or resolved!");
+      } else {
+        info(
+          `Welcome, ${user.name}! Submit your first complaint to get started.`
+        );
+      }
+
+      sessionStorage.setItem("user-dashboard-welcome-seen", "true");
+      welcomeShownRef.current = true;
+      console.log(
+        "✅ Toast shown & session flag set:",
+        sessionStorage.getItem("user-dashboard-welcome-seen")
+      );
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, [loading, user, stats.pending, stats.total, info, success]);
 
   const handleStatClick = (status) => {
+    // yahi state MyComplaints me read hogi
     navigate("/user/complaints", { state: { filterStatus: status } });
-  };
-
-  const getStatusColor = (status) => {
-    const colors = {
-      Pending:
-        "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-      "In Progress":
-        "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-      Resolved:
-        "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-      Rejected:
-        "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-    };
-    return (
-      colors[status] ||
-      "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
-    );
   };
 
   const formatDate = (dateString) => {
@@ -139,7 +153,7 @@ const Dashboard = () => {
           Welcome back, {user?.name}! 👋
         </h1>
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-          Here's an overview of your complaints and their current status
+          Here&apos;s an overview of your complaints and their current status
         </p>
       </div>
 
@@ -154,7 +168,9 @@ const Dashboard = () => {
             <RiFileListLine className="h-8 w-8 opacity-80" />
             <div className="text-3xl font-bold">{totalCount}</div>
           </div>
-          <div className="text-sm font-medium opacity-90">Total Complaints</div>
+          <div className="text-sm font-medium opacity-90">
+            Total Complaints
+          </div>
         </div>
 
         {/* Pending */}
@@ -303,5 +319,7 @@ const Dashboard = () => {
         )}
       </div>
     </div>
-  );};
+  );
+};
+
 export default Dashboard;

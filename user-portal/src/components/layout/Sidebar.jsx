@@ -1,21 +1,34 @@
 // src/components/layout/Sidebar.jsx
+// Sidebar for user portal: dashboard, submit complaint, list, profile.
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { 
-  RiDashboardLine, 
-  RiFileListLine, 
-  RiAddCircleLine, 
+import {
+  RiDashboardLine,
+  RiFileListLine,
+  RiAddCircleLine,
   RiUserLine,
-  RiCloseLine 
+  RiCloseLine,
 } from 'react-icons/ri';
 
 const Sidebar = ({ isOpen, onClose }) => {
+  // Navigation items for sidebar (desktop + mobile)
   const navItems = [
     { path: '/user/dashboard', icon: RiDashboardLine, label: 'Dashboard' },
+
+    // FIX: path must match App.jsx route -> '/user/submit'
     { path: '/user/submit', icon: RiAddCircleLine, label: 'Submit Complaint' },
+
     { path: '/user/complaints', icon: RiFileListLine, label: 'My Complaints' },
     { path: '/user/profile', icon: RiUserLine, label: 'Profile' },
   ];
+
+  // Helper to generate classes based on active route
+  const linkClasses = (isActive) =>
+    `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+      isActive
+        ? 'bg-indigo-600 text-white shadow-lg'
+        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+    }`;
 
   return (
     <>
@@ -26,13 +39,8 @@ const Sidebar = ({ isOpen, onClose }) => {
             <NavLink
               key={item.path}
               to={item.path}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-                  isActive
-                    ? 'bg-indigo-600 text-white shadow-lg'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`
-              }
+              end
+              className={({ isActive }) => linkClasses(isActive)}
             >
               <item.icon className="h-5 w-5" />
               <span className="font-semibold">{item.label}</span>
@@ -59,14 +67,9 @@ const Sidebar = ({ isOpen, onClose }) => {
               <NavLink
                 key={item.path}
                 to={item.path}
-                onClick={onClose}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-                    isActive
-                      ? 'bg-indigo-600 text-white shadow-lg'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }`
-                }
+                end
+                onClick={onClose} // close drawer after navigation
+                className={({ isActive }) => linkClasses(isActive)}
               >
                 <item.icon className="h-5 w-5" />
                 <span className="font-semibold">{item.label}</span>

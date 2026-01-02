@@ -1,315 +1,281 @@
-// src/components/ComplaintTable/myComplaintTable.jsx
-import React, { useState } from "react";
-import Badge from "../Badge";
+// src/components/ComplaintTable.jsx
+
+import React, { useState, useMemo } from "react";
+import Badge from "./Badge";
+import EmptyState from "./EmptyState";
+import ImageGallery from "./ImageGallery";
+import ActionsDropdown from "./ActionsDropdown";
+import SortIcon from "./SortIcon";
 import {
-  RiEyeLine,
-  RiArrowUpLine,
-  RiArrowDownLine,
-  RiPriceTag3Line,
+  RiMapPinLine,
   RiCalendarLine,
+  RiUserLine,
+  RiPriceTag3Line,
 } from "react-icons/ri";
 
-const ComplaintTable = ({ complaints, onRowClick }) => {
+const ComplaintTable = ({ complaints, onRowClick, onActionClick }) => {
   const [sortConfig, setSortConfig] = useState({
-    key: "createdAt",
+    key: "submittedAt",
     direction: "desc",
   });
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return "Invalid Date";
-      return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
-    } catch {
-      return "Invalid Date";
-    }
-  };
-
-  const sortedComplaints = React.useMemo(() => {
-    let sortableComplaints = [...complaints];
-    if (sortConfig.key !== null) {
-      sortableComplaints.sort((a, b) => {
-        let aValue = a[sortConfig.key];
-        let bValue = b[sortConfig.key];
-
-        if (
-          sortConfig.key === "createdAt" ||
-          sortConfig.key === "submittedAt" ||
-          sortConfig.key === "updatedAt"
-        ) {
-          aValue = new Date(aValue || 0);
-          bValue = new Date(bValue || 0);
-        }
-
-        if (sortConfig.key === "priority") {
-          const priorityOrder = { High: 3, Medium: 2, Low: 1 };
-          aValue = priorityOrder[aValue] || 0;
-          bValue = priorityOrder[bValue] || 0;
-        }
-
-        if (aValue < bValue) {
-          return sortConfig.direction === "asc" ? -1 : 1;
-        }
-        if (aValue > bValue) {
-          return sortConfig.direction === "asc" ? 1 : -1;
-        }
-        return 0;
-      });
-    }
-    return sortableComplaints;
-  }, [complaints, sortConfig]);
+  const [openDropdownId, setOpenDropdownId] = useState(null);
 
   const handleSort = (key) => {
-    let direction = "asc";
-    if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc";
-    }
-    setSortConfig({ key, direction });
-  };
-
-  const SortIcon = ({ columnKey }) => {
-    if (sortConfig.key !== columnKey) {
-      return (
-        <span className="text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
-          ↕
-        </span>
-      );
-    }
-    return sortConfig.direction === "asc" ? (
-      <RiArrowUpLine className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400 ml-1" />
-    ) : (
-      <RiArrowDownLine className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400 ml-1" />
+    setSortConfig((prev) =>
+      prev.key === key
+        ? { key, direction: prev.direction === "asc" ? "desc" : "asc" }
+        : { key, direction: "asc" }
     );
   };
 
-  const getPriorityConfig = (priority) => {
-    const configs = {
-      High: {
-        bg: "bg-red-100 dark:bg-red-900/30",
-        text: "text-red-700 dark:text-red-400",
-        border: "border-red-300 dark:border-red-700",
-        label: "High",
-      },
-      Medium: {
-        bg: "bg-yellow-100 dark:bg-yellow-900/30",
-        text: "text-yellow-700 dark:text-yellow-400",
-        border: "border-yellow-300 dark:border-yellow-700",
-        label: "Medium",
-      },
-      Low: {
-        bg: "bg-green-100 dark:bg-green-900/30",
-        text: "text-green-700 dark:text-green-400",
-        border: "border-green-300 dark:border-green-700",
-        label: "Low",
-      },
-    };
-    return configs[priority] || configs.Low;
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const d = new Date(dateString);
+    if (isNaN(d)) return "Invalid date";
+    return d.toLocaleDateString("en-IN", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
-  if (complaints.length === 0) {
+  const formatDateShort = (dateString) => {
+    if (!dateString) return "N/A";
+    const d = new Date(dateString);
+    if (isNaN(d)) return "Invalid date";
+    return d.toLocaleDateString("en-IN", {
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const getDisplayDate = (c) =>
+    c.createdAt || c.submittedAt || c.date || null;
+
+  const sortedComplaints = useMemo(() => {
+    const sortable = [...complaints];
+    if (!sortConfig.key) return sortable;
+
+    return sortable.sort((a, b) => {
+      const dir = sortConfig.direction === "asc" ? 1 : -1;
+
+      // Date sorting
+      if (
+        sortConfig.key === "submittedAt" ||
+        sortConfig.key === "createdAt" ||
+        sortConfig.key === "date"
+      ) {
+        const ad = new Date(getDisplayDate(a));
+        const bd = new Date(getDisplayDate(b));
+        const at = isNaN(ad) ? 0 : ad.getTime();
+        const bt = isNaN(bd) ? 0 : bd.getTime();
+        if (at < bt) return -1 * dir;
+        if (at > bt) return 1 * dir;
+        return 0;
+      }
+
+      // Priority sorting
+      if (sortConfig.key === "priority") {
+        const order = { High: 3, Medium: 2, Low: 1 };
+        const av = order[a.priority] || 0;
+        const bv = order[b.priority] || 0;
+        if (av < bv) return -1 * dir;
+        if (av > bv) return 1 * dir;
+        return 0;
+      }
+
+      // Generic
+      let aVal = a[sortConfig.key];
+      let bVal = b[sortConfig.key];
+
+      if (typeof aVal === "string" && typeof bVal === "string") {
+        return aVal.localeCompare(bVal) * dir;
+      }
+      if (aVal < bVal) return -1 * dir;
+      if (aVal > bVal) return 1 * dir;
+      return 0;
+    });
+  }, [complaints, sortConfig]);
+
+  if (!sortedComplaints.length) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-b-lg p-12 text-center border border-gray-200 dark:border-gray-700 border-t-0">
-        <p className="text-gray-600 dark:text-gray-400">No complaints found</p>
-      </div>
+      <EmptyState
+        type="complaints"
+        title="No complaints found"
+        description="There are no complaints to display right now."
+      />
     );
   }
 
   return (
-    <>
-      {/* DESKTOP TABLE */}
-      <div className="hidden md:block overflow-x-auto bg-white dark:bg-gray-800 rounded-b-lg shadow-sm border border-gray-200 dark:border-gray-700 border-t-0">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-900">
-            <tr>
-              <th
-                scope="col"
-                className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
-                onClick={() => handleSort("title")}
-              >
-                <div className="flex items-center">
-                  Title
-                  <SortIcon columnKey="title" />
-                </div>
-              </th>
-              <th
-                scope="col"
-                className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider"
-              >
-                Category
-              </th>
-              <th
-                scope="col"
-                className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
-                onClick={() => handleSort("createdAt")}
-              >
-                <div className="flex items-center">
-                  Date
-                  <SortIcon columnKey="createdAt" />
-                </div>
-              </th>
-              <th
-                scope="col"
-                className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
-                onClick={() => handleSort("status")}
-              >
-                <div className="flex items-center">
-                  Status
-                  <SortIcon columnKey="status" />
-                </div>
-              </th>
-              <th
-                scope="col"
-                className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
-                onClick={() => handleSort("priority")}
-              >
-                <div className="flex items-center">
-                  Priority
-                  <SortIcon columnKey="priority" />
-                </div>
-              </th>
-              <th
-                scope="col"
-                className="px-4 py-3 text-center text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider"
-              >
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {sortedComplaints.map((complaint) => {
-              const priorityConfig = getPriorityConfig(complaint.priority);
-              const complaintId = complaint._id || complaint.id;
+    <div className="bg-white dark:bg-gray-800 rounded-b-lg shadow-sm border border-t-0 border-gray-200 dark:border-gray-700 overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <thead className="bg-gray-50 dark:bg-gray-900/40">
+          <tr>
+            <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+              ID
+            </th>
 
-              console.log("🔍 Rendering row:", complaintId);
+            <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+              Image
+            </th>
 
-              return (
-                <tr
-                  key={complaintId}
-                  className="hover:bg-indigo-50 dark:hover:bg-gray-700/50 transition-all cursor-pointer group"
-                  onClick={(e) => {
-                    if (!e.target.closest("button")) {
-                      console.log("✅ Table row clicked:", complaintId);
-                      onRowClick(complaintId);
-                    }
-                  }}
-                >
-                  <td className="px-4 py-4">
-                    <div className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate max-w-xs group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                      {complaint.title || complaint.subject || "Untitled"}
-                    </div>
-                  </td>
-                  <td className="px-4 py-4">
-                    <span className="text-sm text-gray-700 dark:text-gray-300">
-                      {complaint.category || "General"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4">
-                    <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                      {formatDate(complaint.createdAt || complaint.submittedAt)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4">
-                    <Badge status={complaint.status || "Pending"} />
-                  </td>
-                  <td className="px-4 py-4">
-                    <span
-                      className={`inline-flex items-center justify-center px-2.5 py-1 rounded-md text-xs font-bold border ${priorityConfig.bg} ${priorityConfig.text} ${priorityConfig.border}`}
-                    >
-                      {priorityConfig.label}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 text-center">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        console.log("👁️ View button clicked:", complaintId);
-                        onRowClick(complaintId);
-                      }}
-                      className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-semibold rounded-lg transition-all shadow-sm hover:shadow-md active:scale-95"
-                    >
-                      <RiEyeLine className="h-4 w-4" />
-                      <span>View</span>
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* MOBILE CARDS */}
-      <div className="md:hidden space-y-4 bg-gray-50 dark:bg-gray-900 p-4 rounded-b-lg">
-        {sortedComplaints.map((complaint) => {
-          const priorityConfig = getPriorityConfig(complaint.priority);
-          const complaintId = complaint._id || complaint.id;
-
-          return (
-            <div
-              key={complaintId}
-              onClick={() => {
-                console.log("📱 Mobile card clicked:", complaintId);
-                onRowClick(complaintId);
-              }}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all cursor-pointer overflow-hidden active:scale-98"
+            <th
+              onClick={() => handleSort("title")}
+              className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer group"
             >
-              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
-                    #{complaintId?.toString().slice(-6) || "N/A"}
-                  </span>
+              Subject{" "}
+              <SortIcon sortConfig={sortConfig} columnKey="title" />
+            </th>
+
+            <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+              Submitted By
+            </th>
+
+            <th
+              onClick={() => handleSort("category")}
+              className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer group"
+            >
+              Category{" "}
+              <SortIcon sortConfig={sortConfig} columnKey="category" />
+            </th>
+
+            <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+              Location
+            </th>
+
+            <th
+              onClick={() => handleSort("submittedAt")}
+              className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer group"
+            >
+              Submitted{" "}
+              <SortIcon
+                sortConfig={sortConfig}
+                columnKey="submittedAt"
+              />
+            </th>
+
+            <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+              Status
+            </th>
+
+            <th
+              onClick={() => handleSort("priority")}
+              className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer group"
+            >
+              Priority{" "}
+              <SortIcon sortConfig={sortConfig} columnKey="priority" />
+            </th>
+
+            <th className="px-4 py-3 text-right text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+              Actions
+            </th>
+          </tr>
+        </thead>
+
+        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+          {sortedComplaints.map((complaint, index) => {
+            const priorityConfig = {
+              label: complaint.priority || "Medium",
+              color:
+                complaint.priority === "High"
+                  ? "bg-red-100 text-red-800"
+                  : complaint.priority === "Medium"
+                  ? "bg-yellow-100 text-yellow-800"
+                  : "bg-green-100 text-green-800",
+            };
+
+            const displayDate = getDisplayDate(complaint);
+
+            return (
+              <tr
+                key={complaint._id || complaint.id || index}
+                className="hover:bg-indigo-50 dark:hover:bg-gray-700/50 cursor-pointer"
+                onClick={() => onRowClick(complaint._id || complaint.id)}
+              >
+                <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                  #{index + 1}
+                </td>
+
+                <td className="px-4 py-3">
+                  {complaint.images?.length > 0 ? (
+                    <ImageGallery
+                      images={complaint.images}
+                      compact
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  ) : (
+                    <span className="text-xs text-gray-400">No image</span>
+                  )}
+                </td>
+
+                <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                  <div className="font-semibold truncate max-w-xs">
+                    {complaint.title || complaint.subject}
+                  </div>
+                  <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    <RiMapPinLine className="h-3 w-3" />
+                    <span className="truncate">{complaint.location}</span>
+                  </div>
+                </td>
+
+                <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">
+                  <div className="flex items-center gap-1">
+                    <RiUserLine className="h-3 w-3 text-gray-400" />
+                    <span className="truncate max-w-[140px]">
+                      {complaint.isAnonymous
+                        ? "Anonymous 🕵️"
+                        : complaint.submittedBy}
+                    </span>
+                  </div>
+                </td>
+
+                <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">
+                  {complaint.category}
+                </td>
+
+                <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                  {formatDateShort(displayDate)}
+                </td>
+
+                <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                  <div className="flex items-center gap-1">
+                    <RiCalendarLine className="h-3 w-3 text-gray-400" />
+                    <span>{formatDate(displayDate)}</span>
+                  </div>
+                </td>
+
+                <td className="px-4 py-3">
                   <Badge status={complaint.status} />
-                </div>
-                <span
-                  className={`inline-flex items-center justify-center px-2.5 py-1 rounded-md text-xs font-bold border ${priorityConfig.bg} ${priorityConfig.text} ${priorityConfig.border}`}
-                >
-                  {priorityConfig.label}
-                </span>
-              </div>
+                </td>
 
-              <div className="p-4 space-y-3">
-                <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">
-                  {complaint.title || complaint.subject || "Untitled"}
-                </h3>
+                <td className="px-4 py-3">
+                  <span
+                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${priorityConfig.color}`}
+                  >
+                    <RiPriceTag3Line className="mr-1 h-3 w-3" />
+                    {priorityConfig.label}
+                  </span>
+                </td>
 
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                    <RiPriceTag3Line className="w-4 h-4 flex-shrink-0" />
-                    <span className="truncate">
-                      {complaint.category || "General"}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                    <RiCalendarLine className="w-4 h-4 flex-shrink-0" />
-                    <span>
-                      {formatDate(complaint.createdAt || complaint.submittedAt)}
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    console.log("👁️ Mobile button clicked:", complaintId);
-                    onRowClick(complaintId);
-                  }}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 active:bg-indigo-800 transition-all active:scale-95"
-                >
-                  <RiEyeLine className="w-5 h-5" />
-                  <span>View Details</span>
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </>
+                <td className="px-4 py-3 text-right">
+                  <ActionsDropdown
+                    complaintId={complaint._id || complaint.id}
+                    openDropdownId={openDropdownId}
+                    setOpenDropdownId={setOpenDropdownId}
+                    onRowClick={onRowClick}
+                    onActionClick={onActionClick}
+                  />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 };
 

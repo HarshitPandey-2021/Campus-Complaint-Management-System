@@ -1,4 +1,4 @@
-// src/pages/Dashboard.jsx - ULTIMATE 1-TIME TOAST FIX
+// src/pages/Dashboard.jsx - FIXED VERSION
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Badge from "../components/Badge";
@@ -19,20 +19,26 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [recentComplaints, setRecentComplaints] = useState([]);
-  const [stats, setStats] = useState({ total: 0, pending: 0, inProgress: 0, resolved: 0 });
-  const [dataLoaded, setDataLoaded] = useState(false); // ✅ NEW: Track data load
+  const [stats, setStats] = useState({ 
+    total: 0, 
+    pending: 0, 
+    inProgress: 0, 
+    resolved: 0,
+    rejected: 0 
+  });
+  const [dataLoaded, setDataLoaded] = useState(false);
   
   const { info, success } = useToast();
   const adminUser = getAdminUser();
   const adminToken = getAdminToken() || localStorage.getItem("token");
 
-  // ✅ CountUp hooks
+  // CountUp hooks
   const totalCount = useCountUp(stats.total, 1200, 0);
   const pendingCount = useCountUp(stats.pending, 1200, 0);
   const inProgressCount = useCountUp(stats.inProgress, 1200, 0);
   const resolvedCount = useCountUp(stats.resolved, 1200, 0);
 
-  // Data fetch useEffect
+  // ✅ FIXED: Data fetch with proper stats extraction
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -43,6 +49,7 @@ const Dashboard = () => {
           return;
         }
 
+        // Fetch complaints
         const allComplaints = await getAllComplaints(adminToken);
         console.log("Dashboard Complaints:", allComplaints);
         
@@ -53,62 +60,66 @@ const Dashboard = () => {
           setRecentComplaints(sorted.slice(0, 5));
         }
 
+        // ✅ FIXED: Fetch stats and extract properly
         const statsData = await getStats(adminToken);
-        console.log("Dashboard Stats:", statsData);
+        console.log("Dashboard Stats Response:", statsData);
+        
         if (statsData) {
+          // Handle both response formats
+          const statsObj = statsData.stats || statsData;
+          
           setStats({
-            total: statsData.total || 0,
-            pending: statsData.pending || 0,
-            inProgress: statsData.inProgress || 0,
-            resolved: statsData.resolved || 0,
+            total: statsObj.total || 0,
+            pending: statsObj.pending || 0,
+            inProgress: statsObj.inProgress || 0,
+            resolved: statsObj.resolved || 0,
+            rejected: statsObj.rejected || 0,
+          });
+          
+          console.log("✅ Stats set:", {
+            total: statsObj.total,
+            pending: statsObj.pending,
+            inProgress: statsObj.inProgress,
+            resolved: statsObj.resolved,
           });
         }
       } catch (err) {
-        console.error("Error loading dashboard data:", err);
-        info("Failed to fetch data. Please refresh the page.");
+        console.error("❌ Dashboard error:", err);
+        info("Failed to fetch data. Please refresh.");
       } finally {
         setLoading(false);
-        setDataLoaded(true); // ✅ Mark data as loaded
+        setDataLoaded(true);
       }
     };
 
     if (adminToken) fetchData();
   }, [adminToken, info]);
 
-  // ✅ ULTIMATE FIX: SINGLE EXECUTION useEffect
+  // Welcome toast - single execution
   const welcomeToastRef = useRef(false);
 
   useEffect(() => {
-    // 🔥 CONDITIONS FOR SINGLE EXECUTION:
-    // 1. Data loaded ✅
-    // 2. Not shown before ✅  
-    // 3. EMPTY dependency array ✅
     if (!dataLoaded || welcomeToastRef.current) return;
 
     const hasSeenWelcome = localStorage.getItem("dashboard-welcome-seen");
     
     if (!hasSeenWelcome) {
-      console.log("🔔 FIRST TIME: Showing welcome toast ONCE");
-      
       const timer = setTimeout(() => {
         if (stats.pending > 0) {
           info(
-            `Welcome back, ${adminUser?.name || "Somesh"}! You have ${stats.pending} pending ${stats.pending === 1 ? "complaint" : "complaints"}.`
+            `Welcome back, ${adminUser?.name || "Admin"}! You have ${stats.pending} pending ${stats.pending === 1 ? "complaint" : "complaints"}.`
           );
         } else {
           success("Great work! All complaints are handled.");
         }
         
-        // 🔥 PERMANENTLY BLOCK future toasts
         localStorage.setItem("dashboard-welcome-seen", "true");
         welcomeToastRef.current = true;
-        console.log("✅ Welcome toast SHOWN & BLOCKED FOREVER");
       }, 1500);
 
-      // Cleanup timer if component unmounts
       return () => clearTimeout(timer);
     }
-  }, [dataLoaded]); // ✅ ONLY dataLoaded triggers it ONCE
+  }, [dataLoaded, stats.pending, adminUser, info, success]);
 
   const handleStatClick = (status) => {
     console.log("Stat card clicked:", status);
@@ -118,7 +129,6 @@ const Dashboard = () => {
   const handleComplaintRowClick = (e, complaintId) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log("Complaint row clicked:", complaintId);
     navigate("/complaints");
   };
 
@@ -150,7 +160,7 @@ const Dashboard = () => {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">
-          Welcome back, {adminUser?.name || "Somesh"}!
+          Welcome back, {adminUser?.name || "Admin"}!
         </h1>
         <p className="text-gray-600 dark:text-gray-400 mt-2">
           Here's a quick overview of all complaints and activities.
@@ -159,7 +169,11 @@ const Dashboard = () => {
 
       {/* Stats Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div onClick={() => handleStatClick("all")} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-300 active:scale-100">
+        {/* Total Complaints Card */}
+        <div 
+          onClick={() => handleStatClick("all")} 
+          className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-300 active:scale-100"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">Total Complaints</p>
@@ -172,7 +186,11 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div onClick={() => handleStatClick("Pending")} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-300 active:scale-100">
+        {/* Pending Card */}
+        <div 
+          onClick={() => handleStatClick("Pending")} 
+          className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-300 active:scale-100"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">Pending</p>
@@ -185,7 +203,11 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div onClick={() => handleStatClick("In Progress")} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-300 active:scale-100">
+        {/* In Progress Card */}
+        <div 
+          onClick={() => handleStatClick("In Progress")} 
+          className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-300 active:scale-100"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">In Progress</p>
@@ -198,7 +220,11 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div onClick={() => handleStatClick("Resolved")} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-300 active:scale-100">
+        {/* Resolved Card */}
+        <div 
+          onClick={() => handleStatClick("Resolved")} 
+          className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-300 active:scale-100"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">Resolved</p>
@@ -232,49 +258,40 @@ const Dashboard = () => {
         {recentComplaints.length === 0 ? (
           <div className="text-center py-12">
             <RiFileListLine className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-600 dark:text-gray-400 font-medium">No complaints yet. Great work!</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">All complaints are resolved.</p>
+            <p className="text-gray-600 dark:text-gray-400 font-medium">No complaints yet.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="border-b-2 border-gray-200 dark:border-gray-700">
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">Title</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">Category</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">Status</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">Submitted</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Title</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Category</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Status</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Submitted</th>
                 </tr>
               </thead>
               <tbody>
-                {recentComplaints.map((complaint, index) => {
-                  const complaintId = complaint.id || complaint._id;
-                  return (
-                    <tr
-                      key={`${complaintId}-${index}`}
-                      onClick={(e) => handleComplaintRowClick(e, complaintId)}
-                      className="border-b border-gray-200 dark:border-gray-700 hover:bg-indigo-50 dark:hover:bg-gray-700/50 transition-all cursor-pointer group active:bg-indigo-100 dark:active:bg-gray-700"
-                      style={{ userSelect: 'none' }}
-                    >
-                      <td className="py-4 px-4 text-gray-800 dark:text-gray-200 font-medium">
-                        <div className="truncate max-w-xs group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                          {complaint.title || complaint.subject || "Untitled Complaint"}
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 text-gray-600 dark:text-gray-400">
-                        {complaint.category || complaint.department || "General"}
-                      </td>
-                      <td className="py-4 px-4">
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <Badge status={complaint.status}>{complaint.status}</Badge>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 text-gray-600 dark:text-gray-400 text-xs whitespace-nowrap">
-                        {formatDate(complaint.createdAt || complaint.submittedAt || complaint.date)}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {recentComplaints.map((complaint, index) => (
+                  <tr
+                    key={complaint._id || complaint.id || index}
+                    onClick={(e) => handleComplaintRowClick(e, complaint._id || complaint.id)}
+                    className="border-b border-gray-200 dark:border-gray-700 hover:bg-indigo-50 dark:hover:bg-gray-700/50 transition-all cursor-pointer"
+                  >
+                    <td className="py-4 px-4 text-gray-800 dark:text-gray-200 font-medium">
+                      {complaint.title || complaint.subject || "Untitled"}
+                    </td>
+                    <td className="py-4 px-4 text-gray-600 dark:text-gray-400">
+                      {complaint.category || "General"}
+                    </td>
+                    <td className="py-4 px-4">
+                      <Badge status={complaint.status}>{complaint.status}</Badge>
+                    </td>
+                    <td className="py-4 px-4 text-gray-600 dark:text-gray-400 text-xs">
+                      {formatDate(complaint.createdAt || complaint.submittedAt)}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -283,19 +300,31 @@ const Dashboard = () => {
 
       {/* Quick Stats Footer */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+               {/* Quick Stats Footer - Continuation */}
         <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-900/10 rounded-lg p-4 sm:p-6 border border-indigo-200 dark:border-indigo-900/30 hover:shadow-md transition-shadow">
           <p className="text-sm text-indigo-700 dark:text-indigo-300 font-medium">Resolution Rate</p>
           <p className="text-2xl sm:text-3xl font-bold text-indigo-900 dark:text-indigo-200 mt-1">
             {stats.total > 0 ? Math.round((stats.resolved / stats.total) * 100) : 0}%
           </p>
+          <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-1">
+            {stats.resolved} of {stats.total} resolved
+          </p>
         </div>
+
         <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-900/10 rounded-lg p-4 sm:p-6 border border-green-200 dark:border-green-900/30 hover:shadow-md transition-shadow">
           <p className="text-sm text-green-700 dark:text-green-300 font-medium">Average Response</p>
           <p className="text-2xl sm:text-3xl font-bold text-green-900 dark:text-green-200 mt-1">2.4 hrs</p>
+          <p className="text-xs text-green-600 dark:text-green-400 mt-1">Estimated response time</p>
         </div>
+
         <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-900/10 rounded-lg p-4 sm:p-6 border border-purple-200 dark:border-purple-900/30 hover:shadow-md transition-shadow">
-          <p className="text-sm text-purple-700 dark:text-purple-300 font-medium">Satisfaction</p>
-          <p className="text-2xl sm:text-3xl font-bold text-purple-900 dark:text-purple-200 mt-1">4.85</p>
+          <p className="text-sm text-purple-700 dark:text-purple-300 font-medium">Active Rate</p>
+          <p className="text-2xl sm:text-3xl font-bold text-purple-900 dark:text-purple-200 mt-1">
+            {stats.total > 0 ? Math.round(((stats.pending + stats.inProgress) / stats.total) * 100) : 0}%
+          </p>
+          <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+            {stats.pending + stats.inProgress} active complaints
+          </p>
         </div>
       </div>
     </div>

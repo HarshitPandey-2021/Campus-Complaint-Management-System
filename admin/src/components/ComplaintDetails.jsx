@@ -1,4 +1,4 @@
-// src/components/ComplaintDetails.jsx - COMPLETE WITH IMAGES & PDF
+// src/components/ComplaintDetails.jsx - WITH EDIT MODE
 import React, { useState, useEffect } from "react";
 import ReactDOM from "react-dom";
 import {
@@ -9,35 +9,72 @@ import {
   RiAlertLine,
   RiFilePdfLine,
   RiDownloadLine,
-  RiImageLine, // ✅ Add this
+  RiImageLine,
+  RiEditLine,
+  RiSaveLine,
 } from "react-icons/ri";
 
 import Badge from "./Badge";
+import { updateComplaint } from "../api";
+import { getAdminToken } from "../utils/tokenUtils";
 
-const ComplaintDetails = ({ complaint, isOpen, onClose, onStatusUpdate }) => {
+const ComplaintDetails = ({ 
+  complaint, 
+  isOpen, 
+  onClose, 
+  onStatusUpdate,
+  onComplaintUpdate, // ✅ NEW: Callback after edit save
+  isEditMode = false // ✅ NEW: Edit mode flag
+}) => {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [actionType, setActionType] = useState(null);
   const [adminRemarks, setAdminRemarks] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
 
+  // ✅ Edit mode states
+  const [editMode, setEditMode] = useState(isEditMode);
+  const [editedData, setEditedData] = useState({
+    title: "",
+    description: "",
+    category: "",
+    priority: "",
+    location: "",
+  });
+
   console.log("🔍 ComplaintDetails render:", {
     complaint: complaint?._id,
     isOpen,
+    editMode,
     status: complaint?.status,
-    images: complaint?.images?.length,
-    pdf: !!complaint?.pdfDocument,
   });
 
+  // Initialize edit data when complaint changes
+  useEffect(() => {
+    if (complaint) {
+      setEditedData({
+        title: complaint.title || complaint.subject || "",
+        description: complaint.description || "",
+        category: complaint.category || "",
+        priority: complaint.priority || "Medium",
+        location: complaint.location || "",
+      });
+      setEditMode(isEditMode);
+    }
+  }, [complaint, isEditMode]);
+
+  // Reset states when modal closes
   useEffect(() => {
     if (!isOpen) {
       setShowConfirmation(false);
       setActionType(null);
       setAdminRemarks("");
       setSelectedImage(null);
+      setEditMode(false);
     }
   }, [isOpen]);
 
+  // Prevent body scroll when modal is open
   useEffect(() => {
     if (isOpen) {
       const scrollbarWidth =
@@ -51,6 +88,7 @@ const ComplaintDetails = ({ complaint, isOpen, onClose, onStatusUpdate }) => {
     }
   }, [isOpen]);
 
+  // Handle Escape key
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === "Escape" && isOpen) {
@@ -70,7 +108,6 @@ const ComplaintDetails = ({ complaint, isOpen, onClose, onStatusUpdate }) => {
   }, [isOpen, showConfirmation, selectedImage, onClose]);
 
   if (!isOpen || !complaint) {
-    console.log("❌ Modal not rendering - isOpen:", isOpen, "complaint:", !!complaint);
     return null;
   }
 
@@ -91,12 +128,73 @@ const ComplaintDetails = ({ complaint, isOpen, onClose, onStatusUpdate }) => {
     }
   };
 
+  // ✅ Save edited complaint
+  const handleSaveEdit = async () => {
+    // Validation
+    if (!editedData.title.trim()) {
+      alert("Title is required!");
+      return;
+    }
+    if (!editedData.description.trim()) {
+      alert("Description is required!");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const token = getAdminToken() || localStorage.getItem("token");
+      
+      const updateData = {
+        title: editedData.title,
+        subject: editedData.title, // Keep both for compatibility
+        description: editedData.description,
+        category: editedData.category,
+        priority: editedData.priority,
+        location: editedData.location,
+      };
+
+      await updateComplaint(complaint._id, updateData, token);
+      
+      console.log("✅ Complaint updated successfully");
+      
+      setEditMode(false);
+      
+      // Notify parent to refresh list
+      if (onComplaintUpdate) {
+        onComplaintUpdate();
+      }
+      
+      onClose();
+    } catch (error) {
+      console.error("❌ Error updating complaint:", error);
+      alert(`❌ Failed to update complaint: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Cancel edit mode
+  const handleCancelEdit = () => {
+    // Reset to original data
+    setEditedData({
+      title: complaint.title || complaint.subject || "",
+      description: complaint.description || "",
+      category: complaint.category || "",
+      priority: complaint.priority || "Medium",
+      location: complaint.location || "",
+    });
+    setEditMode(false);
+  };
+
+  // Handle status change actions
   const handleActionClick = (action) => {
     console.log("🎬 Action clicked:", action);
     setActionType(action);
     setShowConfirmation(true);
   };
 
+  // Confirm status change
   const handleConfirmAction = () => {
     if (
       (actionType === "resolve" || actionType === "reject") &&
@@ -243,17 +341,29 @@ const ComplaintDetails = ({ complaint, isOpen, onClose, onStatusUpdate }) => {
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
                 <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-200 truncate">
-                  Complaint Details
+                  {editMode ? "Edit Complaint" : "Complaint Details"}
                 </h2>
                 <Badge status={complaint.status} />
               </div>
-              <button
-                onClick={onClose}
-                className="flex-shrink-0 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group"
-                aria-label="Close modal"
-              >
-                <RiCloseLine className="h-6 w-6 text-gray-600 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200" />
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Edit Button - Only show if not in edit mode and status allows editing */}
+                {!editMode && (complaint.status === "Pending" || complaint.status === "In Progress") && (
+                  <button
+                    onClick={() => setEditMode(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
+                  >
+                    <RiEditLine className="h-4 w-4" />
+                    <span>Edit</span>
+                  </button>
+                )}
+                <button
+                  onClick={onClose}
+                  className="flex-shrink-0 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group"
+                  aria-label="Close modal"
+                >
+                  <RiCloseLine className="h-6 w-6 text-gray-600 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200" />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -268,22 +378,45 @@ const ComplaintDetails = ({ complaint, isOpen, onClose, onStatusUpdate }) => {
 
             {/* Title */}
             <div>
-              <h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-200 break-words">
-                {complaint.title || complaint.subject || "Untitled"}
-              </h3>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                Title {editMode && <span className="text-red-600">*</span>}
+              </label>
+              {editMode ? (
+                <input
+                  type="text"
+                  value={editedData.title}
+                  onChange={(e) => setEditedData({ ...editedData, title: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200"
+                  placeholder="Enter complaint title"
+                />
+              ) : (
+                <h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-200 break-words">
+                  {complaint.title || complaint.subject || "Untitled"}
+                </h3>
+              )}
             </div>
 
             {/* Description */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                Description
+                Description {editMode && <span className="text-red-600">*</span>}
               </label>
-              <p className="text-gray-800 dark:text-gray-200 leading-relaxed bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700 whitespace-pre-wrap break-words">
-                {complaint.description || "No description provided"}
-              </p>
+              {editMode ? (
+                <textarea
+                  value={editedData.description}
+                  onChange={(e) => setEditedData({ ...editedData, description: e.target.value })}
+                  rows={6}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 resize-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200"
+                  placeholder="Enter complaint description"
+                />
+              ) : (
+                <p className="text-gray-800 dark:text-gray-200 leading-relaxed bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700 whitespace-pre-wrap break-words">
+                  {complaint.description || "No description provided"}
+                </p>
+              )}
             </div>
 
-            {/* ✅ IMAGES SECTION */}
+            {/* IMAGES SECTION */}
             {complaint.images && complaint.images.length > 0 && (
               <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
@@ -310,7 +443,7 @@ const ComplaintDetails = ({ complaint, isOpen, onClose, onStatusUpdate }) => {
               </div>
             )}
 
-            {/* ✅ PDF SECTION */}
+            {/* PDF SECTION */}
             {complaint.pdfDocument && (
               <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
@@ -347,41 +480,84 @@ const ComplaintDetails = ({ complaint, isOpen, onClose, onStatusUpdate }) => {
                         </button>
                       </div>
                     </div>
-                </div>
+                  </div>
                 </div>
               </div>
             )}
-        {/* Details Grid */}
+
+            {/* Details Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Category */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                   Category
                 </label>
-                <p className="text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700">
-                  {complaint.category || "General"}
-                </p>
+                {editMode ? (
+                  <select
+                    value={editedData.category}
+                    onChange={(e) => setEditedData({ ...editedData, category: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200"
+                  >
+                    <option value="">Select Category</option>
+                    <option value="Academic">Academic</option>
+                    <option value="Hostel">Hostel</option>
+                    <option value="Infrastructure">Infrastructure</option>
+                    <option value="Cafeteria">Cafeteria</option>
+                    <option value="Library">Library</option>
+                    <option value="Transport">Transport</option>
+                    <option value="Other">Other</option>
+                  </select>
+                ) : (
+                  <p className="text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700">
+                    {complaint.category || "General"}
+                  </p>
+                )}
               </div>
 
+              {/* Priority */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                   Priority
                 </label>
-                <p
-                  className={`font-semibold px-4 py-2 rounded-lg border ${getPriorityColor(
-                    complaint.priority
-                  )}`}
-                >
-                  {complaint.priority || "Medium"}
-                </p>
+                {editMode ? (
+                  <select
+                    value={editedData.priority}
+                    onChange={(e) => setEditedData({ ...editedData, priority: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200"
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                  </select>
+                ) : (
+                  <p
+                    className={`font-semibold px-4 py-2 rounded-lg border ${getPriorityColor(
+                      complaint.priority
+                    )}`}
+                  >
+                    {complaint.priority || "Medium"}
+                  </p>
+                )}
               </div>
 
+              {/* Location */}
               <div className="sm:col-span-2">
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                   Location
                 </label>
-                <p className="text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 break-words">
-                  {complaint.location || "N/A"}
-                </p>
+                {editMode ? (
+                  <input
+                    type="text"
+                    value={editedData.location}
+                    onChange={(e) => setEditedData({ ...editedData, location: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200"
+                    placeholder="Enter location"
+                  />
+                ) : (
+                  <p className="text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 break-words">
+                    {complaint.location || "N/A"}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -446,31 +622,66 @@ const ComplaintDetails = ({ complaint, isOpen, onClose, onStatusUpdate }) => {
           </div>
 
           {/* STICKY FOOTER */}
-          {(complaint.status === "Pending" || complaint.status === "In Progress") && (
+          {editMode ? (
+            // Edit Mode Footer
             <div className="flex-shrink-0 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-4 rounded-b-2xl">
               <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
-                {getActionButtons()}
                 <button
-                  onClick={onClose}
-                  className="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                  onClick={handleCancelEdit}
+                  disabled={isSubmitting}
+                  className="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
                 >
-                  Close
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  disabled={isSubmitting}
+                  className="flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <RiSaveLine className="h-5 w-5" />
+                      <span>Save Changes</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
-          )}
+          ) : (
+            // View Mode Footer
+            <>
+              {(complaint.status === "Pending" || complaint.status === "In Progress") && (
+                <div className="flex-shrink-0 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-4 rounded-b-2xl">
+                  <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
+                    {getActionButtons()}
+                    <button
+                      onClick={onClose}
+                      className="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              )}
 
-          {(complaint.status === "Resolved" || complaint.status === "Rejected") && (
-            <div className="flex-shrink-0 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-4 rounded-b-2xl">
-              <div className="flex justify-end">
-                <button
-                  onClick={onClose}
-                  className="w-full sm:w-auto px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
+              {(complaint.status === "Resolved" || complaint.status === "Rejected") && (
+                <div className="flex-shrink-0 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-4 rounded-b-2xl">
+                  <div className="flex justify-end">
+                    <button
+                      onClick={onClose}
+                      className="w-full sm:w-auto px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -599,4 +810,5 @@ const ComplaintDetails = ({ complaint, isOpen, onClose, onStatusUpdate }) => {
 };
 
 export default ComplaintDetails;
+
 

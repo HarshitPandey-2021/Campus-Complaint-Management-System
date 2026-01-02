@@ -1,4 +1,4 @@
-// src/components/NotificationPanel.jsx - COMPLETE FIXED VERSION
+// src/components/NotificationPanel.jsx - FINAL FIXED VERSION
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -8,7 +8,11 @@ import {
   RiErrorWarningLine,
   RiCloseLine,
 } from "react-icons/ri";
-import { getAllComplaints, markComplaintAsRead } from "../api"; // ✅ Import backend API
+import {
+  getUnreadComplaints,
+  markComplaintAsRead,
+  getAllComplaints,
+} from "../api"; // ✅ use admin APIs
 import { getAdminToken } from "../utils/tokenUtils";
 
 export default function NotificationPanel() {
@@ -26,44 +30,57 @@ export default function NotificationPanel() {
   };
 
   /* =========================================================
-     🧩 FETCH NOTIFICATIONS
+     🧩 FETCH NOTIFICATIONS (UNREAD FIRST, THEN FALLBACK)
   ========================================================= */
   const fetchNotifications = useCallback(async () => {
-    console.log("Fetching notifications...");
+    console.log("🔔 Fetching admin notifications...");
     try {
       const token = getAdminToken() || localStorage.getItem("token");
 
       if (!token) {
-        console.log("No token found in localStorage");
+        console.log("No admin token found in localStorage");
         return;
       }
 
       setLoading(true);
-      const res = await getAllComplaints(token);
 
-      console.log("Raw Complaint Data:", res);
-
-      if (!Array.isArray(res)) {
-        console.error("Expected an array of complaints, but got:", res);
-        return;
+      // ✅ 1. Try unread complaints endpoint (admin route)
+      let complaints = [];
+      try {
+        complaints = await getUnreadComplaints(token);
+        console.log("Unread complaints from API:", complaints);
+      } catch (err) {
+        console.warn(
+          "Unread complaints API failed, falling back to all complaints:",
+          err
+        );
+        // ✅ 2. Fallback: use all complaints, newest first
+        complaints = await getAllComplaints(token);
       }
 
-      if (res.length === 0) {
-        console.log("No notifications returned from the API.");
+      if (!Array.isArray(complaints)) {
+        console.error("Expected an array of complaints, but got:", complaints);
         setNotifications([]);
         setUnreadCount(0);
         return;
       }
 
-      const formatted = res
+      if (complaints.length === 0) {
+        console.log("No complaints returned for notifications.");
+        setNotifications([]);
+        setUnreadCount(0);
+        return;
+      }
+
+      const formatted = complaints
         .map((c) => {
+          const status = (c.status || "").toString().toLowerCase().trim();
+          const priority = (c.priority || "").toString().toLowerCase().trim();
+
           let type = "new";
           let icon = RiTimeLine;
           let color = "blue";
           let title = "Complaint Pending";
-
-          const status = c.status ? c.status.toLowerCase() : "pending";
-          const priority = c.priority ? c.priority.toLowerCase() : "low";
 
           if (status === "resolved") {
             type = "resolved";
@@ -76,7 +93,7 @@ export default function NotificationPanel() {
             color = "red";
             title = "Complaint Rejected";
           } else if (status === "pending") {
-            if (priority === "high") {
+            if (priority === "high" || priority === "urgent") {
               type = "urgent";
               icon = RiErrorWarningLine;
               color = "red";
@@ -87,26 +104,31 @@ export default function NotificationPanel() {
               color = "blue";
               title = "Complaint Pending";
             }
-          } else if (status === "in progress") {
-            type = "new";
+          } else if (
+            status === "in progress" ||
+            status === "processing" ||
+            status === "in_process"
+          ) {
+            type = "in_progress";
             icon = RiTimeLine;
             color = "blue";
             title = "Complaint In Progress";
           }
 
-          const time = new Date(c.createdAt || c.submittedAt);
-          if (isNaN(time)) {
-            console.warn("Invalid date:", c.createdAt, c.submittedAt);
+          const dateValue = c.createdAt || c.submittedAt || c.date;
+          const time = new Date(dateValue);
+          if (isNaN(time.getTime())) {
+            console.warn("Invalid notification date:", dateValue);
             return null;
           }
 
           return {
-            id: c._id,
+            id: c._id || c.id,
             type,
             icon,
             color,
             title,
-            message: c.title || c.description || "No description provided",
+            message: c.title || c.subject || c.description || "No description",
             time: time.toLocaleString(),
             read: c.readByAdmin || false,
           };
@@ -114,50 +136,51 @@ export default function NotificationPanel() {
         .filter(Boolean)
         .sort((a, b) => new Date(b.time) - new Date(a.time));
 
-      console.log("Formatted Notifications:", formatted);
+      console.log("Formatted notification list:", formatted);
 
       setNotifications(formatted);
-      const unread = formatted.filter((n) => !n.read).length;
-      setUnreadCount(unread);
+      setUnreadCount(formatted.filter((n) => !n.read).length);
     } catch (err) {
       console.error("Failed to load notifications:", err);
+      setNotifications([]);
+      setUnreadCount(0);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // ✅ Fetch only after token is available
+  // ✅ Fetch when token is available and periodically refresh
   useEffect(() => {
     const checkAndFetch = () => {
-      const token = localStorage.getItem("token");
+      const token = getAdminToken() || localStorage.getItem("token");
       if (token) {
         fetchNotifications();
       }
     };
 
-    // Wait 500ms for auth to be processed from URL
-    const timer = setTimeout(checkAndFetch, 500);
+    // Wait a bit for auth to move from URL → localStorage
+    const timer = setTimeout(checkAndFetch, 600);
 
-    // Auto-refresh every 30 seconds
     const interval = setInterval(() => {
-      const token = localStorage.getItem("token");
+      const token = getAdminToken() || localStorage.getItem("token");
       if (token) fetchNotifications();
-    }, 30000);
+    }, 30000); // 30 seconds
 
     return () => {
       clearTimeout(timer);
       clearInterval(interval);
     };
-  }, [fetchNotifications]); // ✅ Proper dependency
+  }, [fetchNotifications]);
 
   /* =========================================================
-     🧩 MARK READ - BACKEND API CALL (FIXED)
+     🧩 MARK SINGLE NOTIFICATION AS READ (BACKEND + UI)
   ========================================================= */
   const markAsRead = async (id) => {
     try {
       const token = getAdminToken() || localStorage.getItem("token");
-      
-      // ✅ BACKEND API CALL - CRITICAL FIX
+      if (!token) return;
+
+      // ✅ Call backend route: PATCH /complaints/admin/:id/read
       await markComplaintAsRead(id, token);
 
       // Update local state optimistically
@@ -168,27 +191,31 @@ export default function NotificationPanel() {
         setUnreadCount(updated.filter((n) => !n.read).length);
         return updated;
       });
-      
-      console.log("✅ Marked as read:", id);
+
+      console.log("✅ Notification marked as read:", id);
     } catch (err) {
-      console.error("❌ Failed to mark as read:", err);
-      // Revert optimistic update on error
+      console.error("❌ Failed to mark notification as read:", err);
+      // Reload from server to stay in sync
       fetchNotifications();
     }
   };
 
+  /* =========================================================
+     🧩 MARK ALL NOTIFICATIONS AS READ
+  ========================================================= */
   const markAllAsRead = async () => {
     try {
       const token = getAdminToken() || localStorage.getItem("token");
-      
-      // Mark all unread notifications
+      if (!token) return;
+
       const unreadNotifications = notifications.filter((n) => !n.read);
       await Promise.all(
         unreadNotifications.map((n) => markComplaintAsRead(n.id, token))
       );
-      
+
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
+      console.log("✅ All notifications marked as read");
     } catch (err) {
       console.error("Failed to mark all as read:", err);
       fetchNotifications();
@@ -214,7 +241,9 @@ export default function NotificationPanel() {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
-      return () => (document.body.style.overflow = "");
+      return () => {
+        document.body.style.overflow = "";
+      };
     }
   }, [isOpen]);
 
@@ -225,7 +254,8 @@ export default function NotificationPanel() {
       }
     };
     if (isOpen) document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
 
   useEffect(() => {
@@ -262,9 +292,7 @@ export default function NotificationPanel() {
 
       {/* Notification Panel */}
       {isOpen && (
-        <div
-          className={`fixed lg:absolute top-16 lg:right-0 left-4 right-4 lg:left-auto w-auto lg:w-96 max-w-full lg:max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-[100] animate-slideDown flex flex-col overflow-hidden`}
-        >
+        <div className="fixed lg:absolute top-16 lg:right-0 left-4 right-4 lg:left-auto w-auto lg:w-96 max-w-full lg:max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 z-[100] animate-slideDown flex flex-col overflow-hidden">
           {/* Header */}
           <div className="sticky top-0 z-10 p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 flex-shrink-0">
             <div className="flex items-center justify-between mb-2">
@@ -292,8 +320,8 @@ export default function NotificationPanel() {
                 </span>
               ) : (
                 <span className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                  <span className="text-green-500 font-bold">✓</span> All caught
-                  up!
+                  <span className="text-green-500 font-bold">✓</span> All
+                  caught up!
                 </span>
               )}
 
@@ -327,7 +355,7 @@ export default function NotificationPanel() {
           <div className="overflow-y-auto overflow-x-hidden max-h-[calc(100vh-16rem)] lg:max-h-[28rem] custom-scrollbar flex-1">
             {loading ? (
               <div className="p-8 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto" />
                 <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm">
                   Loading notifications...
                 </p>
@@ -341,7 +369,7 @@ export default function NotificationPanel() {
                   No notifications yet
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  We'll notify you when something new arrives
+                  We will notify you when something new arrives
                 </p>
               </div>
             ) : (
@@ -372,7 +400,7 @@ export default function NotificationPanel() {
                             {notif.title}
                           </p>
                           {!notif.read && (
-                            <span className="w-2.5 h-2.5 bg-indigo-600 rounded-full flex-shrink-0 mt-1 shadow-lg ring-2 ring-indigo-100 dark:ring-indigo-900/30"></span>
+                            <span className="w-2.5 h-2.5 bg-indigo-600 rounded-full flex-shrink-0 mt-1 shadow-lg ring-2 ring-indigo-100 dark:ring-indigo-900/30" />
                           )}
                         </div>
                         <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed line-clamp-2 break-words">
