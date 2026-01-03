@@ -129,7 +129,7 @@ const Dashboard = () => {
 
   const handleStatClick = (status) => {
     // yahi state MyComplaints me read hogi
-    navigate("/user/complaints", { state: { filterStatus: status } });
+    navigate("/user/my-complaints", { state: { filterStatus: status } });
   };
 
   const formatDate = (dateString) => {
@@ -233,7 +233,7 @@ const Dashboard = () => {
         </button>
 
         <button
-          onClick={() => navigate("/user/complaints")}
+          onClick={() => navigate("/user/my-complaints")}
           className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-all group"
         >
           <div className="flex items-center">
@@ -261,7 +261,7 @@ const Dashboard = () => {
           </h2>
           {recentComplaints.length > 0 && (
             <button
-              onClick={() => navigate("/user/complaints")}
+              onClick={() => navigate("/user/my-complaints")}
               className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
             >
               View All
@@ -290,7 +290,9 @@ const Dashboard = () => {
             {recentComplaints.map((complaint) => (
               <div
                 key={complaint._id}
-                onClick={() => navigate(`/user/complaints/${complaint._id}`)}
+                onClick={() =>
+                  navigate(`/user/complaints/${complaint._id}`)
+                }
                 className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-indigo-500 dark:hover:border-indigo-500 hover:shadow-md transition-all cursor-pointer"
               >
                 <div className="flex items-start justify-between mb-2">
@@ -309,7 +311,9 @@ const Dashboard = () => {
                   {complaint.submittedAt && (
                     <span className="flex items-center">
                       <RiCalendarLine className="h-4 w-4 mr-1" />
-                      {formatDate(complaint.submittedAt || complaint.createdAt)}
+                      {formatDate(
+                        complaint.submittedAt || complaint.createdAt
+                      )}
                     </span>
                   )}
                 </div>

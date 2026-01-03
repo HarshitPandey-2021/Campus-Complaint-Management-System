@@ -1,7 +1,6 @@
 // src/App.jsx (user portal - 3001)
-import React, { useEffect } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
-
+import React, { useContext } from "react";
+import { Routes, Route } from "react-router-dom";
 import Layout from "./components/layout/Layout";
 import Dashboard from "./pages/Dashboard";
 import SubmitComplaint from "./pages/SubmitComplaint";
@@ -10,68 +9,115 @@ import ComplaintDetails from "./pages/ComplaintDetails";
 import Profile from "./pages/Profile";
 import ToastTest from "./pages/ToastTest";
 import EditComplaint from "./pages/EditComplaint";
+import { AuthContext } from "./context/AuthContext";
+import "./index.css";
 
-// Helper: read ?auth and persist token/user
-function useAuthFromQuery() {
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const authParam = params.get("auth");
+// Simple protected route based on AuthContext
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated } = useContext(AuthContext);
 
-    console.log("AuthContext.jsx:15 🔍 Checking auth...");
-    console.log("AuthContext.jsx:16 Auth param in URL:", !!authParam);
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
+        <div className="text-center">
+          <div className="text-2xl font-semibold mb-2">
+            Session Required
+          </div>
+          <p className="text-slate-400 mb-4 text-sm">
+            Your session has expired or you are not logged in.
+          </p>
+          <a
+            href="http://localhost:5174"
+            className="inline-flex items-center px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-sm font-medium"
+          >
+            Go to Login Portal
+          </a>
+        </div>
+      </div>
+    );
+  }
 
-    if (!authParam) return;
+  return children;
+};
 
-    try {
-      const { token, user } = JSON.parse(decodeURIComponent(authParam));
-      console.log("AuthContext.jsx:21 ✅ Auth data from URL:", { token, user });
-
-      if (token && user) {
-        localStorage.setItem("token", token);
-        localStorage.setItem("user", JSON.stringify(user));
-
-        // Clean query param from URL
-        params.delete("auth");
-        const newQuery = params.toString();
-        const newUrl =
-          window.location.origin +
-          window.location.pathname +
-          (newQuery ? `?${newQuery}` : "");
-        window.history.replaceState({}, "", newUrl);
-
-        console.log("AuthContext.jsx:36 ✅ Auth saved, URL cleaned");
-      }
-    } catch (e) {
-      console.error("Invalid auth data in URL", e);
-    }
-  }, []);
-}
-
-function App() {
-  useAuthFromQuery();
-
+export default function App() {
   return (
     <Layout>
       <Routes>
-        {/* default → dashboard */}
-        <Route path="/" element={<Navigate to="/user/dashboard" replace />} />
-
-        <Route path="/user/dashboard" element={<Dashboard />} />
-        <Route path="/user/submit" element={<SubmitComplaint />} />
-        <Route path="/user/complaints" element={<MyComplaints />} />
-        <Route path="/user/complaints/:id" element={<ComplaintDetails />} />
-        <Route path="/user/complaints/:id/edit" element={<EditComplaint />} />
-        <Route path="/user/profile" element={<Profile />} />
-        <Route path="/toast-test" element={<ToastTest />} />
-
-        {/* 404 */}
+        <Route
+          path="/user/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/user/submit"
+          element={
+            <ProtectedRoute>
+              <SubmitComplaint />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/user/my-complaints"
+          element={
+            <ProtectedRoute>
+              <MyComplaints />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/user/complaints/:id"
+          element={
+            <ProtectedRoute>
+              <ComplaintDetails />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/user/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/user/complaints/:id/edit"
+          element={
+            <ProtectedRoute>
+              <EditComplaint />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/toast-test"
+          element={
+            <ProtectedRoute>
+              <ToastTest />
+            </ProtectedRoute>
+          }
+        />
+        {/* Fallback route */}
         <Route
           path="*"
           element={
-            <div className="min-h-screen flex items-center justify-center">
+            <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
               <div className="text-center">
-                <h1 className="text-3xl font-bold mb-2">404</h1>
-                <p className="text-gray-600">Page Not Found</p>
+                <div className="text-2xl font-semibold mb-2">
+                  Page Not Found
+                </div>
+                <p className="text-slate-400 mb-4 text-sm">
+                  The page you are looking for does not exist.
+                </p>
+                <a
+                  href="/user/dashboard"
+                  className="inline-flex items-center px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-sm font-medium"
+                >
+                  Go to Dashboard
+                </a>
               </div>
             </div>
           }
@@ -80,5 +126,3 @@ function App() {
     </Layout>
   );
 }
-
-export default App;

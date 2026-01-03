@@ -1,4 +1,7 @@
 // src/api.js - ADMIN PORTAL API
+// Uses getAdminToken() from tokenUtils so you don't have to pass token manually.
+
+import { getAdminToken } from "./utils/tokenUtils";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
 
@@ -6,6 +9,7 @@ const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
 
 // Attach Authorization header with Bearer token
 function authHeaders(token) {
+  if (!token) return {};
   return {
     Authorization: `Bearer ${token}`,
   };
@@ -20,15 +24,25 @@ async function handleResponse(res) {
   return res.json();
 }
 
+// Convenience: build options with current admin token
+function withAdminHeaders(extra = {}) {
+  const token = getAdminToken();
+  return {
+    ...extra,
+    headers: {
+      ...(extra.headers || {}),
+      ...authHeaders(token),
+    },
+  };
+}
+
 // ==================== COMPLAINTS (ADMIN) ====================
 
 // Get all complaints (admin sees all, student sees own only - backend handles role)
-export async function getAllComplaints(token) {
+export async function getAllComplaints() {
   console.log("📦 Fetching all complaints");
 
-  const res = await fetch(`${API_BASE}/complaints`, {
-    headers: authHeaders(token),
-  });
+  const res = await fetch(`${API_BASE}/complaints`, withAdminHeaders());
 
   const data = await handleResponse(res);
 
@@ -51,12 +65,13 @@ export async function getAllComplaints(token) {
 }
 
 // Get one complaint by ID
-export async function getComplaintById(id, token) {
+export async function getComplaintById(id) {
   console.log("📄 Fetching complaint:", id);
 
-  const res = await fetch(`${API_BASE}/complaints/${id}`, {
-    headers: authHeaders(token),
-  });
+  const res = await fetch(
+    `${API_BASE}/complaints/${encodeURIComponent(id)}`,
+    withAdminHeaders()
+  );
 
   const data = await handleResponse(res);
 
@@ -68,17 +83,19 @@ export async function getComplaintById(id, token) {
 }
 
 // Update complaint (title, description, category, priority, location)
-export async function updateComplaint(id, updateData, token) {
+export async function updateComplaint(id, updateData) {
   console.log("🔄 Updating complaint:", id, updateData);
 
-  const res = await fetch(`${API_BASE}/complaints/${id}`, {
-    method: "PUT",
-    headers: {
-      ...authHeaders(token),
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(updateData),
-  });
+  const res = await fetch(
+    `${API_BASE}/complaints/${encodeURIComponent(id)}`,
+    withAdminHeaders({
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(updateData),
+    })
+  );
 
   return handleResponse(res);
 }
@@ -87,7 +104,6 @@ export async function updateComplaint(id, updateData, token) {
 export async function updateComplaintStatus(
   id,
   status,
-  token,
   adminRemarks = "",
   assignedTo = null
 ) {
@@ -98,42 +114,47 @@ export async function updateComplaintStatus(
   console.log("🔄 Updating status:", { id, status, adminRemarks, assignedTo });
 
   // Backend route: PUT /api/admin/complaints/:id/status
-  const res = await fetch(`${API_BASE}/admin/complaints/${id}/status`, {
-    method: "PUT",
-    headers: {
-      ...authHeaders(token),
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+  const res = await fetch(
+    `${API_BASE}/admin/complaints/${encodeURIComponent(id)}/status`,
+    withAdminHeaders({
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    })
+  );
 
   return handleResponse(res);
 }
 
 // Mark complaint as read (for notification panel)
-export async function markComplaintAsRead(id, token) {
+export async function markComplaintAsRead(id) {
   console.log("📖 Marking as read:", id);
 
   // Backend route: PATCH /api/complaints/admin/:id/read
-  const res = await fetch(`${API_BASE}/complaints/admin/${id}/read`, {
-    method: "PATCH",
-    headers: authHeaders(token),
-  });
+  const res = await fetch(
+    `${API_BASE}/complaints/admin/${encodeURIComponent(id)}/read`,
+    withAdminHeaders({
+      method: "PATCH",
+    })
+  );
 
   return handleResponse(res);
 }
 
 // ==================== STATS / ANALYTICS ====================
 
-// ✅ FIXED: Get analytics stats from backend with categories & priorities
-export async function getStats(token) {
+// ✅ Get analytics stats from backend with categories & priorities
+export async function getStats() {
   console.log("📊 Fetching analytics from BACKEND...");
 
   try {
     // Call backend analytics endpoint
-    const res = await fetch(`${API_BASE}/complaints/admin/analytics`, {
-      headers: authHeaders(token),
-    });
+    const res = await fetch(
+      `${API_BASE}/complaints/admin/analytics`,
+      withAdminHeaders()
+    );
 
     if (!res.ok) {
       throw new Error(`Backend returned ${res.status}`);
@@ -152,16 +173,16 @@ export async function getStats(token) {
         resolved: data.resolved || 0,
         rejected: data.rejected || 0,
       },
-      
+
       // Average resolution time
       avgResolutionTime: data.avgResolutionTime || 0,
-      
+
       // ✅ Categories array from backend aggregation
       categories: data.categories || [],
-      
+
       // ✅ Priorities array from backend aggregation
       priorities: data.priorities || [],
-      
+
       // Priority breakdown object
       byPriority: data.byPriority || {
         High: 0,
@@ -169,19 +190,18 @@ export async function getStats(token) {
         Low: 0,
       },
     };
-
   } catch (error) {
     console.error("❌ Backend analytics failed:", error);
-    
+
     // ✅ Fallback: Calculate from complaints if backend fails
     console.warn("⚠️ Using fallback calculation from complaints");
-    
+
     try {
-      const complaints = await getAllComplaints(token);
+      const complaints = await getAllComplaints();
       return calculateStatsFromComplaints(complaints);
     } catch (fallbackError) {
       console.error("❌ Fallback also failed:", fallbackError);
-      
+
       // Return empty structure
       return {
         stats: {
@@ -201,7 +221,7 @@ export async function getStats(token) {
 }
 
 // ✅ Fallback: Calculate stats from complaints array (client-side)
-export const calculateStatsFromComplaints = (complaints) => {
+export const calculateStatsFromComplaints = (complaints = []) => {
   console.log(`📊 Client-side calculation from ${complaints.length} complaints`);
 
   const stats = {
@@ -218,7 +238,7 @@ export const calculateStatsFromComplaints = (complaints) => {
   complaints.forEach((complaint) => {
     // Count by status
     const status = (complaint.status || "Pending").toLowerCase().trim();
-    
+
     if (status.includes("pending") || status === "new") {
       stats.pending++;
     } else if (status.includes("progress") || status.includes("process")) {
@@ -253,7 +273,7 @@ export const calculateStatsFromComplaints = (complaints) => {
   // Convert priority counts to array format
   const priorities = Object.entries(priorityCounts)
     .map(([name, count]) => ({ _id: name, count }))
-    .filter(p => p.count > 0);
+    .filter((p) => p.count > 0);
 
   console.log("✅ Client-side stats calculated:", {
     stats,
@@ -273,13 +293,11 @@ export const calculateStatsFromComplaints = (complaints) => {
 // ==================== ACTIVITY LOGS ====================
 
 // Fetch admin logs from backend (separate from frontend local activity logs)
-export async function getAllLogs(token) {
+export async function getAllLogs() {
   console.log("📋 Fetching admin logs");
 
   // Backend route: GET /api/admin/logs
-  const res = await fetch(`${API_BASE}/admin/logs`, {
-    headers: authHeaders(token),
-  });
+  const res = await fetch(`${API_BASE}/admin/logs`, withAdminHeaders());
 
   return handleResponse(res);
 }
@@ -287,44 +305,46 @@ export async function getAllLogs(token) {
 // ==================== PROFILE ====================
 
 // Get admin profile (same /api/profile as student, backend uses JWT)
-export async function getProfile(token) {
+export async function getProfile() {
   console.log("👤 Fetching profile");
 
-  const res = await fetch(`${API_BASE}/profile`, {
-    headers: authHeaders(token),
-  });
+  const res = await fetch(`${API_BASE}/profile`, withAdminHeaders());
 
   return handleResponse(res);
 }
 
 // Update admin profile (name / phone etc. as allowed by backend)
-export async function updateProfile(data, token) {
+export async function updateProfile(data) {
   console.log("✏️ Updating profile", data);
 
-  const res = await fetch(`${API_BASE}/profile`, {
-    method: "PUT",
-    headers: {
-      ...authHeaders(token),
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
+  const res = await fetch(
+    `${API_BASE}/profile`,
+    withAdminHeaders({
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    })
+  );
 
   return handleResponse(res);
 }
 
 // Change password (current + new)
-export async function changePassword(data, token) {
+export async function changePassword(data) {
   console.log("🔐 Changing password");
 
-  const res = await fetch(`${API_BASE}/auth/change-password`, {
-    method: "POST",
-    headers: {
-      ...authHeaders(token),
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
+  const res = await fetch(
+    `${API_BASE}/auth/change-password`,
+    withAdminHeaders({
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    })
+  );
 
   return handleResponse(res);
 }
@@ -332,12 +352,10 @@ export async function changePassword(data, token) {
 // ==================== DEPARTMENTS ====================
 
 // Get department list for filters / assignment
-export async function getDepartments(token) {
+export async function getDepartments() {
   console.log("🏢 Fetching departments");
 
-  const res = await fetch(`${API_BASE}/departments`, {
-    headers: authHeaders(token),
-  });
+  const res = await fetch(`${API_BASE}/departments`, withAdminHeaders());
 
   return handleResponse(res);
 }
@@ -345,14 +363,15 @@ export async function getDepartments(token) {
 // ==================== UNREAD NOTIFICATIONS ====================
 
 // Get unread complaints for notification badge
-export async function getUnreadComplaints(token) {
+export async function getUnreadComplaints() {
   console.log("🔔 Fetching unread complaints");
 
   try {
     // Backend route: GET /api/complaints/admin/unread
-    const res = await fetch(`${API_BASE}/complaints/admin/unread`, {
-      headers: authHeaders(token),
-    });
+    const res = await fetch(
+      `${API_BASE}/complaints/admin/unread`,
+      withAdminHeaders()
+    );
 
     const data = await handleResponse(res);
     console.log(`✅ ${data.length} unread complaints`);
@@ -361,7 +380,7 @@ export async function getUnreadComplaints(token) {
     console.warn("⚠️ Unread API failed → Using recent complaints", error);
 
     // Fallback: take top 10 recent complaints as "unread"
-    const all = await getAllComplaints(token);
+    const all = await getAllComplaints();
     return all.slice(0, 10);
   }
 }

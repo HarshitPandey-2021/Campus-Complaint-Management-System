@@ -1,5 +1,3 @@
-// src/controllers/usersController.js
-
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { getUsersCollection } = require("../models/usersModel");
@@ -12,10 +10,9 @@ async function createUser(req, res) {
   try {
     const db = req.app.locals.db;
     const Users = getUsersCollection(db);
-
     const { name, email, role, password, roll } = req.body;
 
-    // Required fields
+    // Basic required fields
     if (!name || !email || !password || !role) {
       return res.status(400).json({ message: "Missing required fields" });
     }
@@ -81,7 +78,7 @@ async function createUser(req, res) {
     // Insert user
     const result = await Users.insertOne(newUser);
 
-    // Create token
+    // Create JWT
     const token = jwt.sign(
       {
         userId: result.insertedId.toString(),
@@ -94,8 +91,8 @@ async function createUser(req, res) {
       }
     );
 
-    // Response without password
-    res.status(201).json({
+    // Response: token + user (no password)
+    return res.status(201).json({
       message: "User registered successfully",
       user: {
         _id: result.insertedId,
@@ -108,7 +105,7 @@ async function createUser(req, res) {
     });
   } catch (error) {
     console.error("Create user error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ message: "Internal server error" });
   }
 }
 
@@ -116,7 +113,7 @@ async function createUser(req, res) {
 async function loginUser(req, res) {
   const { email, password, role: requestedRole } = req.body;
 
-  // Required fields
+  // Basic checks
   if (!email || !password) {
     return res
       .status(400)
@@ -126,7 +123,6 @@ async function loginUser(req, res) {
   try {
     const db = req.app.locals.db;
     const Users = getUsersCollection(db);
-
     const normalizedEmail = email.toLowerCase().trim();
 
     // Find user
@@ -148,7 +144,7 @@ async function loginUser(req, res) {
       });
     }
 
-    // Create token
+    // Create JWT
     const token = jwt.sign(
       {
         userId: user._id.toString(),
@@ -161,17 +157,18 @@ async function loginUser(req, res) {
       }
     );
 
-    // Strip password
+    // Strip password before sending
     const { password: _, ...safeUser } = user;
 
-    res.status(200).json({
+    // Single, stable contract: { token, user }
+    return res.status(200).json({
       message: "Login successful",
       user: safeUser,
       token,
     });
   } catch (error) {
     console.error("Login user error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ message: "Internal server error" });
   }
 }
 

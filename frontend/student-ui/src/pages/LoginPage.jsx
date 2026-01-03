@@ -1,12 +1,12 @@
-// src/pages/LoginPage.jsx
-
 // src/pages/LoginPage.jsx (landing - 5174) - with role radio
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { login } from "../api";
 
-const ADMIN_URL = import.meta.env.VITE_ADMIN_APP_URL || "http://localhost:5173";
-const USER_URL = import.meta.env.VITE_USER_APP_URL || "http://localhost:3001";
+const ADMIN_URL =
+  import.meta.env.VITE_ADMIN_APP_URL || "http://localhost:5173";
+const USER_URL =
+  import.meta.env.VITE_USER_APP_URL || "http://localhost:3001";
 
 console.log("🔧 Login URLs:", { ADMIN_URL, USER_URL });
 
@@ -35,32 +35,36 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
+      // Backend should return: { token, user }
       const resp = await login(form.email, form.password, form.role);
       console.log("📥 Login Response:", resp);
 
       if (resp.token && resp.user) {
-        const authData = encodeURIComponent(
-          JSON.stringify({
-            token: resp.token,
-            role: resp.user.role, // actual role from backend
-          })
-        );
+        // Build full auth payload expected by other apps
+        const authPayload = {
+          token: resp.token,
+          user: {
+            _id: resp.user._id,
+            name: resp.user.name,
+            email: resp.user.email,
+            role: resp.user.role,
+            ...(resp.user.roll && { roll: resp.user.roll }),
+          },
+        };
+
+        const authData = encodeURIComponent(JSON.stringify(authPayload));
 
         console.log("👤 Requested role:", form.role);
         console.log("👤 Actual role:", resp.user.role);
 
         if (resp.user.role === "admin") {
-          console.log(
-            "🔗 Redirecting admin to:",
-            `${ADMIN_URL}/?auth=${authData}`
-          );
-          window.location.href = `${ADMIN_URL}/?auth=${authData}`;
+          const target = `${ADMIN_URL}/?auth=${authData}`;
+          console.log("🔗 Redirecting admin to:", target);
+          window.location.href = target;
         } else if (resp.user.role === "student") {
-          console.log(
-            "🔗 Redirecting student to:",
-            `${USER_URL}/user/dashboard?auth=${authData}`
-          );
-          window.location.href = `${USER_URL}/user/dashboard?auth=${authData}`;
+          const target = `${USER_URL}/user/dashboard?auth=${authData}`;
+          console.log("🔗 Redirecting student to:", target);
+          window.location.href = target;
         } else {
           setError("Unknown user role: " + resp.user.role);
         }
@@ -70,8 +74,8 @@ export default function LoginPage() {
     } catch (err) {
       console.error("❌ Login error:", err);
       if (
-        err.message.includes("Access denied") ||
-        err.message.includes("registered as")
+        err.message?.includes("Access denied") ||
+        err.message?.includes("registered as")
       ) {
         setError(err.message);
       } else {
@@ -141,6 +145,7 @@ export default function LoginPage() {
                 value="student"
                 checked={form.role === "student"}
                 onChange={handleChange}
+                disabled={loading}
               />
               <span>Student</span>
             </label>
@@ -152,6 +157,7 @@ export default function LoginPage() {
                 value="admin"
                 checked={form.role === "admin"}
                 onChange={handleChange}
+                disabled={loading}
               />
               <span>Admin</span>
             </label>

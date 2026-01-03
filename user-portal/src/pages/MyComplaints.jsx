@@ -1,6 +1,6 @@
 // src/pages/MyComplaints.jsx
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   RiSearchLine,
   RiFilterLine,
@@ -12,25 +12,24 @@ import {
   RiCloseCircleLine,
   RiLoader4Line,
   RiDownloadLine,
-} from 'react-icons/ri';
-import Sidebar from '../components/layout/Sidebar';
-import api from '../api';
+} from "react-icons/ri";
+import Sidebar from "../components/layout/Sidebar";
+import api from "../api";
 
 const MyComplaints = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
   // initial status from Dashboard navigate state (if any)
-  const initialStatus =
-    location.state?.filterStatus
-      ? location.state.filterStatus.toLowerCase()
-      : 'all';
+  const initialStatus = location.state?.filterStatus
+    ? location.state.filterStatus.toLowerCase()
+    : "all";
 
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState(initialStatus);
-  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState("all");
 
   useEffect(() => {
     fetchComplaints();
@@ -46,14 +45,15 @@ const MyComplaints = () => {
   const fetchComplaints = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       const data = await api.getMyComplaints(token);
-      setComplaints(data);
+      setComplaints(Array.isArray(data) ? data : []);
       if (data && data.length) {
-        console.log('Sample Complaint:', data[0]);
+        console.log("Sample Complaint:", data[0]);
       }
     } catch (error) {
-      console.error('Failed to fetch complaints:', error);
+      console.error("Failed to fetch complaints:", error);
+      setComplaints([]);
     } finally {
       setLoading(false);
     }
@@ -62,14 +62,14 @@ const MyComplaints = () => {
   const getStatusIcon = (status) => {
     const statusLower = status?.toLowerCase();
     switch (statusLower) {
-      case 'pending':
+      case "pending":
         return <RiTimeLine className="w-5 h-5 text-yellow-500" />;
-      case 'in-progress':
-      case 'in progress':
+      case "in-progress":
+      case "in progress":
         return <RiAlertLine className="w-5 h-5 text-blue-500" />;
-      case 'resolved':
+      case "resolved":
         return <RiCheckboxCircleLine className="w-5 h-5 text-green-500" />;
-      case 'rejected':
+      case "rejected":
         return <RiCloseCircleLine className="w-5 h-5 text-red-500" />;
       default:
         return <RiTimeLine className="w-5 h-5 text-gray-500" />;
@@ -79,46 +79,53 @@ const MyComplaints = () => {
   const getStatusColor = (status) => {
     const statusLower = status?.toLowerCase();
     switch (statusLower) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
-      case 'in-progress':
-      case 'in progress':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
-      case 'resolved':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
-      case 'rejected':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
+      case "in-progress":
+      case "in progress":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
+      case "resolved":
+        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+      case "rejected":
+        return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
       default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400";
     }
   };
 
   const getPriorityColor = (priority) => {
     const priorityLower = priority?.toLowerCase();
     switch (priorityLower) {
-      case 'high':
-        return 'text-red-600 dark:text-red-400 font-semibold';
-      case 'medium':
-        return 'text-yellow-600 dark:text-yellow-400 font-semibold';
-      case 'low':
-        return 'text-green-600 dark:text-green-400 font-semibold';
+      case "high":
+        return "text-red-600 dark:text-red-400 font-semibold";
+      case "medium":
+        return "text-yellow-600 dark:text-yellow-400 font-semibold";
+      case "low":
+        return "text-green-600 dark:text-green-400 font-semibold";
       default:
-        return 'text-gray-600 dark:text-gray-400';
+        return "text-gray-600 dark:text-gray-400";
     }
   };
 
   const filteredComplaints = complaints.filter((complaint) => {
     const matchesSearch =
-      complaint.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      complaint.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      complaint.complaintId?.toLowerCase().includes(searchTerm.toLowerCase());
+      complaint.subject
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      complaint.description
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      complaint.complaintId
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase());
 
     const matchesStatus =
-      statusFilter === 'all' ||
+      statusFilter === "all" ||
       complaint.status?.toLowerCase() === statusFilter.toLowerCase();
 
     const matchesCategory =
-      categoryFilter === 'all' || complaint.category === categoryFilter;
+      categoryFilter === "all" ||
+      complaint.category === categoryFilter;
 
     return matchesSearch && matchesStatus && matchesCategory;
   });
@@ -146,42 +153,55 @@ const MyComplaints = () => {
             {complaint.description}
           </p>
         </div>
-        <div className="ml-4">
-          {getStatusIcon(complaint.status)}
-        </div>
+        <div className="ml-4">{getStatusIcon(complaint.status)}</div>
       </div>
+
       <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
         <div>
-          <span className="text-gray-500 dark:text-gray-400">Category:</span>
+          <span className="text-gray-500 dark:text-gray-400">
+            Category:
+          </span>
           <span className="ml-2 font-medium text-gray-700 dark:text-gray-300">
             {complaint.category}
           </span>
         </div>
         <div>
-          <span className="text-gray-500 dark:text-gray-400">Priority:</span>
-          <span className={`ml-2 ${getPriorityColor(complaint.priority)}`}>
+          <span className="text-gray-500 dark:text-gray-400">
+            Priority:
+          </span>
+          <span
+            className={`ml-2 ${getPriorityColor(complaint.priority)}`}
+          >
             {complaint.priority}
           </span>
         </div>
         <div>
-          <span className="text-gray-500 dark:text-gray-400">Location:</span>
+          <span className="text-gray-500 dark:text-gray-400">
+            Location:
+          </span>
           <span className="ml-2 font-medium text-gray-700 dark:text-gray-300">
             {complaint.location}
           </span>
         </div>
         <div>
-          <span className="text-gray-500 dark:text-gray-400">Date:</span>
+          <span className="text-gray-500 dark:text-gray-400">
+            Date:
+          </span>
           <span className="ml-2 font-medium text-gray-700 dark:text-gray-300">
             {complaint.submittedAt
-              ? new Date(complaint.submittedAt).toLocaleDateString('en-IN')
-              : 'N/A'}
+              ? new Date(
+                  complaint.submittedAt
+                ).toLocaleDateString("en-IN")
+              : "N/A"}
           </span>
         </div>
       </div>
 
       {complaint.assignedTo && (
         <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-sm border border-blue-200 dark:border-blue-700">
-          <span className="text-gray-600 dark:text-gray-400">Assigned to:</span>
+          <span className="text-gray-600 dark:text-gray-400">
+            Assigned to:
+          </span>
           <span className="ml-2 font-semibold text-blue-700 dark:text-blue-400">
             {complaint.assignedTo.name || complaint.assignedTo}
           </span>
@@ -209,15 +229,18 @@ const MyComplaints = () => {
           <RiEyeLine className="w-4 h-4" />
           View Details
         </button>
-        {complaint.status?.toLowerCase() === 'pending' && !complaint.assignedTo && (
-          <button
-            onClick={() => navigate(`/user/complaints/${complaint._id}/edit`)}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 border-2 border-indigo-600 text-indigo-600 dark:border-indigo-500 dark:text-indigo-400 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors font-semibold"
-          >
-            <RiEditLine className="w-4 h-4" />
-            Edit
-          </button>
-        )}
+        {complaint.status?.toLowerCase() === "pending" &&
+          !complaint.assignedTo && (
+            <button
+              onClick={() =>
+                navigate(`/user/complaints/${complaint._id}/edit`)
+              }
+              className="flex items-center justify-center gap-2 px-4 py-2.5 border-2 border-indigo-600 text-indigo-600 dark:border-indigo-500 dark:text-indigo-400 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors font-semibold"
+            >
+              <RiEditLine className="w-4 h-4" />
+              Edit
+            </button>
+          )}
       </div>
     </div>
   );
@@ -292,7 +315,9 @@ const MyComplaints = () => {
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64">
             <RiLoader4Line className="w-12 h-12 animate-spin text-indigo-600 dark:text-indigo-400 mb-4" />
-            <p className="text-gray-600 dark:text-gray-400">Loading complaints...</p>
+            <p className="text-gray-600 dark:text-gray-400">
+              Loading complaints...
+            </p>
           </div>
         ) : filteredComplaints.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-12 text-center border border-gray-200 dark:border-gray-700 animate-fadeIn">
@@ -301,35 +326,45 @@ const MyComplaints = () => {
               No complaints found
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              {searchTerm || statusFilter !== 'all' || categoryFilter !== 'all'
-                ? 'Try adjusting your filters to see more results'
+              {searchTerm ||
+              statusFilter !== "all" ||
+              categoryFilter !== "all"
+                ? "Try adjusting your filters to see more results"
                 : "You haven't submitted any complaints yet"}
             </p>
-            {!searchTerm && statusFilter === 'all' && categoryFilter === 'all' && (
-              <button
-                onClick={() => navigate('/user/submit')}
-                className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors font-semibold"
-              >
-                Submit Your First Complaint
-              </button>
-            )}
+            {!searchTerm &&
+              statusFilter === "all" &&
+              categoryFilter === "all" && (
+                <button
+                  onClick={() => navigate("/user/submit")}
+                  className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors font-semibold"
+                >
+                  Submit Your First Complaint
+                </button>
+              )}
           </div>
         ) : (
           <div className="animate-fadeIn">
             <div className="mb-4 flex items-center justify-between">
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Showing{' '}
+                Showing{" "}
                 <span className="font-semibold text-indigo-600 dark:text-indigo-400">
                   {filteredComplaints.length}
-                </span>{' '}
-                of <span className="font-semibold">{complaints.length}</span> complaints
+                </span>{" "}
+                of{" "}
+                <span className="font-semibold">
+                  {complaints.length}
+                </span>{" "}
+                complaints
               </p>
-              {(searchTerm || statusFilter !== 'all' || categoryFilter !== 'all') && (
+              {(searchTerm ||
+                statusFilter !== "all" ||
+                categoryFilter !== "all") && (
                 <button
                   onClick={() => {
-                    setSearchTerm('');
-                    setStatusFilter('all');
-                    setCategoryFilter('all');
+                    setSearchTerm("");
+                    setStatusFilter("all");
+                    setCategoryFilter("all");
                   }}
                   className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline font-semibold"
                 >

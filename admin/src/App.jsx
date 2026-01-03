@@ -1,5 +1,5 @@
-// src/App.jsx (admin - 5173) - FIXED VERSION
-import React, { useState, useEffect } from "react";
+// src/App.jsx (admin - 5173) - FIXED & CLEANED
+import React, { useState, useEffect, useContext } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -19,6 +19,8 @@ import {
   logActivity,
   ACTIVITY_TYPES,
 } from "./services/activityLogger";
+
+import { decodeToken, getAdminToken, getAdminUser, saveAdminSession } from "./utils/tokenUtils";
 
 // Pages
 import Dashboard from "./pages/Dashboard";
@@ -49,17 +51,21 @@ function useAuthFromQuery() {
       console.log("✅ Parsed auth from URL:", { token, user });
 
       if (token && user) {
-        // ✅ Save token in all expected keys for admin portal
-        localStorage.setItem("adminToken", token);
-        localStorage.setItem("token", token);
-        localStorage.setItem("authToken", token);
+        // Prefer clean save via tokenUtils
+        saveAdminSession(user, token);
 
-        // ✅ Cache user in multiple keys for compatibility
-        localStorage.setItem("adminProfile", JSON.stringify(user));
-        localStorage.setItem("user", JSON.stringify(user));
-        localStorage.setItem("ccms-admin-session", JSON.stringify(user));
-        
-        console.log("✅ Token saved to localStorage");
+        // Extra safety: if user missing email/role, patch from token
+        const decoded = decodeToken(token);
+        if (decoded && (!user.email || !user.role)) {
+          const patched = {
+            ...user,
+            email: user.email || decoded.email,
+            role: user.role || decoded.role,
+          };
+          saveAdminSession(patched, token);
+        }
+
+        console.log("✅ Admin session saved from URL auth");
       }
     } catch (e) {
       console.error("❌ Invalid auth data in URL", e);
@@ -81,22 +87,15 @@ function useAuthFromQuery() {
 /* ------------------ ✅ FIXED ProtectedRoute ------------------ */
 
 function ProtectedRoute({ children, authReady }) {
-  // ✅ Check multiple token sources
-  const token = 
-    localStorage.getItem("token") || 
-    localStorage.getItem("adminToken") || 
-    localStorage.getItem("authToken");
-
-  // ✅ Also check if user data exists
-  const user = 
-    localStorage.getItem("user") || 
-    localStorage.getItem("adminProfile");
+  // Centralized token + user check via tokenUtils
+  const token = getAdminToken();
+  const user = getAdminUser();
 
   console.log("🔒 ProtectedRoute:", {
     authReady,
     hasToken: !!token,
     hasUser: !!user,
-    tokenPreview: token ? token.substring(0, 20) + "..." : "none"
+    tokenPreview: token ? token.substring(0, 20) + "..." : "none",
   });
 
   // Wait until URL auth is processed
@@ -111,17 +110,17 @@ function ProtectedRoute({ children, authReady }) {
     );
   }
 
-  // ✅ Check both token AND user data
+  // Check both token AND user data
   if (!token || !user) {
-    console.error("❌ Missing credentials:", {
+    console.error("❌ Missing admin credentials:", {
       token: !!token,
-      user: !!user
+      user: !!user,
     });
     return <Navigate to="/unauthorized" replace />;
   }
 
-  // ✅ All checks passed
-  console.log("✅ Access granted");
+  // Access granted
+  console.log("✅ Admin access granted");
   return children;
 }
 
