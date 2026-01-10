@@ -1,7 +1,9 @@
 // src/api.js
 
-// Backend base URL:
-const API_BASE = import.meta.env.VITE_API_URL || "/api";
+// Backend base URL
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+
+console.log("🔧 API Base URL:", API_BASE); // ✅ DEBUG - Verify URL
 
 // Small helper to handle responses
 async function handleResponse(res) {
@@ -14,7 +16,7 @@ async function handleResponse(res) {
 
 // ---------- AUTH ----------
 
-// 
+// LOGIN - POST /api/auth/login
 export async function login(email, password, role = "student") {
   console.log("🔗 API Login CALL:", { email, role }); // ✅ DEBUG
   
@@ -24,19 +26,13 @@ export async function login(email, password, role = "student") {
     body: JSON.stringify({ email, password, role }),
   });
   
-  console.log("📤 Backend received role:", role); // ✅ DEBUG
+  console.log("📤 Backend response status:", res.status); // ✅ DEBUG
   // Expect: { message, user, token }
   return handleResponse(res);
 }
 
-// SIGNUP (POST /api/auth/register)
-export async function signup(
-  name,
-  roll,
-  email,
-  password,
-  role = "student"
-) {
+// SIGNUP - POST /api/auth/register
+export async function signup(name, roll, email, password, role = "student") {
   console.log("📝 Signup CALL:", { name, email, role }); // ✅ DEBUG
   
   const res = await fetch(`${API_BASE}/auth/register`, {
@@ -44,6 +40,7 @@ export async function signup(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, roll, email, password, role }),
   });
+  
   // Expect: { message, user, token }
   return handleResponse(res);
 }
@@ -75,7 +72,6 @@ export async function getComplaintById(id, token) {
 }
 
 // Submit a new complaint (JSON body)
-//
 export async function submitComplaint(data, token) {
   console.log("📤 Submitting complaint:", data.subject?.substring(0, 50) + "..."); // ✅ DEBUG
   

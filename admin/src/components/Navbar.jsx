@@ -1,25 +1,27 @@
-// src/components/Navbar.jsx - COMPLETE FIXED
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { RiMenuFoldLine, RiLogoutBoxRLine } from 'react-icons/ri';
-import DarkModeToggle from './DarkModeToggle';
-import Tooltip from './Tooltip';
-import NotificationPanel from './NotificationPanel';
-import UniversityLogo from './UniversityLogo';
-import { getAdminUser } from '../utils/tokenUtils';
-import universityLogo from '../assets/logo.png';
+// src/components/Navbar.jsx - ADMIN NAVBAR WITH PROPER LOGOUT
+
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { RiMenuFoldLine, RiLogoutBoxRLine } from "react-icons/ri";
+import DarkModeToggle from "./DarkModeToggle";
+import Tooltip from "./Tooltip";
+import NotificationPanel from "./NotificationPanel";
+import UniversityLogo from "./UniversityLogo";
+import { getAdminUser, logoutAdmin } from "../utils/tokenUtils";
+import universityLogo from "../assets/logo.png";
 
 const Navbar = ({ toggleSidebar }) => {
   const navigate = useNavigate();
   const adminUser = getAdminUser();
 
   const handleLogout = () => {
-    if (window.confirm('Are you sure you want to logout?')) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('adminAuth');
-      localStorage.removeItem('dashboard-welcome-seen');
-      window.location.href = 'http://localhost:5174/login';
+    if (window.confirm("Are you sure you want to logout?")) {
+      // Clear all admin session keys
+      logoutAdmin();
+      // Clear any UI-only flags if needed
+      localStorage.removeItem("dashboard-welcome-seen");
+      // Redirect to landing login
+      window.location.href = "http://localhost:5174/login";
     }
   };
 
@@ -79,18 +81,18 @@ const Navbar = ({ toggleSidebar }) => {
               <DarkModeToggle />
             </Tooltip>
 
-            <div className="h-8 w-px bg-white/20"></div>
+            <div className="h-8 w-px bg-white/20" />
 
             <Tooltip text="View profile">
               <button
-                onClick={() => navigate('/profile')}
+                onClick={() => navigate("/profile")}
                 className="text-right hover:bg-white/10 px-3 py-2 rounded-lg transition-all group"
               >
                 <p className="text-sm font-semibold group-hover:text-indigo-200 transition-colors truncate max-w-[150px]">
-                  {adminUser?.name || 'Admin'}
+                  {adminUser?.name || "Admin"}
                 </p>
                 <p className="text-xs text-indigo-200 dark:text-gray-400 truncate max-w-[150px]">
-                  {adminUser?.role || 'Admin'} • UoL
+                  {(adminUser?.role || "Admin") + " • UoL"}
                 </p>
               </button>
             </Tooltip>
@@ -106,7 +108,7 @@ const Navbar = ({ toggleSidebar }) => {
             </Tooltip>
           </div>
         </div>
-    </div>
+      </div>
     </nav>
   );
 };

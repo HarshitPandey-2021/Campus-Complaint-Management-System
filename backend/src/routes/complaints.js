@@ -1,60 +1,67 @@
-// src/routes/complaints.js
+// backend/src/routes/complaints.js
 const express = require("express");
 const router = express.Router();
 const complaintsController = require("../controllers/complaintsController");
-const { verifyToken, authorizeRoles } = require("../middlewares/authMiddleware");
-const upload = require("../middlewares/upload");
+const { auth, requireRole } = require("../middleware/authMiddleware");
+const upload = require("../middleware/upload");
 
 // ==================== ADMIN ROUTES ====================
-// Place BEFORE generic routes to avoid conflicts
 
-// Admin: View all complaints
+// Get all complaints
 router.get(
   "/admin/all",
-  verifyToken,
-  authorizeRoles("admin"),
+  auth,
+  requireRole("admin"),
   complaintsController.getAllComplaints
 );
 
-// Admin: Get complaint analytics
+// Get analytics
 router.get(
   "/admin/analytics",
-  verifyToken,
-  authorizeRoles("admin"),
+  auth,
+  requireRole("admin"),
   complaintsController.getAnalyticsData
 );
 
-// Admin: Update complaint status
+// Get unread complaints
+router.get(
+  "/admin/unread",
+  auth,
+  requireRole("admin"),
+  complaintsController.getUnreadComplaints
+);
+
+// Update complaint status
 router.put(
   "/admin/:id/status",
-  verifyToken,
-  authorizeRoles("admin"),
+  auth,
+  requireRole("admin"),
   complaintsController.updateComplaintStatus
 );
 
-// Admin: Mark complaint as read
+// Mark complaint as read
 router.patch(
   "/admin/:id/read",
-  verifyToken,
-  authorizeRoles("admin"),
+  auth,
+  requireRole("admin"),
   complaintsController.markComplaintAsRead
 );
 
-// Admin: Get complaint by ID
+// Get complaint by ID (admin)
 router.get(
   "/admin/:id",
-  verifyToken,
-  authorizeRoles("admin"),
+  auth,
+  requireRole("admin"),
   complaintsController.getComplaintById
 );
 
 // ==================== STUDENT ROUTES ====================
 
-// Students: Submit new complaint WITH FILE UPLOAD
+// Create new complaint
 router.post(
   "/",
-  verifyToken,
-  authorizeRoles("student"),
+  auth,
+  requireRole("student"),
   upload.fields([
     { name: "images", maxCount: 5 },
     { name: "pdfDocument", maxCount: 1 },
@@ -62,19 +69,19 @@ router.post(
   complaintsController.createComplaint
 );
 
-// Students: View their own complaints
+// Get my complaints
 router.get(
   "/mine",
-  verifyToken,
-  authorizeRoles("student"),
+  auth,
+  requireRole("student"),
   complaintsController.getUserComplaints
 );
 
-// Students: Update their pending complaints
+// Update my complaint
 router.put(
   "/:id",
-  verifyToken,
-  authorizeRoles("student"),
+  auth,
+  requireRole("student"),
   upload.fields([
     { name: "images", maxCount: 5 },
     { name: "pdfDocument", maxCount: 1 },
@@ -84,10 +91,10 @@ router.put(
 
 // ==================== SHARED ROUTES ====================
 
-// Get complaint by ID (role-based access control inside controller)
+// Get complaint by ID (role-based access in controller)
 router.get(
   "/:id",
-  verifyToken,
+  auth,
   complaintsController.getComplaintById
 );
 

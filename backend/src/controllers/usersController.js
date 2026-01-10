@@ -1,178 +1,180 @@
-const bcrypt = require("bcrypt");
+// backend/src/controllers/usersController.js
 const jwt = require("jsonwebtoken");
-const { getUsersCollection } = require("../models/usersModel");
+const User = require("../models/User");
 
-const SALT_ROUNDS = Number(process.env.SALT_ROUNDS) || 12;
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-// Register student/admin
-async function createUser(req, res) {
+// Login user - generates access & refresh tokens
+exports.loginUser = async (req, res) => {
   try {
-    const db = req.app.locals.db;
-    const Users = getUsersCollection(db);
-    const { name, email, role, password, roll } = req.body;
+    const { email, password } = req.body;
 
-    // Basic required fields
-    if (!name || !email || !password || !role) {
-      return res.status(400).json({ message: "Missing required fields" });
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password required" });
     }
 
-    // Email format
-    if (!EMAIL_REGEX.test(email)) {
-      return res.status(400).json({ message: "Invalid email format" });
-    }
-
-    // Allowed roles
-    if (!["student", "admin"].includes(role)) {
-      return res.status(400).json({ message: "Invalid role" });
-    }
-
-    // Roll required for student
-    if (role === "student" && !roll) {
-      return res
-        .status(400)
-        .json({ message: "Roll number required for students" });
-    }
-
-    // Password strength
-    if (!/^(?=.*[A-Z])(?=.*\d).{8,}$/.test(password)) {
-      return res.status(400).json({
-        message:
-          "Password must be 8+ chars and include a number and uppercase letter",
-      });
-    }
-
-    const normalizedEmail = email.toLowerCase().trim();
-
-    // Email unique
-    const existingUser = await Users.findOne({ email: normalizedEmail });
-    if (existingUser) {
-      return res.status(400).json({ message: "Email already registered" });
-    }
-
-    // Roll unique (for any role that has roll)
-    if (roll) {
-      const normalizedRoll = String(roll).trim();
-      const existingRoll = await Users.findOne({ roll: normalizedRoll });
-      if (existingRoll) {
-        return res
-          .status(400)
-          .json({ message: "This roll number is already registered" });
-      }
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
-
-    // New user doc
-    const newUser = {
-      name: name.trim(),
-      email: normalizedEmail,
-      role,
-      ...(roll && { roll: String(roll).trim() }),
-      password: hashedPassword,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    // Insert user
-    const result = await Users.insertOne(newUser);
-
-    // Create JWT
-    const token = jwt.sign(
-      {
-        userId: result.insertedId.toString(),
-        email: newUser.email,
-        role: newUser.role,
-      },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: process.env.JWT_EXPIRES_IN || "1h",
-      }
-    );
-
-    // Response: token + user (no password)
-    return res.status(201).json({
-      message: "User registered successfully",
-      user: {
-        _id: result.insertedId,
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role,
-        ...(newUser.roll && { roll: newUser.roll }),
-      },
-      token,
-    });
-  } catch (error) {
-    console.error("Create user error:", error);
-    return res.status(500).json({ message: "Internal server error" });
-  }
-}
-
-// Login student/admin
-async function loginUser(req, res) {
-  const { email, password, role: requestedRole } = req.body;
-
-  // Basic checks
-  if (!email || !password) {
-    return res
-      .status(400)
-      .json({ message: "Email and password are required" });
-  }
-
-  try {
-    const db = req.app.locals.db;
-    const Users = getUsersCollection(db);
-    const normalizedEmail = email.toLowerCase().trim();
-
-    // Find user
-    const user = await Users.findOne({ email: normalizedEmail });
+    // Find user by email
+    const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // Check password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    // Verify password
+    const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
-      return res.status(401).json({ message: "Invalid password" });
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // Optional role check
-    if (requestedRole && user.role !== requestedRole) {
-      return res.status(403).json({
-        message: `Access denied. This account is ${user.role}, not ${requestedRole}.`,
-      });
-    }
-
-    // Create JWT
-    const token = jwt.sign(
+    // Generate access token (7 days for development, 1h for production)
+    const accessToken = jwt.sign(
       {
-        userId: user._id.toString(),
+        userId: user._id.toString(), // ✅ FIXED: Use _id and convert to string
         email: user.email,
         role: user.role,
       },
       process.env.JWT_SECRET,
-      {
-        expiresIn: process.env.JWT_EXPIRES_IN || "1h",
-      }
+      { expiresIn: "7d" }
     );
 
-    // Strip password before sending
-    const { password: _, ...safeUser } = user;
+    // Generate refresh token (30 days)
+    const refreshToken = jwt.sign(
+      {
+        userId: user._id.toString(), // ✅ FIXED: Use _id and convert to string
+        email: user.email,
+        role: user.role,
+        type: "refresh",
+      },
+      process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
+      { expiresIn: "30d" }
+    );
 
-    // Single, stable contract: { token, user }
-    return res.status(200).json({
-      message: "Login successful",
-      user: safeUser,
-      token,
+    console.log("✅ User logged in:", email, "role:", user.role);
+
+    // Return both tokens & user data
+    res.json({
+      token: accessToken,
+      refreshToken: refreshToken,
+      user: {
+        _id: user._id.toString(), // ✅ FIXED: Use _id
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        roll: user.roll || null,
+      },
     });
   } catch (error) {
-    console.error("Login user error:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    console.error("❌ Login error:", error);
+    res.status(500).json({ message: "Server error during login" });
   }
-}
+};
 
-module.exports = {
-  createUser,
-  loginUser,
+// Refresh access token using refresh token
+exports.refreshToken = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(401).json({ message: "Refresh token required" });
+    }
+
+    // Verify refresh token
+    const decoded = jwt.verify(
+      refreshToken,
+      process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET
+    );
+
+    // Ensure it's a refresh token (not access token)
+    if (decoded.type !== "refresh") {
+      return res.status(401).json({ message: "Invalid refresh token type" });
+    }
+
+    // Generate new access token
+    const newAccessToken = jwt.sign(
+      {
+        userId: decoded.userId,
+        email: decoded.email,
+        role: decoded.role,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    console.log("✅ Access token refreshed for:", decoded.email);
+    res.json({ token: newAccessToken });
+  } catch (error) {
+    console.error("❌ Refresh token error:", error);
+    if (error.name === "JsonWebTokenError") {
+      return res.status(401).json({ message: "Invalid refresh token" });
+    }
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({ message: "Refresh token expired" });
+    }
+    res.status(401).json({ message: "Invalid or expired refresh token" });
+  }
+};
+
+// Register new user
+exports.registerUser = async (req, res) => {
+  try {
+    const { name, email, password, role, roll } = req.body;
+
+    // Validate input
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: "Name, email and password required" });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
+
+    // Create new user
+    const user = new User({
+      name,
+      email,
+      password, // Will be hashed by User model pre-save hook
+      role: role || "student",
+      roll: roll || null,
+    });
+
+    await user.save();
+    console.log("✅ User registered:", email);
+
+    // Generate tokens for immediate login after registration
+    const accessToken = jwt.sign(
+      {
+        userId: user._id.toString(), // ✅ FIXED: Use _id
+        email: user.email,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    const refreshToken = jwt.sign(
+      {
+        userId: user._id.toString(), // ✅ FIXED: Use _id
+        email: user.email,
+        role: user.role,
+        type: "refresh",
+      },
+      process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
+      { expiresIn: "30d" }
+    );
+
+    res.status(201).json({
+      token: accessToken,
+      refreshToken: refreshToken,
+      user: {
+        _id: user._id.toString(), // ✅ FIXED: Use _id
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        roll: user.roll,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Registration error:", error);
+    res.status(500).json({ message: "Server error during registration" });
+  }
 };

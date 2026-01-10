@@ -1,6 +1,7 @@
-// src/utils/tokenUtils.js - ADMIN TOKEN HELPERS (single source of truth)
+// src/utils/tokenUtils.js
+// Single source of truth for admin token + user session
 
-// Decode JWT payload safely
+// Decode JWT payload (no crypto verification, only convenience)
 export function decodeToken(token) {
   try {
     if (!token) return null;
@@ -14,27 +15,22 @@ export function decodeToken(token) {
   }
 }
 
-// Get admin token from any known key
+// Get admin token from dedicated keys only
 export function getAdminToken() {
   return (
     localStorage.getItem("adminToken") ||
-    localStorage.getItem("token") ||
-    localStorage.getItem("authToken") ||
+    localStorage.getItem("ccms-admin-token") ||
     null
   );
 }
 
-// Get admin user from cache or token
+// Get admin user from cache or decode from token
 export function getAdminUser() {
-  console.log("🔍 getAdminUser() - checking caches...");
-
-  // 1) Try all possible cached user keys
+  // Preferred admin-specific keys
   const userKeys = [
-    "user",
-    "adminProfile",
-    "profile",
-    "adminUser",
     "ccms-admin-session",
+    "adminUser",
+    "adminProfile",
   ];
 
   for (const key of userKeys) {
@@ -42,61 +38,72 @@ export function getAdminUser() {
       const userStr = localStorage.getItem(key);
       if (userStr) {
         const user = JSON.parse(userStr);
-        console.log(`✅ Found in ${key}:`, user.email);
-        return user;
+        if (user && user.email) {
+          return user;
+        }
       }
     } catch (e) {
-      console.warn(`Failed to parse ${key}:`, e.message);
+      console.warn("Failed to parse cached admin user from key:", key, e);
     }
   }
 
-  // 2) Decode from any available token
+  // Fallback: decode from token if nothing cached
   const token = getAdminToken();
   if (token) {
-    console.log("🔍 Decoding token...");
     try {
       const decoded = decodeToken(token);
-      if (decoded) {
-        console.log("✅ Token decoded:", decoded.email);
-        return decoded;
+      if (decoded && decoded.email) {
+        return {
+          // minimal shape from token
+          name: decoded.name || decoded.email.split("@")[0],
+          email: decoded.email,
+          role: decoded.role,
+          userId: decoded.userId,
+        };
       }
     } catch (e) {
       console.warn("Token decode failed:", e.message);
     }
   }
 
-  console.warn("⚠️ No admin data found - using fallback");
   return null;
 }
 
-// Save admin session in all compatible keys
-export function saveAdminSession(user, token = null) {
-  if (!user) return;
-  console.log("💾 Caching admin session:", user.email);
+// Save admin session in dedicated keys
+export function saveAdminSession(user, token) {
+  if (!user || !token) return;
 
-  if (token) {
-    localStorage.setItem("adminToken", token);
-  }
+  const cleanUser = {
+    name: user.name || user.email?.split("@")[0] || "Admin",
+    email: user.email,
+    role: user.role || "admin",
+    userId: user.userId || user.id || user._id,
+  };
 
-  // Cache in all formats for compatibility
-  localStorage.setItem("adminProfile", JSON.stringify(user));
-  localStorage.setItem("user", JSON.stringify(user));
-  localStorage.setItem("ccms-admin-session", JSON.stringify(user));
-
-  console.log("✅ Admin session cached everywhere");
+  localStorage.setItem("adminToken", token);
+  localStorage.setItem("ccms-admin-token", token);
+  localStorage.setItem("ccms-admin-session", JSON.stringify(cleanUser));
+  localStorage.setItem("adminUser", JSON.stringify(cleanUser));
+  localStorage.setItem("adminProfile", JSON.stringify(cleanUser));
 }
 
 // Clear all admin-related tokens and caches
 export function logoutAdmin() {
-  console.log("🚪 Logging out admin...");
+  try {
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("ccms-admin-token");
 
-  localStorage.removeItem("adminToken");
-  localStorage.removeItem("token");
-  localStorage.removeItem("authToken");
+    localStorage.removeItem("ccms-admin-session");
+    localStorage.removeItem("adminUser");
+    localStorage.removeItem("adminProfile");
+  } catch (e) {
+    console.error("Failed to clear admin session", e);
+  }
+}
 
-  localStorage.removeItem("user");
-  localStorage.removeItem("adminProfile");
-  localStorage.removeItem("ccms-admin-session");
-  localStorage.removeItem("profile");
-  localStorage.removeItem("adminUser");
+// Optional helper if needed in future
+export function isAdminAuthenticated() {
+  const token = getAdminToken();
+  const user = getAdminUser();
+  return !!token && !!user && (user.role === "admin" || user.role === "ADMIN");
 }

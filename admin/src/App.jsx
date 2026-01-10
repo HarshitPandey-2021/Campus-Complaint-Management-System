@@ -1,5 +1,6 @@
-// src/App.jsx (admin - 5173) - FIXED & CLEANED
-import React, { useState, useEffect, useContext } from "react";
+// src/App.jsx (Admin portal)
+
+import React, { useState, useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -14,13 +15,18 @@ import Breadcrumb from "./components/Breadcrumb";
 
 import useKeyboardShortcuts from "./hooks/useKeyboardShortcuts";
 import { ToastProvider } from "./context/ToastContext";
+
 import {
   initializeActivityLogger,
   logActivity,
   ACTIVITY_TYPES,
 } from "./services/activityLogger";
 
-import { decodeToken, getAdminToken, getAdminUser, saveAdminSession } from "./utils/tokenUtils";
+import {
+  getAdminToken,
+  getAdminUser,
+  logoutAdmin,
+} from "./utils/tokenUtils";
 
 // Pages
 import Dashboard from "./pages/Dashboard";
@@ -30,115 +36,53 @@ import ActivityLogs from "./pages/ActivityLogs";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
-/* ------------------ URL → localStorage (auth) ------------------ */
-
-function useAuthFromQuery() {
-  const location = useLocation();
-  const [authReady, setAuthReady] = useState(false);
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const authParam = params.get("auth");
-
-    if (!authParam) {
-      // No auth param → just mark as ready
-      setAuthReady(true);
-      return;
-    }
-
-    try {
-      const { token, user } = JSON.parse(decodeURIComponent(authParam));
-      console.log("✅ Parsed auth from URL:", { token, user });
-
-      if (token && user) {
-        // Prefer clean save via tokenUtils
-        saveAdminSession(user, token);
-
-        // Extra safety: if user missing email/role, patch from token
-        const decoded = decodeToken(token);
-        if (decoded && (!user.email || !user.role)) {
-          const patched = {
-            ...user,
-            email: user.email || decoded.email,
-            role: user.role || decoded.role,
-          };
-          saveAdminSession(patched, token);
-        }
-
-        console.log("✅ Admin session saved from URL auth");
-      }
-    } catch (e) {
-      console.error("❌ Invalid auth data in URL", e);
-    } finally {
-      // Remove ?auth from URL to keep clean URLs after first load
-      params.delete("auth");
-      const newQuery = params.toString();
-      const newUrl = location.pathname + (newQuery ? `?${newQuery}` : "");
-      window.history.replaceState({}, "", newUrl);
-
-      // ✅ Mark auth as processed
-      setAuthReady(true);
-    }
-  }, [location.search, location.pathname]);
-
-  return authReady;
+// Helper for activity logging
+function getPageName(path) {
+  const routes = {
+    "/": "Dashboard",
+    "/dashboard": "Dashboard",
+    "/complaints": "Complaints",
+    "/analytics": "Analytics",
+    "/activity-logs": "Activity Logs",
+    "/profile": "Profile",
+  };
+  return routes[path] || "Unknown Page";
 }
 
-/* ------------------ ✅ FIXED ProtectedRoute ------------------ */
-
-function ProtectedRoute({ children, authReady }) {
-  // Centralized token + user check via tokenUtils
+// Strong admin-only guard
+function ProtectedRoute({ children }) {
+  const location = useLocation();
   const token = getAdminToken();
   const user = getAdminUser();
 
-  console.log("🔒 ProtectedRoute:", {
-    authReady,
-    hasToken: !!token,
-    hasUser: !!user,
-    tokenPreview: token ? token.substring(0, 20) + "..." : "none",
-  });
+  const isAdmin =
+    !!token && !!user && (user.role === "admin" || user.role === "ADMIN");
 
-  // Wait until URL auth is processed
-  if (!authReady) {
+  if (!isAdmin) {
+    logoutAdmin();
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">Authenticating...</p>
-        </div>
-      </div>
+      <Navigate
+        to="/unauthorized"
+        replace
+        state={{ from: location.pathname }}
+      />
     );
   }
 
-  // Check both token AND user data
-  if (!token || !user) {
-    console.error("❌ Missing admin credentials:", {
-      token: !!token,
-      user: !!user,
-    });
-    return <Navigate to="/unauthorized" replace />;
-  }
-
-  // Access granted
-  console.log("✅ Admin access granted");
   return children;
 }
 
-/* ------------------ MAIN APP CONTENT ------------------ */
-
-const AppContent = () => {
-  const authReady = useAuthFromQuery(); // ✅ Get auth ready status
-
+function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
 
   useKeyboardShortcuts();
 
-  // Initialize activity logger on mount
+  // Init local activity logger once
   useEffect(() => {
     initializeActivityLogger();
     logActivity(ACTIVITY_TYPES.LOGIN, {
-      action: "Application Started",
+      action: "Admin panel opened",
       timestamp: new Date().toISOString(),
     });
   }, []);
@@ -153,23 +97,12 @@ const AppContent = () => {
     });
   }, [location.pathname]);
 
-  const getPageName = (path) => {
-    const routes = {
-      "/": "Dashboard",
-      "/complaints": "Complaints",
-      "/analytics": "Analytics",
-      "/activity-logs": "Activity Logs",
-      "/profile": "Profile",
-    };
-    return routes[path] || "Unknown Page";
-  };
-
-  // Close sidebar on route change (mobile)
+  // Close sidebar on mobile route change
   useEffect(() => {
     if (window.innerWidth < 768) {
       setSidebarOpen(false);
     }
-  }, [location]);
+  }, [location.pathname]);
 
   // Open sidebar by default on desktop
   useEffect(() => {
@@ -194,16 +127,25 @@ const AppContent = () => {
         <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
 
         {/* Main Content */}
-        <div className="flex flex-col flex-1 min-h-screen transition-all">
+        <div className="flex flex-col flex-1 min-h-screen transition-all duration-200">
           <Navbar toggleSidebar={toggleSidebar} />
           <Breadcrumb />
 
           <main className="flex-1 p-4 md:p-6 lg:p-8">
             <Routes>
+              {/* Admin-only routes */}
               <Route
                 path="/"
                 element={
-                  <ProtectedRoute authReady={authReady}>
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
                     <Dashboard />
                   </ProtectedRoute>
                 }
@@ -211,7 +153,7 @@ const AppContent = () => {
               <Route
                 path="/complaints"
                 element={
-                  <ProtectedRoute authReady={authReady}>
+                  <ProtectedRoute>
                     <Complaints />
                   </ProtectedRoute>
                 }
@@ -219,7 +161,7 @@ const AppContent = () => {
               <Route
                 path="/analytics"
                 element={
-                  <ProtectedRoute authReady={authReady}>
+                  <ProtectedRoute>
                     <Analytics />
                   </ProtectedRoute>
                 }
@@ -227,7 +169,7 @@ const AppContent = () => {
               <Route
                 path="/activity-logs"
                 element={
-                  <ProtectedRoute authReady={authReady}>
+                  <ProtectedRoute>
                     <ActivityLogs />
                   </ProtectedRoute>
                 }
@@ -235,13 +177,13 @@ const AppContent = () => {
               <Route
                 path="/profile"
                 element={
-                  <ProtectedRoute authReady={authReady}>
+                  <ProtectedRoute>
                     <Profile />
                   </ProtectedRoute>
                 }
               />
 
-              {/* unauthorized fallback */}
+              {/* Unauthorized page */}
               <Route
                 path="/unauthorized"
                 element={
@@ -263,6 +205,7 @@ const AppContent = () => {
                 }
               />
 
+              {/* 404 */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
@@ -270,10 +213,9 @@ const AppContent = () => {
       </div>
     </ToastProvider>
   );
-};
+}
 
-/* ------------------ ROOT APP ------------------ */
-
+// Root
 export default function App() {
   return (
     <Router>

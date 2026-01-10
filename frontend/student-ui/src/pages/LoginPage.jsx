@@ -1,20 +1,22 @@
-// src/pages/LoginPage.jsx (landing - 5174) - with role radio
+// src/pages/LoginPage.jsx - COMPLETE FIXED VERSION
+
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { login } from "../api";
+import { useAuth } from "../context/AuthContext";
 
-const ADMIN_URL =
-  import.meta.env.VITE_ADMIN_APP_URL || "http://localhost:5173";
-const USER_URL =
-  import.meta.env.VITE_USER_APP_URL || "http://localhost:3001";
+const ADMIN_URL = import.meta.env.VITE_ADMIN_APP_URL || "http://localhost:5173";
+const USER_URL = import.meta.env.VITE_USER_APP_URL || "http://localhost:3001";
 
 console.log("🔧 Login URLs:", { ADMIN_URL, USER_URL });
 
 export default function LoginPage() {
+  const { login: authLogin } = useAuth();
+  
   const [form, setForm] = useState({
     email: "",
     password: "",
-    role: "student", // default student
+    role: "student",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,42 +35,73 @@ export default function LoginPage() {
       return;
     }
 
+    console.log("🔐 Login attempt:", { email: form.email, role: form.role });
     setLoading(true);
+
     try {
-      // Backend should return: { token, user }
       const resp = await login(form.email, form.password, form.role);
       console.log("📥 Login Response:", resp);
 
       if (resp.token && resp.user) {
-        // Build full auth payload expected by other apps
-        const authPayload = {
-          token: resp.token,
-          user: {
-            _id: resp.user._id,
-            name: resp.user.name,
-            email: resp.user.email,
-            role: resp.user.role,
-            ...(resp.user.roll && { roll: resp.user.roll }),
-          },
-        };
-
-        const authData = encodeURIComponent(JSON.stringify(authPayload));
-
         console.log("👤 Requested role:", form.role);
         console.log("👤 Actual role:", resp.user.role);
+        console.log("👤 User data:", resp.user);
+
+        // Save session using AuthContext
+        authLogin(resp);
 
         if (resp.user.role === "admin") {
+          console.log("🔑 Admin role detected");
+
+          // ✅ FIXED: Pass data to admin portal via URL (cross-origin solution)
+          const adminData = {
+            token: resp.token,
+            user: {
+              name: resp.user.name,
+              email: resp.user.email,
+              role: resp.user.role,
+              userId: resp.user._id || resp.user.id,
+            },
+          };
+
+          // Add refresh token if available
+          if (resp.refreshToken) {
+            adminData.refreshToken = resp.refreshToken;
+          }
+
+          const authData = encodeURIComponent(JSON.stringify(adminData));
           const target = `${ADMIN_URL}/?auth=${authData}`;
-          console.log("🔗 Redirecting admin to:", target);
+
+          console.log("🔗 Redirecting to admin portal with auth data");
+
+          await new Promise((resolve) => setTimeout(resolve, 100));
           window.location.href = target;
+
         } else if (resp.user.role === "student") {
+          console.log("👨‍🎓 Student role detected");
+
+          const authPayload = {
+            token: resp.token,
+            user: {
+              _id: resp.user._id || resp.user.id,
+              name: resp.user.name,
+              email: resp.user.email,
+              role: resp.user.role,
+              ...(resp.user.roll && { roll: resp.user.roll }),
+            },
+          };
+
+          const authData = encodeURIComponent(JSON.stringify(authPayload));
           const target = `${USER_URL}/user/dashboard?auth=${authData}`;
           console.log("🔗 Redirecting student to:", target);
           window.location.href = target;
+
         } else {
+          console.error("❌ Unknown role:", resp.user.role);
           setError("Unknown user role: " + resp.user.role);
         }
       } else {
+        console.error("❌ Missing token or user");
         setError(resp.message || "Login failed");
       }
     } catch (err) {
@@ -79,10 +112,11 @@ export default function LoginPage() {
       ) {
         setError(err.message);
       } else {
-        setError("Login failed. Try again.");
+        setError("Login failed. Please try again.");
       }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   return (
@@ -112,7 +146,9 @@ export default function LoginPage() {
         </h2>
 
         {error && (
-          <div className="text-red-500 mb-2 text-center">{error}</div>
+          <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-lg mb-4 text-center">
+            {error}
+          </div>
         )}
 
         <form onSubmit={handleLogin} className="space-y-4 text-gray-800">
@@ -124,6 +160,7 @@ export default function LoginPage() {
             onChange={handleChange}
             value={form.email}
             required
+            disabled={loading}
           />
 
           <input
@@ -134,11 +171,11 @@ export default function LoginPage() {
             onChange={handleChange}
             value={form.password}
             required
+            disabled={loading}
           />
 
-          {/* Role radio buttons */}
           <div className="flex gap-6 mt-2">
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="radio"
                 name="role"
@@ -146,11 +183,12 @@ export default function LoginPage() {
                 checked={form.role === "student"}
                 onChange={handleChange}
                 disabled={loading}
+                className="cursor-pointer"
               />
               <span>Student</span>
             </label>
 
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="radio"
                 name="role"
@@ -158,6 +196,7 @@ export default function LoginPage() {
                 checked={form.role === "admin"}
                 onChange={handleChange}
                 disabled={loading}
+                className="cursor-pointer"
               />
               <span>Admin</span>
             </label>
@@ -166,10 +205,9 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full text-white py-2 rounded-lg font-semibold shadow-lg transition transform hover:scale-[1.02]"
+            className="w-full text-white py-2 rounded-lg font-semibold shadow-lg transition transform hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
             style={{
-              background:
-                "linear-gradient(90deg,#c026d3,#0ea5e9,#008080)",
+              background: "linear-gradient(90deg,#c026d3,#0ea5e9,#008080)",
             }}
           >
             {loading ? "Logging in..." : "Login"}
@@ -179,7 +217,7 @@ export default function LoginPage() {
             New user?{" "}
             <Link
               to="/signup"
-              className="font-semibold"
+              className="font-semibold hover:underline"
               style={{ color: "#c026d3" }}
             >
               Create an account

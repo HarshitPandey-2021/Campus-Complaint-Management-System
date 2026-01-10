@@ -1,61 +1,86 @@
 // src/utils/exportUtils.js
+// Export complaints to CSV and print view (no sensitive token usage)
 
-export const exportToCSV = (complaints, filename = 'complaints.csv') => {
-  // Define CSV headers
+export const exportToCSV = (complaints, filename = "complaints.csv") => {
+  if (!Array.isArray(complaints) || complaints.length === 0) {
+    alert("No complaints to export");
+    return;
+  }
+
+  const safe = (value) => (value == null ? "" : String(value));
+  const escapeQuotes = (value) =>
+    `"${safe(value).replace(/"/g, '""')}"`;
+
   const headers = [
-    'ID',
-    'Subject',
-    'Category',
-    'Location',
-    'Status',
-    'Priority',
-    'Submitted By',
-    'Email',
-    'Submitted At',
-    'Description',
-    'Admin Remarks',
-    'Updated At'
+    "ID",
+    "Subject",
+    "Category",
+    "Location",
+    "Status",
+    "Priority",
+    "Submitted By",
+    "Email",
+    "Submitted At",
+    "Description",
+    "Admin Remarks",
+    "Updated At",
   ];
 
-  // Convert complaints to CSV rows
-  const rows = complaints.map(complaint => [
-    complaint.id,
-    `"${complaint.subject.replace(/"/g, '""')}"`, // Escape quotes
-    complaint.category,
-    `"${complaint.location.replace(/"/g, '""')}"`,
-    complaint.status,
-    complaint.priority,
-    complaint.submittedBy,
-    complaint.email,
-    new Date(complaint.submittedAt).toLocaleString(),
-    `"${complaint.description.replace(/"/g, '""')}"`,
-    complaint.adminRemarks ? `"${complaint.adminRemarks.replace(/"/g, '""')}"` : '',
-    new Date(complaint.updatedAt).toLocaleString()
-  ]);
+  const rows = complaints.map((complaint) => {
+    const submittedAt = complaint.submittedAt
+      ? new Date(complaint.submittedAt).toLocaleString()
+      : "";
+    const updatedAt = complaint.updatedAt
+      ? new Date(complaint.updatedAt).toLocaleString()
+      : "";
 
-  // Combine headers and rows
+    return [
+      safe(complaint.id || complaint.complaintId),
+      escapeQuotes(complaint.subject || complaint.title),
+      safe(complaint.category),
+      escapeQuotes(complaint.location),
+      safe(complaint.status),
+      safe(complaint.priority),
+      safe(complaint.submittedBy),
+      safe(complaint.email),
+      submittedAt,
+      escapeQuotes(complaint.description),
+      complaint.adminRemarks ? escapeQuotes(complaint.adminRemarks) : "",
+      updatedAt,
+    ];
+  });
+
   const csvContent = [
-    headers.join(','),
-    ...rows.map(row => row.join(','))
-  ].join('\n');
+    headers.join(","),
+    ...rows.map((row) => row.join(",")),
+  ].join("\n");
 
-  // Create blob and download
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
+  const blob = new Blob([csvContent], {
+    type: "text/csv;charset=utf-8;",
+  });
+  const link = document.createElement("a");
   const url = URL.createObjectURL(blob);
-  
-  link.setAttribute('href', url);
-  link.setAttribute('download', filename);
-  link.style.visibility = 'hidden';
-  
+
+  link.setAttribute("href", url);
+  link.setAttribute("download", filename);
+  link.style.visibility = "hidden";
+
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 };
 
 export const exportToPrint = (complaints) => {
-  const printWindow = window.open('', '_blank');
-  
+  if (!Array.isArray(complaints) || complaints.length === 0) {
+    alert("No complaints to print");
+    return;
+  }
+
+  const safe = (value) => (value == null ? "" : String(value));
+  const safeStatusClass = (status) =>
+    safe(status).toLowerCase().replace(/\s+/g, "");
+
   const htmlContent = `
     <!DOCTYPE html>
     <html>
@@ -96,7 +121,7 @@ export const exportToPrint = (complaints) => {
             font-weight: bold;
           }
           .badge-pending { background-color: #60A5FA; color: white; }
-          .badge-progress { background-color: #F59E0B; color: black; }
+          .badge-inprogress { background-color: #F59E0B; color: black; }
           .badge-resolved { background-color: #10B981; color: white; }
           .badge-rejected { background-color: #EF4444; color: white; }
           @media print {
@@ -125,24 +150,39 @@ export const exportToPrint = (complaints) => {
             </tr>
           </thead>
           <tbody>
-            ${complaints.map(c => `
-              <tr>
-                <td>#${c.id}</td>
-                <td>${c.subject}</td>
-                <td>${c.category}</td>
-                <td>
-                  <span class="badge badge-${c.status.toLowerCase().replace(' ', '')}">${c.status}</span>
-                </td>
-                <td>${c.priority}</td>
-                <td>${new Date(c.submittedAt).toLocaleDateString()}</td>
-              </tr>
-            `).join('')}
+            ${complaints
+              .map((c) => {
+                const status = safe(c.status);
+                const statusClass = safeStatusClass(status);
+                const submittedDate = c.submittedAt
+                  ? new Date(c.submittedAt).toLocaleDateString()
+                  : "";
+                return `
+                  <tr>
+                    <td>#${safe(c.id || c.complaintId)}</td>
+                    <td>${safe(c.subject || c.title)}</td>
+                    <td>${safe(c.category)}</td>
+                    <td>
+                      <span class="badge badge-${statusClass}">${status}</span>
+                    </td>
+                    <td>${safe(c.priority)}</td>
+                    <td>${submittedDate}</td>
+                  </tr>
+                `;
+              })
+              .join("")}
           </tbody>
         </table>
       </body>
     </html>
   `;
-  
+
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) {
+    alert("Popup blocked. Please allow popups for this site.");
+    return;
+  }
+
   printWindow.document.write(htmlContent);
   printWindow.document.close();
 };
