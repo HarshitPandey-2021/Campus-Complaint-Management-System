@@ -1,10 +1,10 @@
 // src/pages/Profile.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import RoleBadge from '../components/common/RoleBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import { getMyStats } from '../services/userService';
+import { getMyStats, updateProfile, changePassword } from '../api'; // ✅ Add imports
 import { 
   RiUserLine, 
   RiMailLine, 
@@ -13,7 +13,8 @@ import {
   RiBuildingLine,
   RiSaveLine,
   RiLockPasswordLine,
-  RiCheckboxCircleLine
+  RiCheckboxCircleLine,
+  RiCloseLine // ✅ Add for modal close
 } from 'react-icons/ri';
 
 const Profile = () => {
@@ -27,7 +28,34 @@ const Profile = () => {
     phone: user?.phone || ''
   });
 
-  const stats = getMyStats();
+  // ✅ Fix stats with useState + useEffect
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    inProgress: 0,
+    resolved: 0,
+  });
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        const data = await getMyStats();
+        setStats(data);
+      } catch (err) {
+        console.error("Failed to fetch stats:", err);
+      }
+    }
+    fetchStats();
+  }, []);
+
+  // ✅ Add password modal state
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData(prev => ({
@@ -41,15 +69,49 @@ const Profile = () => {
     setLoading(true);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await updateProfile(formData); // ✅ Use real API
       updateUser(formData);
       success('Profile updated successfully!');
       setEditing(false);
     } catch (err) {
-      error('Failed to update profile');
+      error(err.message || 'Failed to update profile');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ✅ Add password change handler
+  const handlePasswordChange = (e) => {
+    setPasswordData(prev => ({
+      ...prev,
+      [e.target.name]: e.target.value
+    }));
+  };
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      error('New passwords do not match');
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      error('Password must be at least 6 characters');
+      return;
+    }
+
+    setPasswordLoading(true);
+
+    try {
+      await changePassword(passwordData.currentPassword, passwordData.newPassword);
+      success('Password changed successfully!');
+      setShowPasswordModal(false);
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err) {
+      error(err.message || 'Failed to change password');
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -185,52 +247,13 @@ const Profile = () => {
                       </label>
                       <input
                         type="text"
-                        value={user?.rollNo}
-                        disabled
-                        className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 cursor-not-allowed"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                        <RiBuildingLine className="inline h-4 w-4 mr-2" />
-                        Department
-                      </label>
-                      <input
-                        type="text"
-                        value={user?.department}
+                        value={user?.roll || 'N/A'}
                         disabled
                         className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 cursor-not-allowed"
                       />
                     </div>
                   </>
-                ) : (
-                  <>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                        <RiIdCardLine className="inline h-4 w-4 mr-2" />
-                        Employee ID
-                      </label>
-                      <input
-                        type="text"
-                        value={user?.employeeId}
-                        disabled
-                        className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 cursor-not-allowed"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                        <RiBuildingLine className="inline h-4 w-4 mr-2" />
-                        Designation
-                      </label>
-                      <input
-                        type="text"
-                        value={user?.designation}
-                        disabled
-                        className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 cursor-not-allowed"
-                      />
-                    </div>
-                  </>
-                )}
+                ) : null}
 
                 {/* Save Button (only when editing) */}
                 {editing && (
@@ -277,7 +300,10 @@ const Profile = () => {
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                 Keep your account secure by using a strong password
               </p>
-              <button className="w-full sm:w-auto px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-all">
+              <button 
+                onClick={() => setShowPasswordModal(true)}
+                className="w-full sm:w-auto px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-all"
+              >
                 Change Password
               </button>
             </div>
@@ -285,6 +311,106 @@ const Profile = () => {
           </div>
         </div>
       </div>
+
+      {/* ✅ Password Change Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200">
+                Change Password
+              </h3>
+              <button
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                }}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <RiCloseLine className="h-6 w-6 text-gray-600 dark:text-gray-300" />
+              </button>
+            </div>
+            <form onSubmit={handlePasswordSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Current Password
+                </label>
+                <input
+                  type="password"
+                  name="currentPassword"
+                  value={passwordData.currentPassword}
+                  onChange={handlePasswordChange}
+                  required
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Enter current password"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  New Password
+                </label>
+                <input
+                  type="password"
+                  name="newPassword"
+                  value={passwordData.newPassword}
+                  onChange={handlePasswordChange}
+                  required
+                  minLength={6}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Enter new password (min 6 characters)"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Confirm New Password
+                </label>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  value={passwordData.confirmPassword}
+                  onChange={handlePasswordChange}
+                  required
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Confirm new password"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordModal(false);
+                    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                  }}
+                  disabled={passwordLoading}
+                  className="flex-1 px-6 py-3 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 transition-all disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={passwordLoading}
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50 shadow-lg"
+                >
+                  {passwordLoading ? (
+                    <>
+                      <LoadingSpinner />
+                      Changing...
+                    </>
+                  ) : (
+                    <>
+                      <RiLockPasswordLine className="h-5 w-5" />
+                      Change Password
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

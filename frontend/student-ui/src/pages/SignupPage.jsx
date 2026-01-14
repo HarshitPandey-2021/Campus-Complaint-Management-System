@@ -1,8 +1,6 @@
-// src/pages/SignupPage.jsx
-
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { signup } from "../api";
+import { signupApi } from "../api.js";
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -12,14 +10,20 @@ export default function SignupPage() {
     email: "",
     password: "",
     confirmPassword: "",
-    role: "student", // default student
+    role: "student",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   function handleChange(e) {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
     setError("");
+  }
+
+  function isStrongPassword(pwd) {
+    const regex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
+    return regex.test(pwd);
   }
 
   async function handleSubmit(e) {
@@ -27,20 +31,23 @@ export default function SignupPage() {
     setError("");
 
     if (form.password !== form.confirmPassword) {
-      setError("Passwords do not match!");
+      setError("Passwords do not match.");
       return;
     }
-    if (!/^(?=.*[A-Z])(?=.*\d).{8,}$/.test(form.password)) {
-      setError("Password must be 8+ chars, include number & uppercase");
+
+    if (!isStrongPassword(form.password)) {
+      setError(
+        "Password must be at least 8 characters and include a number and an uppercase letter."
+      );
       return;
     }
 
     setLoading(true);
     try {
-      await signup(
-        form.name,
-        form.roll,
-        form.email,
+      await signupApi(
+        form.name.trim(),
+        form.roll.trim(),
+        form.email.trim(),
         form.password,
         form.role
       );
@@ -48,8 +55,9 @@ export default function SignupPage() {
       navigate("/login");
     } catch (err) {
       setError(err.message || "Signup failed. Try again.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   return (
@@ -70,7 +78,8 @@ export default function SignupPage() {
         <h2
           className="text-3xl font-bold text-center mb-6"
           style={{
-            background: "linear-gradient(90deg, #c026d3, #0ea5e9, #008080)",
+            background:
+              "linear-gradient(90deg,#c026d3,#0ea5e9,#008080)",
             WebkitBackgroundClip: "text",
             color: "transparent",
           }}
@@ -98,8 +107,7 @@ export default function SignupPage() {
             className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#0ea5e9] outline-none"
             onChange={handleChange}
             value={form.roll}
-            required={form.role === "student"}
-            disabled={form.role === "admin"}
+            required
           />
 
           <input
@@ -132,9 +140,8 @@ export default function SignupPage() {
             required
           />
 
-          {/* Role radio buttons */}
           <div className="flex gap-6 mt-2">
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="radio"
                 name="role"
@@ -145,7 +152,7 @@ export default function SignupPage() {
               <span>Student</span>
             </label>
 
-            <label className="flex items-center gap-2">
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="radio"
                 name="role"
@@ -160,25 +167,26 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full text-white py-2 rounded-lg font-semibold shadow-lg transition transform hover:scale-[1.02]"
+            className="w-full text-white py-2 rounded-lg font-semibold shadow-lg transition transform hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
             style={{
-              background: "linear-gradient(90deg,#c026d3,#0ea5e9,#008080)",
+              background:
+                "linear-gradient(90deg,#c026d3,#0ea5e9,#008080)",
             }}
           >
             {loading ? "Creating..." : "Sign Up"}
           </button>
-
-          <p className="text-center text-gray-700 mt-4">
-            Already registered?{" "}
-            <Link
-              to="/login"
-              className="font-semibold"
-              style={{ color: "#c026d3" }}
-            >
-              Login
-            </Link>
-          </p>
         </form>
+
+        <p className="text-center text-gray-700 mt-4">
+          Already registered?{" "}
+          <Link
+            to="/login"
+            className="font-semibold"
+            style={{ color: "#c026d3" }}
+          >
+            Login
+          </Link>
+        </p>
       </div>
     </div>
   );

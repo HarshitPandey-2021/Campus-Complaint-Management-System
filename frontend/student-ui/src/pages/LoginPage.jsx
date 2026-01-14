@@ -1,18 +1,14 @@
-// src/pages/LoginPage.jsx - COMPLETE FIXED VERSION
-
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { login } from "../api";
-import { useAuth } from "../context/AuthContext";
+import { loginApi } from "../api.js";
 
-const ADMIN_URL = import.meta.env.VITE_ADMIN_APP_URL || "http://localhost:5173";
-const USER_URL = import.meta.env.VITE_USER_APP_URL || "http://localhost:3001";
-
-console.log("🔧 Login URLs:", { ADMIN_URL, USER_URL });
+const ADMIN_APP_URL =
+  import.meta.env.VITE_ADMIN_APP_URL || "http://localhost:5173";
+const USER_APP_URL =
+  import.meta.env.VITE_USER_APP_URL || "http://localhost:3001";
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
 
 export default function LoginPage() {
-  const { login: authLogin } = useAuth();
-  
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -22,8 +18,22 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   function handleChange(e) {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
     setError("");
+  }
+
+  function buildUserAuthUrl(token, refreshToken, user) {
+    const payload = {
+      token,
+      refreshToken: refreshToken || null,
+      user,
+      timestamp: Date.now(),
+    };
+
+    const encoded = encodeURIComponent(JSON.stringify(payload));
+    const base = USER_APP_URL.replace(/\/+$/, "");
+    return `${base}/?auth=${encoded}`;
   }
 
   async function handleLogin(e) {
@@ -31,89 +41,67 @@ export default function LoginPage() {
     setError("");
 
     if (!form.email || !form.password) {
-      setError("Please enter email and password");
+      setError("Please enter email and password.");
       return;
     }
 
-    console.log("🔐 Login attempt:", { email: form.email, role: form.role });
     setLoading(true);
-
     try {
-      const resp = await login(form.email, form.password, form.role);
-      console.log("📥 Login Response:", resp);
+      const resp = await loginApi(form.email.trim(), form.password, form.role);
 
-      if (resp.token && resp.user) {
-        console.log("👤 Requested role:", form.role);
-        console.log("👤 Actual role:", resp.user.role);
-        console.log("👤 User data:", resp.user);
+      if (!resp || !resp.user || !resp.token) {
+        setError("Invalid response from server.");
+        return;
+      }
 
-        // Save session using AuthContext
-        authLogin(resp);
+      const { user, token, refreshToken } = resp;
 
-        if (resp.user.role === "admin") {
-          console.log("🔑 Admin role detected");
+      if (user.role === "admin") {
+        const adminUser = {
+          id: user.id || user._id?.toString() || user.userId,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        };
 
-          // ✅ FIXED: Pass data to admin portal via URL (cross-origin solution)
-          const adminData = {
-            token: resp.token,
-            user: {
-              name: resp.user.name,
-              email: resp.user.email,
-              role: resp.user.role,
-              userId: resp.user._id || resp.user.id,
-            },
-          };
+        const codeResp = await fetch(`${API_BASE}/auth/admin-session-code`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            token,
+            refreshToken: refreshToken || null,
+            user: adminUser,
+          }),
+        });
 
-          // Add refresh token if available
-          if (resp.refreshToken) {
-            adminData.refreshToken = resp.refreshToken;
-          }
-
-          const authData = encodeURIComponent(JSON.stringify(adminData));
-          const target = `${ADMIN_URL}/?auth=${authData}`;
-
-          console.log("🔗 Redirecting to admin portal with auth data");
-
-          await new Promise((resolve) => setTimeout(resolve, 100));
-          window.location.href = target;
-
-        } else if (resp.user.role === "student") {
-          console.log("👨‍🎓 Student role detected");
-
-          const authPayload = {
-            token: resp.token,
-            user: {
-              _id: resp.user._id || resp.user.id,
-              name: resp.user.name,
-              email: resp.user.email,
-              role: resp.user.role,
-              ...(resp.user.roll && { roll: resp.user.roll }),
-            },
-          };
-
-          const authData = encodeURIComponent(JSON.stringify(authPayload));
-          const target = `${USER_URL}/user/dashboard?auth=${authData}`;
-          console.log("🔗 Redirecting student to:", target);
-          window.location.href = target;
-
-        } else {
-          console.error("❌ Unknown role:", resp.user.role);
-          setError("Unknown user role: " + resp.user.role);
+        if (!codeResp.ok) {
+          setError("Failed to create admin session. Please try again.");
+          return;
         }
-      } else {
-        console.error("❌ Missing token or user");
-        setError(resp.message || "Login failed");
+
+        const { code } = await codeResp.json();
+
+        const adminUrl = `${ADMIN_APP_URL}?code=${code}`;
+        window.location.href = adminUrl;
+        return;
       }
+
+      if (user.role === "student") {
+        const studentUser = {
+          id: user.id || user._id?.toString() || user.userId,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          roll: user.roll || null,
+        };
+        const url = buildUserAuthUrl(token, refreshToken || null, studentUser);
+        window.location.href = url;
+        return;
+      }
+
+      setError(`Unsupported role: ${user.role}`);
     } catch (err) {
-      console.error("❌ Login error:", err);
-      if (
-        err.message?.includes("Access denied") ||
-        err.message?.includes("registered as")
-      ) {
-        setError(err.message);
-      } else {
-        setError("Login failed. Please try again.");
-      }
+      setError(err.message || "Login failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -137,7 +125,7 @@ export default function LoginPage() {
         <h2
           className="text-3xl font-bold text-center mb-6"
           style={{
-            background: "linear-gradient(90deg, #c026d3, #0ea5e9, #008080)",
+            background: "linear-gradient(90deg,#c026d3,#0ea5e9,#008080)",
             WebkitBackgroundClip: "text",
             color: "transparent",
           }}
@@ -212,18 +200,18 @@ export default function LoginPage() {
           >
             {loading ? "Logging in..." : "Login"}
           </button>
-
-          <p className="text-center text-gray-700 mt-4">
-            New user?{" "}
-            <Link
-              to="/signup"
-              className="font-semibold hover:underline"
-              style={{ color: "#c026d3" }}
-            >
-              Create an account
-            </Link>
-          </p>
         </form>
+
+        <p className="text-center text-gray-700 mt-4">
+          New user?{" "}
+          <Link
+            to="/signup"
+            className="font-semibold hover:underline"
+            style={{ color: "#c026d3" }}
+          >
+            Create an account
+          </Link>
+        </p>
       </div>
     </div>
   );

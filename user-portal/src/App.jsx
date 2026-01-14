@@ -45,6 +45,14 @@ export default function App() {
     <Layout>
       <Routes>
         <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/user/dashboard"
           element={
             <ProtectedRoute>

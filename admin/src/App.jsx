@@ -1,42 +1,28 @@
-// src/App.jsx (Admin portal)
-
-import React, { useState, useEffect } from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  useLocation,
-  Navigate,
-} from "react-router-dom";
-
-import Navbar from "./components/Navbar";
-import Sidebar from "./components/Sidebar";
-import Breadcrumb from "./components/Breadcrumb";
-
-import useKeyboardShortcuts from "./hooks/useKeyboardShortcuts";
-import { ToastProvider } from "./context/ToastContext";
-
+import React, { useEffect, useState } from "react";
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from "react-router-dom";
+import Navbar from "./components/Navbar.jsx";
+import Sidebar from "./components/Sidebar.jsx";
+import Breadcrumb from "./components/Breadcrumb.jsx";
+import AuthInitializer from "./components/AuthInitializer.jsx";
+import useKeyboardShortcuts from "./hooks/useKeyboardShortcuts.js";
+import { ToastProvider } from "./context/ToastContext.jsx";
 import {
   initializeActivityLogger,
   logActivity,
   ACTIVITY_TYPES,
-} from "./services/activityLogger";
-
+} from "./services/activityLogger.js";
 import {
   getAdminToken,
   getAdminUser,
   logoutAdmin,
-} from "./utils/tokenUtils";
+} from "./utils/tokenUtils.js";
+import Dashboard from "./pages/Dashboard.jsx";
+import Complaints from "./pages/Complaints.jsx";
+import Analytics from "./pages/Analytics.jsx";
+import ActivityLogs from "./pages/ActivityLogs.jsx";
+import Profile from "./pages/Profile.jsx";
+import NotFound from "./pages/NotFound.jsx";
 
-// Pages
-import Dashboard from "./pages/Dashboard";
-import Complaints from "./pages/Complaints";
-import Analytics from "./pages/Analytics";
-import ActivityLogs from "./pages/ActivityLogs";
-import Profile from "./pages/Profile";
-import NotFound from "./pages/NotFound";
-
-// Helper for activity logging
 function getPageName(path) {
   const routes = {
     "/": "Dashboard",
@@ -49,17 +35,15 @@ function getPageName(path) {
   return routes[path] || "Unknown Page";
 }
 
-// Strong admin-only guard
 function ProtectedRoute({ children }) {
   const location = useLocation();
   const token = getAdminToken();
   const user = getAdminUser();
 
-  const isAdmin =
-    !!token && !!user && (user.role === "admin" || user.role === "ADMIN");
+  const isAdmin = !!token && !!user && user.role === "admin";
 
   if (!isAdmin) {
-    logoutAdmin();
+    console.log("❌ ProtectedRoute: Not admin, redirecting to /unauthorized");
     return (
       <Navigate
         to="/unauthorized"
@@ -69,6 +53,7 @@ function ProtectedRoute({ children }) {
     );
   }
 
+  console.log("✅ ProtectedRoute: Admin verified");
   return children;
 }
 
@@ -78,16 +63,15 @@ function AppContent() {
 
   useKeyboardShortcuts();
 
-  // Init local activity logger once
   useEffect(() => {
     initializeActivityLogger();
     logActivity(ACTIVITY_TYPES.LOGIN, {
+      page: "Admin Dashboard",
       action: "Admin panel opened",
       timestamp: new Date().toISOString(),
     });
   }, []);
 
-  // Log page navigation
   useEffect(() => {
     const pageName = getPageName(location.pathname);
     logActivity(ACTIVITY_TYPES.COMPLAINT_VIEW, {
@@ -97,43 +81,35 @@ function AppContent() {
     });
   }, [location.pathname]);
 
-  // Close sidebar on mobile route change
   useEffect(() => {
     if (window.innerWidth < 768) {
       setSidebarOpen(false);
     }
   }, [location.pathname]);
 
-  // Open sidebar by default on desktop
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 768) {
-        setSidebarOpen(true);
-      } else {
-        setSidebarOpen(false);
-      }
-    };
+    function handleResize() {
+      if (window.innerWidth >= 768) setSidebarOpen(true);
+      else setSidebarOpen(false);
+    }
     handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const toggleSidebar = () => setSidebarOpen((prev) => !prev);
+  function toggleSidebar() {
+    setSidebarOpen((prev) => !prev);
+  }
 
   return (
     <ToastProvider>
       <div className="min-h-screen flex bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
-        {/* Sidebar */}
         <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-
-        {/* Main Content */}
         <div className="flex flex-col flex-1 min-h-screen transition-all duration-200">
           <Navbar toggleSidebar={toggleSidebar} />
           <Breadcrumb />
-
           <main className="flex-1 p-4 md:p-6 lg:p-8">
             <Routes>
-              {/* Admin-only routes */}
               <Route
                 path="/"
                 element={
@@ -182,30 +158,25 @@ function AppContent() {
                   </ProtectedRoute>
                 }
               />
-
-              {/* Unauthorized page */}
               <Route
                 path="/unauthorized"
                 element={
-                  <div className="flex flex-col items-center justify-center h-full text-center">
-                    <h1 className="text-2xl font-semibold mb-2">
-                      Unauthorized
+                  <div className="flex flex-col items-center justify-center min-h-screen text-center bg-gray-900">
+                    <h1 className="text-3xl font-semibold mb-4 text-white">
+                      Unauthorized Access
                     </h1>
-                    <p className="text-gray-600 mb-4">
-                      Please login from the student portal as admin to access
-                      this panel.
+                    <p className="text-gray-400 mb-6 max-w-md">
+                      You need to login as an admin from the main portal to access this panel.
                     </p>
                     <a
                       href="http://localhost:5174/login"
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                      className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold"
                     >
-                      Go to Login
+                      Go to Login Portal
                     </a>
                   </div>
                 }
               />
-
-              {/* 404 */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
@@ -215,11 +186,12 @@ function AppContent() {
   );
 }
 
-// Root
 export default function App() {
   return (
     <Router>
-      <AppContent />
+      <AuthInitializer>
+        <AppContent />
+      </AuthInitializer>
     </Router>
   );
 }
