@@ -1,4 +1,4 @@
-// src/components/Navbar.jsx - ADMIN NAVBAR WITH PROPER LOGOUT
+// src/components/Navbar.jsx
 
 import React from "react";
 import { useNavigate } from "react-router-dom";
@@ -16,11 +16,8 @@ const Navbar = ({ toggleSidebar }) => {
 
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to logout?")) {
-      // Clear all admin session keys
       logoutAdmin();
-      // Clear any UI-only flags if needed
-      localStorage.removeItem("dashboard-welcome-seen");
-      // Redirect to landing login
+      localStorage.removeItem("dashboard-welcome-seen"); // UI flag only
       window.location.href = "http://localhost:5174/login";
     }
   };
@@ -28,9 +25,7 @@ const Navbar = ({ toggleSidebar }) => {
   return (
     <nav className="sticky top-0 z-50 w-full bg-gradient-to-r from-indigo-700 to-indigo-800 dark:from-gray-900 dark:to-gray-800 text-white shadow-lg">
       <div className="mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Left: Menu + Logo */}
         <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
-          {/* Hamburger Menu */}
           <button
             onClick={toggleSidebar}
             className="md:hidden flex-shrink-0 rounded-lg p-2 text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all"
@@ -39,7 +34,6 @@ const Navbar = ({ toggleSidebar }) => {
             <RiMenuFoldLine className="h-6 w-6" />
           </button>
 
-          {/* University Logo */}
           <div className="min-w-0">
             <UniversityLogo
               imagePath={universityLogo}
@@ -48,18 +42,14 @@ const Navbar = ({ toggleSidebar }) => {
           </div>
         </div>
 
-        {/* Right: Actions */}
         <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-          {/* Mobile: Icons Only */}
           <div className="flex items-center gap-2 md:hidden">
             <Tooltip text="Notifications">
               <NotificationPanel />
             </Tooltip>
-
             <Tooltip text="Toggle theme">
               <DarkModeToggle />
             </Tooltip>
-
             <Tooltip text="Logout">
               <button
                 onClick={handleLogout}
@@ -71,7 +61,6 @@ const Navbar = ({ toggleSidebar }) => {
             </Tooltip>
           </div>
 
-          {/* Desktop: Full Info */}
           <div className="hidden md:flex items-center gap-4">
             <Tooltip text="Notifications">
               <NotificationPanel />
