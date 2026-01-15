@@ -24,7 +24,7 @@ import {
 
 const SubmitComplaint = () => {
   const navigate = useNavigate();
-  const { user } = useAuth(); // Agar kahin use na ho to bhi rehne de, future ke liye
+  const { user } = useAuth(); 
   const { success, error: showError } = useToast();
 
   const [loading, setLoading] = useState(false);
@@ -92,7 +92,7 @@ const SubmitComplaint = () => {
     }
   };
 
-  // Handle priority selection – koi role check nahi
+  // Handle priority selection – 
   const handlePrioritySelect = (priority) => {
     setFormData((prev) => ({ ...prev, priority }));
   };
@@ -240,7 +240,7 @@ const SubmitComplaint = () => {
 
       const response = await api.submitComplaint(submitData, token);
       success(`Complaint ${response.id || response.complaint?.complaintId || ''} submitted successfully!`);
-      setTimeout(() => navigate('/user/complaints'), 1000);
+      setTimeout(() => navigate('/user/dashboard'), 1000);
     } catch (err) {
       console.error('Submit error:', err);
       showError(err.response?.data?.message || 'Failed to submit complaint. Please try again.');

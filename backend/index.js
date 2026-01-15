@@ -1,4 +1,5 @@
 require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
 const { MongoClient, ObjectId } = require("mongodb");
@@ -14,13 +15,16 @@ const app = express();
 app.use(
   cors({
     origin: [
-      "http://localhost:5173", // admin
-      "http://localhost:5174", // landing
-      "http://localhost:3001", // user portal
-      "http://localhost:3002",
-      "http://localhost:3000",
+      "https://ccms-home.vercel.app",           // Landing
+      "https://ccms-admin-rho.vercel.app",      // Admin
+      "https://ccms-student.vercel.app",        // Student
+      "http://localhost:5173",                  // Local admin
+      "http://localhost:5174",                  // Local landing
+      "http://localhost:3001",                  // Local user
     ],
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
@@ -59,11 +63,13 @@ const uploadToCloudinary = (buffer, options) =>
         }
       }
     );
+
     Readable.from(buffer).pipe(uploadStream);
   });
 
 // ---------- MULTER ----------
 const storage = multer.memoryStorage();
+
 const upload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024, files: 6 },
@@ -125,8 +131,8 @@ function requireRole(role) {
 async function start() {
   const client = new MongoClient(uri);
   await client.connect();
-  db = client.db(dbName);
 
+  db = client.db(dbName);
   Users = db.collection("Users");
   Complaints = db.collection("Complaints");
   AdminLogs = db.collection("AdminLogs");
@@ -150,7 +156,32 @@ start().catch((e) => {
 });
 
 // ---------- HEALTH & CLOUDINARY TEST ----------
-app.get("/health", (_, res) => res.json({ ok: true }));
+app.get("/health", (req, res) => {
+  res.json({
+    ok: true,
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
+});
+
+// Keep-alive (NEW)
+if (process.env.NODE_ENV === "production") {
+  const keepAlive = () => {
+    setInterval(() => {
+      const url = process.env.RENDER_EXTERNAL_URL;
+      if (url) {
+        fetch(`${url}/health`)
+          .then(() => console.log("✅ Keep-alive ping"))
+          .catch((err) => console.log("❌ Ping failed:", err.message));
+      }
+    }, 14 * 60 * 1000); // 14 min
+  };
+
+  setTimeout(() => {
+    keepAlive();
+    console.log("🔄 Keep-alive started");
+  }, 60 * 1000); // 1 min
+}
 
 app.get("/api/test-cloudinary", async (req, res) => {
   try {
@@ -202,7 +233,6 @@ app.post("/api/auth/register", async (req, res) => {
     }
 
     const normalizedRole = normalizeRole(role);
-
     if (normalizedRole === "student" && !roll) {
       return res
         .status(400)
@@ -231,7 +261,6 @@ app.post("/api/auth/register", async (req, res) => {
     const userId = r.insertedId.toString();
 
     const payload = { userId, email, role: normalizedRole };
-
     const accessToken = jwt.sign(payload, process.env.JWT_SECRET, {
       expiresIn: process.env.JWT_EXPIRES_IN || "24h",
     });
@@ -343,7 +372,6 @@ setInterval(() => {
 app.post("/api/auth/admin-session-code", async (req, res) => {
   try {
     const { token, refreshToken, user } = req.body;
-
     if (!token || !user || user.role !== "admin") {
       return res.status(400).json({ message: "Invalid admin session data" });
     }
@@ -358,7 +386,6 @@ app.post("/api/auth/admin-session-code", async (req, res) => {
     });
 
     console.log("✅ One-time code generated for admin:", user.email);
-
     res.json({ code });
   } catch (error) {
     console.error("Session code generation error:", error);
@@ -369,13 +396,11 @@ app.post("/api/auth/admin-session-code", async (req, res) => {
 app.post("/api/auth/exchange-admin-code", async (req, res) => {
   try {
     const { code } = req.body;
-
     if (!code) {
       return res.status(400).json({ message: "Code required" });
     }
 
     const sessionData = oneTimeCodes.get(code);
-
     if (!sessionData) {
       return res.status(401).json({ message: "Invalid or expired code" });
     }
@@ -387,7 +412,6 @@ app.post("/api/auth/exchange-admin-code", async (req, res) => {
     }
 
     oneTimeCodes.delete(code);
-
     console.log("✅ Code exchanged for admin:", sessionData.user.email);
 
     res.json({
@@ -441,7 +465,6 @@ app.post("/api/auth/refresh", async (req, res) => {
 app.post("/api/auth/change-password", auth, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-
     if (!currentPassword || !newPassword) {
       return res
         .status(400)
@@ -526,14 +549,17 @@ app.get("/api/profile/stats", auth, async (req, res) => {
     const total = await Complaints.countDocuments({
       userId: req.user.userId,
     });
+
     const pending = await Complaints.countDocuments({
       userId: req.user.userId,
       status: "Pending",
     });
+
     const inProgress = await Complaints.countDocuments({
       userId: req.user.userId,
       status: "In Progress",
     });
+
     const resolved = await Complaints.countDocuments({
       userId: req.user.userId,
       status: "Resolved",
@@ -590,6 +616,7 @@ app.post(
 
       let pdfUrl = null;
       let pdfPublicId = null;
+
       if (
         req.files &&
         req.files["pdfDocument"] &&
@@ -606,6 +633,7 @@ app.post(
               access_mode: "public",
             }
           );
+
           pdfUrl = result.secure_url;
           pdfPublicId = result.public_id;
         } catch (pdfError) {
@@ -693,6 +721,7 @@ app.get("/api/complaints/mine", auth, async (req, res) => {
 app.get("/api/complaints/:id", auth, async (req, res) => {
   try {
     const { id } = req.params;
+
     if (!ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid complaint ID" });
     }
@@ -731,6 +760,7 @@ app.put(
   async (req, res) => {
     try {
       const { id } = req.params;
+
       if (!ObjectId.isValid(id)) {
         return res.status(400).json({ message: "Invalid ID" });
       }
@@ -744,11 +774,13 @@ app.put(
         if (String(complaint.userId) !== req.user.userId) {
           return res.status(403).json({ message: "Not allowed to edit" });
         }
+
         if (complaint.status !== "Pending") {
           return res
             .status(403)
             .json({ message: "Cannot edit non-pending complaint" });
         }
+
         if (complaint.assignedTo) {
           return res
             .status(403)
@@ -813,6 +845,7 @@ app.put(
           }
         }
       }
+
       updateFields.images = finalImages;
 
       if (existingPdf && existingPdf !== "null" && existingPdf !== "") {
@@ -833,6 +866,7 @@ app.put(
               access_mode: "public",
             }
           );
+
           updateFields.pdfDocument = result.secure_url;
           updateFields.pdfPublicId = result.public_id;
         } catch (pdfError) {
@@ -947,6 +981,7 @@ app.put(
           timestamp: new Date(),
           message: `Status changed to ${status}`,
         };
+
         await Complaints.updateOne(
           { _id: toObjectId(id) },
           { $push: { timeline: timelineEntry } }
@@ -1062,6 +1097,7 @@ app.patch(
   async (req, res) => {
     try {
       const { id } = req.params;
+
       if (!ObjectId.isValid(id)) {
         return res
           .status(400)
@@ -1179,12 +1215,12 @@ app.get(
           resolved,
           rejected,
         },
-        categories: categoryStats,  // array
-        byCategory: null,           // optional
-        categoryStats,              // same as categories
-        byPriority,                 // object { High: 10, Medium: 5, ... }
-        priorities: priorityStats,  // array [{ _id: 'High', count: 10 }, ...]
-        avgResolutionTime,          // hours (float)
+        categories: categoryStats, // array
+        byCategory: null, // optional
+        categoryStats, // same as categories
+        byPriority, // object { High: 10, Medium: 5, ... }
+        priorities: priorityStats, // array [{ _id: 'High', count: 10 }, ...]
+        avgResolutionTime, // hours (float)
       });
     } catch (e) {
       console.error("Analytics error:", e);
@@ -1222,3 +1258,5 @@ app.use((err, req, res, next) => {
 
   next();
 });
+
+module.exports = app;
