@@ -182,7 +182,8 @@ export async function updateComplaintStatus(
   if (adminRemarks) body.adminRemarks = adminRemarks;
   if (assignedTo) body.assignedTo = assignedTo;
 
-  const res = await apiCall(`${API_BASE}/complaints/admin/${id}/status`, {
+  // const res = await apiCall(`${API_BASE}/complaints/admin/${id}/status`, { problem created because od reverse order (mismatch from the backend)
+  const res = await apiCall(`${API_BASE}/admin/complaints/${id}/status`, {
     method: "PUT",
     body: JSON.stringify(body),
   });

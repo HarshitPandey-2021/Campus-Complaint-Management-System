@@ -42,4 +42,5 @@ export function logoutAdmin() {
   localStorage.removeItem(ADMIN_TOKEN_KEY);
   localStorage.removeItem(ADMIN_REFRESH_KEY);
   localStorage.removeItem(ADMIN_SESSION_KEY);
+    window.location.replace("https://ccms-home.vercel.app");
 }

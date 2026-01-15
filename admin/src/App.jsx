@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate, useNavigate } from "react-router-dom";
 import Navbar from "./components/Navbar.jsx";
 import Sidebar from "./components/Sidebar.jsx";
 import Breadcrumb from "./components/Breadcrumb.jsx";
@@ -33,6 +33,28 @@ function getPageName(path) {
     "/profile": "Profile",
   };
   return routes[path] || "Unknown Page";
+}
+
+// ✅ NEW: Handle refresh 404 issue
+function RouteHandler() {
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    // Check if we're on an invalid route on page load
+    const validRoutes = ['/', '/dashboard', '/complaints', '/analytics', '/activity-logs', '/profile', '/unauthorized'];
+    const currentPath = window.location.pathname;
+    
+    // If route is not valid and we have auth, redirect to dashboard
+    if (!validRoutes.includes(currentPath)) {
+      const token = getAdminToken();
+      if (token) {
+        console.log('🔄 Invalid route detected, redirecting to dashboard');
+        navigate('/dashboard', { replace: true });
+      }
+    }
+  }, [navigate]);
+  
+  return null;
 }
 
 function ProtectedRoute({ children }) {
@@ -103,6 +125,7 @@ function AppContent() {
 
   return (
     <ToastProvider>
+      <RouteHandler /> {/* ✅ NEW: Add this */}
       <div className="min-h-screen flex bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
         <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
         <div className="flex flex-col flex-1 min-h-screen transition-all duration-200">
@@ -170,15 +193,23 @@ function AppContent() {
                       You need to login as an admin from the main portal to access this panel.
                     </p>
                     <a
-                      href="https://ccms-home.vercel.app/login"
+                      href="https://ccms-home.vercel.app/"
                       className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold"
                     >
-                      Go to Login Portal
+                      Go to home
                     </a>
                   </div>
                 }
               />
-              <Route path="*" element={<NotFound />} />
+              {/* ✅ NEW: Catch all invalid routes */}
+              <Route 
+                path="*" 
+                element={
+                  <ProtectedRoute>
+                    <Navigate to="/" replace />
+                  </ProtectedRoute>
+                }
+              />
             </Routes>
             </div>
           </main>

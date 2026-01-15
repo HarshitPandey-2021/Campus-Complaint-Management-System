@@ -140,7 +140,7 @@ const Complaints = () => {
           return;
         }
 
-        const response = await getAllComplaints(token);
+        const response = await getAllComplaints(); //token parameter removed
         console.log("📦 Complaints fetched:", response?.length || 0);
 
         if (!Array.isArray(response)) {
@@ -227,7 +227,7 @@ const Complaints = () => {
         }
 
         console.log("🔍 Fetching complaint details for:", complaintId);
-        const complaintDetails = await getComplaintById(complaintId, token);
+        const complaintDetails = await getComplaintById(complaintId); //token param removed
         console.log("✅ Complaint details fetched:", complaintDetails);
 
         setSelectedComplaint(complaintDetails);
@@ -308,7 +308,7 @@ const Complaints = () => {
         const updateSuccess = await updateComplaintStatus(
           complaintId,
           newStatus,
-          token,
+          // token,
           remarks
         );
 
@@ -330,7 +330,7 @@ const Complaints = () => {
           setIsEditMode(false);
 
           // Refresh complaints list
-          const refreshed = await getAllComplaints(token);
+          const refreshed = await getAllComplaints();
           if (Array.isArray(refreshed)) {
             setComplaints(refreshed);
             applyFilters(refreshed, filters);
@@ -343,7 +343,7 @@ const Complaints = () => {
         error("⚠️ Error while updating complaint status.");
       }
     },
-    [token, selectedComplaint, filters, applyFilters, success, error]
+    [selectedComplaint, filters, applyFilters, success, error]
   );
 
   // ✅ NEW: Handle complaint update (from edit mode)
@@ -357,7 +357,7 @@ const Complaints = () => {
       setIsEditMode(false);
 
       // Refresh complaints
-      const refreshed = await getAllComplaints(token);
+      const refreshed = await getAllComplaints();
       if (Array.isArray(refreshed)) {
         setComplaints(refreshed);
         applyFilters(refreshed, filters);

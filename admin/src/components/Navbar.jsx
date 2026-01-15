@@ -18,7 +18,7 @@ const Navbar = ({ toggleSidebar }) => {
     if (window.confirm("Are you sure you want to logout?")) {
       logoutAdmin();
       localStorage.removeItem("dashboard-welcome-seen"); // UI flag only
-      window.location.href = "http://localhost:5174/login";
+      window.location.href = "https://ccms-home.vercel.app/";
     }
   };
 
