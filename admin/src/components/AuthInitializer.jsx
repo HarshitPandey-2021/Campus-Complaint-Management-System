@@ -105,7 +105,7 @@ export default function AuthInitializer({ children }) {
             <p className="text-gray-300">{error}</p>
           </div>
           <a
-            href="http://localhost:5174/login"
+            href="https://ccms-home.vercel.app/login"
             className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors inline-block font-semibold"
           >
             Return to Login

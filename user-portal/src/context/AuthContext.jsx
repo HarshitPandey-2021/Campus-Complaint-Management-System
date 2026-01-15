@@ -106,7 +106,7 @@ export default function AuthProvider({ children }) {
     localStorage.removeItem("user");
     setUser(null);
     setIsAuthenticated(false);
-    window.location.href = "http://localhost:5174/login";
+    window.location.href = "https://ccms-home.vercel.app/login";
   }
 
   function updateUser(updates) {

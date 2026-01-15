@@ -170,7 +170,7 @@ function AppContent() {
                       You need to login as an admin from the main portal to access this panel.
                     </p>
                     <a
-                      href="http://localhost:5174/login"
+                      href="https://ccms-home.vercel.app/login"
                       className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold"
                     >
                       Go to Login Portal

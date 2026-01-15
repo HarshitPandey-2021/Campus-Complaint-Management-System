@@ -27,7 +27,7 @@ const ProtectedRoute = ({ children }) => {
             Your session has expired or you are not logged in.
           </p>
           <a
-            href="http://localhost:5174"
+            href="https://ccms-home.vercel.app/login"
             className="inline-flex items-center px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-sm font-medium"
           >
             Go to Login Portal
