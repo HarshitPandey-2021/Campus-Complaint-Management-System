@@ -108,7 +108,8 @@ function AppContent() {
         <div className="flex flex-col flex-1 min-h-screen transition-all duration-200">
           <Navbar toggleSidebar={toggleSidebar} />
           <Breadcrumb />
-          <main className="flex-1 p-4 md:p-6 lg:p-8">
+          <main className="flex-1 bg-gray-50 dark:bg-gray-900">
+          <div className="p-4 md:p-6 lg:p-8">
             <Routes>
               <Route
                 path="/"
@@ -179,6 +180,7 @@ function AppContent() {
               />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </div>
           </main>
         </div>
       </div>

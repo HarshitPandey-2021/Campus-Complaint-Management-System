@@ -378,7 +378,11 @@ export default function NotificationPanel() {
                 return (
                   <div
                     key={notif.id}
-                    onClick={() => markAsRead(notif.id)}
+                    onClick={() => {
+  markAsRead(notif.id);
+  setIsOpen(false);
+  navigate(`/complaints?id=${notif.id}`); // Navigate to complaints with specific ID
+}}
                     className={`p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-all group ${
                       !notif.read
                         ? "bg-indigo-50 dark:bg-indigo-900/10 border-l-4 border-l-indigo-600"

@@ -168,6 +168,30 @@ const Complaints = () => {
     }
   }, [token, applyFilters, initialFilters, error]);
 
+  // ✅ NEW: Handle notification clicks - Auto-open complaint from URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const complaintId = urlParams.get('id');
+    
+    if (complaintId && complaints.length > 0) {
+      console.log('🔔 Auto-opening complaint from notification:', complaintId);
+      
+      // Check if this complaint exists in our list
+      const exists = complaints.find(c => c._id === complaintId || c.id === complaintId);
+      
+      if (exists) {
+        // Auto-open the complaint
+        openComplaintDetails(complaintId, false);
+        
+        // Clean the URL (remove ?id= parameter)
+        window.history.replaceState({}, '', '/complaints');
+      } else {
+        console.warn('Complaint not found in current list:', complaintId);
+        error('⚠️ Complaint not found or access denied');
+      }
+    }
+  }, [complaints, location.search, error]); // Note: openComplaintDetails added in next useEffect
+
   // Re-apply filters when they change
   useEffect(() => {
     applyFilters(complaints, filters);
@@ -224,6 +248,30 @@ const Complaints = () => {
     },
     [token, error]
   );
+
+  // ✅ Update the auto-open useEffect to include openComplaintDetails dependency
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const complaintId = urlParams.get('id');
+    
+    if (complaintId && complaints.length > 0 && openComplaintDetails) {
+      console.log('🔔 Auto-opening complaint from notification:', complaintId);
+      
+      // Check if this complaint exists in our list
+      const exists = complaints.find(c => c._id === complaintId || c.id === complaintId);
+      
+      if (exists) {
+        // Auto-open the complaint
+        openComplaintDetails(complaintId, false);
+        
+        // Clean the URL (remove ?id= parameter)
+        window.history.replaceState({}, '', '/complaints');
+      } else {
+        console.warn('Complaint not found in current list:', complaintId);
+        error('⚠️ Complaint not found or access denied');
+      }
+    }
+  }, [complaints, location.search, openComplaintDetails, error]);
 
   // Handle row click (view mode)
   const handleRowClick = useCallback(
@@ -520,4 +568,3 @@ const Complaints = () => {
 };
 
 export default Complaints;
-

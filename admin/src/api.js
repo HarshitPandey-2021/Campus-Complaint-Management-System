@@ -147,9 +147,30 @@ export async function getStats() {
 }
 
 export async function getComplaintById(id) {
-  const res = await apiCall(`${API_BASE}/complaints/admin/${id}`);
-  return handleResponse(res);
-}
+  // Try multiple route patterns until one works
+  const routesToTry = [
+    `${API_BASE}/complaints/admin/${id}`,     // Current attempt
+    `${API_BASE}/complaints/${id}`,          // Most common pattern
+    `${API_BASE}/admin/complaints/${id}`,    // Alternative pattern
+    `${API_BASE}/complaints/details/${id}`,  // Another possibility
+  ];
+
+  for (const route of routesToTry) {
+    try {
+      console.log(`🔍 Trying route: ${route}`);
+      const res = await apiCall(route);
+      const data = await handleResponse(res);
+      console.log(`✅ Success with route: ${route}`);
+      return data;
+    } catch (error) {
+      console.log(`❌ Failed route: ${route} - ${error.message}`);
+      // Continue to next route
+    }
+  }
+
+  // If all routes fail, throw error
+  throw new Error('Complaint not found - all routes failed');
+} 
 
 export async function updateComplaintStatus(
   id,
