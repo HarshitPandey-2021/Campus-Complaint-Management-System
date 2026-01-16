@@ -5,6 +5,17 @@ const complaintsController = require("../controllers/complaintsController");
 const { auth, requireRole } = require("../middleware/authMiddleware");
 const upload = require("../middleware/upload");
 
+
+
+
+// ==================== PUBLIC ROUTES (NO AUTH) ====================
+
+// Get landing page stats (public endpoint)
+router.get(
+  "/public/stats",
+  complaintsController.getLandingStats
+);
+
 // ==================== ADMIN ROUTES ====================
 
 // Get all complaints

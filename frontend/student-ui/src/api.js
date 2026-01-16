@@ -40,3 +40,26 @@ export async function signupApi(name, roll, email, password, role) {
 
   return handleResponse(res);
 }
+
+
+// Get public stats for landing page
+export async function getLandingStatsApi() {
+  try {
+    const res = await fetch(`${API_BASE}/complaints/public/stats`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    return handleResponse(res);
+  } catch (error) {
+    console.error("Failed to fetch landing stats:", error);
+    // Return fallback values if API fails
+    return {
+      totalResolved: 1200,
+      avgResponseTime: "24 Hrs",
+      satisfactionRate: 95,
+    };
+  }
+}

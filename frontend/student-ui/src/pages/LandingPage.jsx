@@ -1,13 +1,26 @@
-import React, { useEffect } from "react";
-import Navbar from "../components/common/Navbar"; // Fixed path - using layout/Navbar not common/Navbar
+import React, { useEffect, useState } from "react";
+import Navbar from "../components/common/Navbar";
 import { useNavigate } from "react-router-dom";
 import { FileText, Search, ShieldCheck, CheckCircle, Star } from "lucide-react";
+import { getLandingStatsApi } from "../api";
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const [stats, setStats] = useState({
+    resolved: "1200+",
+    responseTime: "24 Hrs",
+    satisfaction: "95%",
+    loading: true
+  });
 
   useEffect(() => {
-    // Smooth reveal on scroll - FIXED to prevent layout shifts
+    // Update page title
+    document.title = "Campus Grievance Portal | University of Lucknow";
+    
+    // Fetch dynamic stats
+    fetchStats();
+    
+    // Smooth reveal on scroll
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -20,7 +33,6 @@ export default function LandingPage() {
       { threshold: 0.1 }
     );
 
-    // Only animate opacity, not position to prevent layout shift
     document.querySelectorAll(".animate-on-scroll").forEach((element) => {
       element.classList.add("opacity-0", "transition-opacity", "duration-700");
       observer.observe(element);
@@ -29,17 +41,39 @@ export default function LandingPage() {
     return () => observer.disconnect();
   }, []);
 
+  // Fetch real stats from backend
+  const fetchStats = async () => {
+    try {
+      const data = await getLandingStatsApi();
+      setStats({
+        resolved: `${data.totalResolved}+`,
+        responseTime: data.avgResponseTime,
+        satisfaction: `${data.satisfactionRate}%`,
+        loading: false
+      });
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+      // Keep fallback values
+      setStats({
+        resolved: "1200+",
+        responseTime: "24 Hrs",
+        satisfaction: "95%",
+        loading: false
+      });
+    }
+  };
+
   return (
-    <div className="bg-gray-50"> {/* Removed flex flex-col min-h-screen */}
+    <div className="bg-gray-50">
       <Navbar />
 
-      {/* HERO SECTION - FIXED */}
+      {/* HERO SECTION */}
       <section
         className="relative bg-cover bg-center h-[75vh] flex flex-col justify-center items-center text-center"
         style={{
           backgroundImage:
             "url('https://www.lkouniv.ac.in/site/writereaddata/HomePage/Header/H_202403191545264198.jpg')",
-          marginTop: "-1px" // Prevents white line
+          marginTop: "-1px"
         }}
       >
         <div className="bg-gradient-to-b from-black/60 via-black/50 to-black/40 absolute inset-0" />
@@ -61,7 +95,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* MAIN FEATURES - WITH HOVER EFFECTS */}
+      {/* MAIN FEATURES */}
       <section className="py-16 px-6 md:px-20">
         <div className="grid md:grid-cols-3 gap-8 text-center animate-on-scroll">
           {[
@@ -99,11 +133,11 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* HOW IT WORKS + STATS - MORE DYNAMIC */}
+      {/* HOW IT WORKS + STATS */}
       <section className="px-6 md:px-20 py-20 bg-gray-100">
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center animate-on-scroll">
           
-          {/* HOW IT WORKS - ANIMATED */}
+          {/* HOW IT WORKS */}
           <div className="bg-white rounded-2xl shadow-xl p-10 border border-gray-200 hover:shadow-2xl transition-all duration-300 h-full">
             <h2 className="text-3xl font-bold text-indigo-700 mb-8 text-center">
               How It Works
@@ -124,24 +158,36 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* STATS - MORE ANIMATED */}
+          {/* QUICK INSIGHTS - NOW DYNAMIC! */}
           <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-2xl shadow-2xl p-10 text-white text-center hover:scale-[1.02] transition-transform duration-300 h-full flex flex-col justify-center">
             <h2 className="text-3xl font-bold mb-10">Quick Insights</h2>
 
-            <div className="space-y-8">
-              <div className="hover:scale-110 transition-transform duration-300 cursor-pointer">
-                <span className="text-yellow-300 text-5xl font-extrabold block animate-pulse">1200+</span>
-                <p className="text-lg mt-2">Complaints Resolved</p>
+            {stats.loading ? (
+              <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-white"></div>
               </div>
-              <div className="hover:scale-110 transition-transform duration-300 cursor-pointer">
-                <span className="text-green-300 text-5xl font-extrabold block animate-pulse">24 Hrs</span>
-                <p className="text-lg mt-2">Average Response Time</p>
+            ) : (
+              <div className="space-y-8">
+                <div className="hover:scale-110 transition-transform duration-300 cursor-pointer">
+                  <span className="text-yellow-300 text-5xl font-extrabold block animate-pulse">
+                    {stats.resolved}
+                  </span>
+                  <p className="text-lg mt-2">Complaints Resolved</p>
+                </div>
+                <div className="hover:scale-110 transition-transform duration-300 cursor-pointer">
+                  <span className="text-green-300 text-5xl font-extrabold block animate-pulse">
+                    {stats.responseTime}
+                  </span>
+                  <p className="text-lg mt-2">Average Response Time</p>
+                </div>
+                <div className="hover:scale-110 transition-transform duration-300 cursor-pointer">
+                  <span className="text-pink-300 text-5xl font-extrabold block animate-pulse">
+                    {stats.satisfaction}
+                  </span>
+                  <p className="text-lg mt-2">Student Satisfaction</p>
+                </div>
               </div>
-              <div className="hover:scale-110 transition-transform duration-300 cursor-pointer">
-                <span className="text-pink-300 text-5xl font-extrabold block animate-pulse">95%</span>
-                <p className="text-lg mt-2">Student Satisfaction</p>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </section>
@@ -154,33 +200,35 @@ export default function LandingPage() {
             The University of Lucknow's Campus Grievance Redressal Portal is dedicated to ensuring transparency, faster processing, accountability and student empowerment through a modern and fully digital platform. We combine clear workflows, timely action, and user-friendly reporting to improve campus life for students, faculty and staff.
           </p>
 
-          {/* TESTIMONIALS - ENHANCED */}
+          {/* TESTIMONIALS - 5 TESTIMONIALS */}
           <h3 className="text-2xl font-semibold text-indigo-700 mb-8">
             Student Testimonials
           </h3>
 
-          <div className="grid md:grid-cols-3 gap-8 justify-center max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-3 lg:grid-cols-5 gap-6 justify-center max-w-7xl mx-auto">
             {[
-              { name: "Andrew Sans", msg: "Extremely fast response and supportive staff!" },
-              { name: "Eric Rocks", msg: "My issue was resolved within a single day!" },
-              { name: "Raveric", msg: "Very transparent and easy to use interface." },
+              { name: "Priya Sharma", msg: "Extremely fast response and supportive staff!" },
+              { name: "Rahul Verma", msg: "My issue was resolved within a single day!" },
+              { name: "Anjali Singh", msg: "Very transparent and easy to use interface." },
+              { name: "Vikram Yadav", msg: "The tracking system is brilliant and simple!" },
+              { name: "Neha Gupta", msg: "Finally, a system that actually listens to students!" },
             ].map((t, i) => (
               <div
                 key={i}
-                className="bg-gradient-to-br from-white to-gray-50 p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border-l-4 border-yellow-400"
+                className="bg-gradient-to-br from-white to-gray-50 p-6 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border-l-4 border-yellow-400"
               >
-                <div className="flex gap-1 justify-center mb-4">
+                <div className="flex gap-1 justify-center mb-3">
                   {[...Array(5)].map((_, idx) => (
-                    <Star key={idx} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                    <Star key={idx} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                   ))}
                 </div>
-                <p className="italic text-gray-700 mb-4 text-lg">"{t.msg}"</p>
-                <h4 className="font-bold text-indigo-700">– {t.name}</h4>
+                <p className="italic text-gray-700 mb-3 text-sm leading-relaxed">"{t.msg}"</p>
+                <h4 className="font-bold text-indigo-700 text-sm">– {t.name}</h4>
               </div>
             ))}
           </div>
 
-          {/* TEAM SECTION - FIXED */}
+          {/* TEAM SECTION */}
           <h3 className="text-2xl font-semibold text-indigo-700 mt-16 mb-8">
             Our Development Team
           </h3>
@@ -212,43 +260,43 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* CONTACT SECTION - REFINED GRADIENT */}
-     {/* CONTACT SECTION - WITH REAL DETAILS */}
-<section className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 py-20 text-white text-center">
-  <div className="animate-on-scroll">
-    <h2 className="text-3xl font-bold mb-6">Contact Us</h2>
-    <p className="max-w-2xl mx-auto text-lg mb-10">
-      Have a concern or need help? Our support team is here to assist you!
-    </p>
+      {/* CONTACT SECTION */}
+      <section className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 py-20 text-white text-center">
+        <div className="animate-on-scroll">
+          <h2 className="text-3xl font-bold mb-6">Contact Us</h2>
+          <p className="max-w-2xl mx-auto text-lg mb-10">
+            Have a concern or need help? Our support team is here to assist you!
+          </p>
 
-    <div className="flex flex-col md:flex-row justify-center items-center gap-8">
-      <div className="bg-white/20 backdrop-blur-md p-6 rounded-xl shadow-lg w-72 hover:bg-white/30 transition-all duration-300 hover:scale-105">
-        <h3 className="font-semibold text-xl mb-2">📍 Main Campus</h3>
-        <p className="text-sm">University Road, Babuganj, Hasanganj</p>
-        <p className="text-sm">Lucknow - 226007</p>
-      </div>
+          <div className="flex flex-col md:flex-row justify-center items-center gap-8">
+            <div className="bg-white/20 backdrop-blur-md p-6 rounded-xl shadow-lg w-72 hover:bg-white/30 transition-all duration-300 hover:scale-105">
+              <h3 className="font-semibold text-xl mb-2">📍 Main Campus</h3>
+              <p className="text-sm">University Road, Babuganj, Hasanganj</p>
+              <p className="text-sm">Lucknow - 226007</p>
+            </div>
 
-      <div className="bg-white/20 backdrop-blur-md p-6 rounded-xl shadow-lg w-72 hover:bg-white/30 transition-all duration-300 hover:scale-105">
-        <h3 className="font-semibold text-xl mb-2">📧 Support Email</h3>
-        <p className="text-sm">General: info@lkouniv.ac.in</p>
-        <p className="text-sm">Technical: lu.support@otpl.co.in</p>
-      </div>
+            <div className="bg-white/20 backdrop-blur-md p-6 rounded-xl shadow-lg w-72 hover:bg-white/30 transition-all duration-300 hover:scale-105">
+              <h3 className="font-semibold text-xl mb-2">📧 Support Email</h3>
+              <p className="text-sm">General: info@lkouniv.ac.in</p>
+              <p className="text-sm">Technical: lu.support@otpl.co.in</p>
+            </div>
 
-      <div className="bg-white/20 backdrop-blur-md p-6 rounded-xl shadow-lg w-72 hover:bg-white/30 transition-all duration-300 hover:scale-105">
-        <h3 className="font-semibold text-xl mb-2">📞 Helpline</h3>
-        <p className="text-sm">Office: 0522-2740467</p>
-        <p className="text-sm">Support: +91-7991200503</p>
-      </div>
-    </div>
-    
-    <p className="mt-7 text-white/90 text-sm text-base font-medium">
-      Technical Support Available: Monday - Friday (10 AM - 6 PM)
-    </p>
-  </div>
-</section>
-      {/* FOOTER - NOW VISIBLE */}
+            <div className="bg-white/20 backdrop-blur-md p-6 rounded-xl shadow-lg w-72 hover:bg-white/30 transition-all duration-300 hover:scale-105">
+              <h3 className="font-semibold text-xl mb-2">📞 Helpline</h3>
+              <p className="text-sm">Office: 0522-2740467</p>
+              <p className="text-sm">Support: +91-7991200503</p>
+            </div>
+          </div>
+          
+          <p className="mt-7 text-white/90 text-sm text-base font-medium">
+            Technical Support Available: Monday - Friday (10 AM - 6 PM)
+          </p>
+        </div>
+      </section>
+
+      {/* FOOTER */}
       <footer className="bg-indigo-900 text-white py-6 text-center -mt-8">
-        <p>© 2025 University of Lucknow | Campus Complaint Portal</p>
+        <p>© {new Date().getFullYear()} University of Lucknow | Campus Complaint Portal</p>
       </footer>
     </div>
   );

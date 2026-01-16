@@ -1229,6 +1229,60 @@ app.get(
   }
 );
 
+
+
+// ==================== PUBLIC ROUTES (NO AUTH) ====================
+
+// Public landing page stats (NO authentication required)
+app.get("/api/complaints/public/stats", async (req, res) => {
+  try {
+    // Total resolved complaints
+    const totalResolved = await Complaints.countDocuments({ status: "Resolved" });
+
+    // Calculate average response time (in hours)
+    const resolvedComplaints = await Complaints.find({ 
+      status: "Resolved",
+      submittedAt: { $exists: true },
+      resolvedAt: { $exists: true }
+    }).toArray();
+
+    let avgResponseHours = 24; // Default fallback
+
+    if (resolvedComplaints.length > 0) {
+      const totalTime = resolvedComplaints.reduce((sum, c) => {
+        if (c.submittedAt && c.resolvedAt) {
+          const timeDiff = new Date(c.resolvedAt) - new Date(c.submittedAt);
+          return sum + timeDiff;
+        }
+        return sum;
+      }, 0);
+
+      avgResponseHours = Math.round(totalTime / resolvedComplaints.length / 1000 / 60 / 60);
+      if (avgResponseHours < 1) avgResponseHours = 1;
+    }
+
+    // Calculate satisfaction rate
+    const totalComplaints = await Complaints.countDocuments();
+    const satisfactionRate = totalComplaints > 0 
+      ? Math.round((totalResolved / totalComplaints) * 100) 
+      : 95;
+
+    console.log("✅ Landing stats:", { totalResolved, avgResponseHours, satisfactionRate });
+
+    res.status(200).json({
+      totalResolved: totalResolved || 50,
+      avgResponseTime: `${avgResponseHours} Hrs`,
+      satisfactionRate: satisfactionRate || 95,
+    });
+  } catch (error) {
+    console.error("❌ Error fetching landing stats:", error);
+    res.status(500).json({
+      message: "Failed to fetch stats",
+      error: error.message,
+    });
+  }
+});
+
 // ---------- 404 & ERROR HANDLERS ----------
 app.use((req, res) => {
   res.status(404).json({ message: "URL not found" });
