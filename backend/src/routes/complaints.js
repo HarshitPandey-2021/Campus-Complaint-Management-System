@@ -5,9 +5,6 @@ const complaintsController = require("../controllers/complaintsController");
 const { auth, requireRole } = require("../middleware/authMiddleware");
 const upload = require("../middleware/upload");
 
-
-
-
 // ==================== PUBLIC ROUTES (NO AUTH) ====================
 
 // Get landing page stats (public endpoint)
@@ -34,7 +31,7 @@ router.get(
   complaintsController.getAnalyticsData
 );
 
-// Get unread complaints
+// ✅ FIXED: Get unread complaints (using the correct function)
 router.get(
   "/admin/unread",
   auth,
@@ -42,7 +39,19 @@ router.get(
   complaintsController.getUnreadComplaints
 );
 
-// Update complaint status
+// ✅ NEW: Admin update complaint (edit title, description, category, etc.)
+router.put(
+  "/admin/:id",
+  auth,
+  requireRole("admin"),
+  upload.fields([
+    { name: "images", maxCount: 5 },
+    { name: "pdfDocument", maxCount: 1 },
+  ]),
+  complaintsController.updateComplaint
+);
+
+// Update complaint status (resolve, reject, start work)
 router.put(
   "/admin/:id/status",
   auth,
@@ -88,7 +97,7 @@ router.get(
   complaintsController.getUserComplaints
 );
 
-// Update my complaint
+// Update my complaint (student only)
 router.put(
   "/:id",
   auth,

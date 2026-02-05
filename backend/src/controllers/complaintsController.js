@@ -658,6 +658,35 @@ async function getLandingStats(req, res) {
   }
 }
 
+
+// ==================== ADMIN: GET UNREAD COMPLAINTS ====================
+
+async function getUnreadComplaints(req, res) {
+  try {
+    const db = req.app.locals.db;
+    
+    const unreadComplaints = await db
+      .collection("Complaints")
+      .find({ readByAdmin: { $ne: true } })
+      .sort({ submittedAt: -1 })
+      .limit(50) // Limit for performance
+      .toArray();
+
+    // Transform for frontend
+    const transformed = unreadComplaints.map((c) => ({
+      ...c,
+      title: c.title || c.subject,
+      createdAt: c.createdAt || c.submittedAt,
+    }));
+
+    console.log(`✅ Found ${transformed.length} unread complaints`);
+    res.status(200).json(transformed);
+  } catch (error) {
+    console.error("❌ Error fetching unread complaints:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+}
+
 // ==================== EXPORTS ====================
 module.exports = {
   createComplaint,
@@ -669,4 +698,5 @@ module.exports = {
   getAnalyticsData,
   markComplaintAsRead,
   getLandingStats,  // ✅ MAKE SURE THIS IS HERE!
+    getUnreadComplaints,  // ✅ ADD THIS!
 };

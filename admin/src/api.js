@@ -47,7 +47,7 @@ async function refreshAccessToken() {
     return null;
   } catch {
     logoutAdmin();
-    window.location.href = "http://localhost:5174/login";
+    window.location.href = "https://ccms-home.vercel.app/login";
     return null;
   }
 }
@@ -146,13 +146,13 @@ export async function getStats() {
   return handleResponse(res);
 }
 
+// ✅ YOUR ORIGINAL WORKING CODE - KEPT AS IS
 export async function getComplaintById(id) {
-  // Try multiple route patterns until one works
   const routesToTry = [
-    `${API_BASE}/complaints/admin/${id}`,     // Current attempt
-    `${API_BASE}/complaints/${id}`,          // Most common pattern
-    `${API_BASE}/admin/complaints/${id}`,    // Alternative pattern
-    `${API_BASE}/complaints/details/${id}`,  // Another possibility
+    `${API_BASE}/complaints/admin/${id}`,
+    `${API_BASE}/complaints/${id}`,
+    `${API_BASE}/admin/complaints/${id}`,
+    `${API_BASE}/complaints/details/${id}`,
   ];
 
   for (const route of routesToTry) {
@@ -164,42 +164,72 @@ export async function getComplaintById(id) {
       return data;
     } catch (error) {
       console.log(`❌ Failed route: ${route} - ${error.message}`);
-      // Continue to next route
     }
   }
 
-  // If all routes fail, throw error
   throw new Error('Complaint not found - all routes failed');
-} 
+}
 
-export async function updateComplaintStatus(
-  id,
-  status,
-  adminRemarks,
-  assignedTo = null
-) {
+// ✅ FIXED: Update complaint STATUS (resolve, reject, start work)
+export async function updateComplaintStatus(id, status, adminRemarks, assignedTo = null) {
   const body = { status };
   if (adminRemarks) body.adminRemarks = adminRemarks;
   if (assignedTo) body.assignedTo = assignedTo;
 
-  // const res = await apiCall(`${API_BASE}/complaints/admin/${id}/status`, { problem created because od reverse order (mismatch from the backend)
-  const res = await apiCall(`${API_BASE}/admin/complaints/${id}/status`, {
-    method: "PUT",
-    body: JSON.stringify(body),
-  });
-  return handleResponse(res);
+  // Try multiple routes (same pattern as getComplaintById)
+  const routesToTry = [
+    `${API_BASE}/complaints/admin/${id}/status`,
+    `${API_BASE}/admin/complaints/${id}/status`,
+  ];
+
+  for (const route of routesToTry) {
+    try {
+      console.log(`🔍 Trying status update route: ${route}`);
+      const res = await apiCall(route, {
+        method: "PUT",
+        body: JSON.stringify(body),
+      });
+      const data = await handleResponse(res);
+      console.log(`✅ Status update success with route: ${route}`);
+      return data;
+    } catch (error) {
+      console.log(`❌ Failed route: ${route} - ${error.message}`);
+    }
+  }
+
+  throw new Error('Failed to update status - all routes failed');
 }
 
+// ✅ FIXED: Update complaint DETAILS (edit title, description, etc.)
 export async function updateComplaint(id, updates) {
+  // If only status is being updated, use status endpoint
   if (updates && Object.keys(updates).length === 1 && updates.status) {
     return updateComplaintStatus(id, updates.status);
   }
 
-  const res = await apiCall(`${API_BASE}/complaints/admin/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(updates),
-  });
-  return handleResponse(res);
+  // Try multiple routes for editing complaint details
+  const routesToTry = [
+    `${API_BASE}/complaints/admin/${id}`,
+    `${API_BASE}/admin/complaints/${id}`,
+    `${API_BASE}/complaints/${id}`,
+  ];
+
+  for (const route of routesToTry) {
+    try {
+      console.log(`🔍 Trying edit route: ${route}`);
+      const res = await apiCall(route, {
+        method: "PUT",
+        body: JSON.stringify(updates),
+      });
+      const data = await handleResponse(res);
+      console.log(`✅ Edit success with route: ${route}`);
+      return data;
+    } catch (error) {
+      console.log(`❌ Failed route: ${route} - ${error.message}`);
+    }
+  }
+
+  throw new Error('Failed to update complaint - all routes failed');
 }
 
 export async function markComplaintAsRead(id) {
