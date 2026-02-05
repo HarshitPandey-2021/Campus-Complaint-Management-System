@@ -1,4 +1,4 @@
-// src/pages/Dashboard.jsx - FIXED VERSION
+// src/pages/Dashboard.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Badge from "../components/Badge";
@@ -13,6 +13,11 @@ import {
   RiLoader4Line,
   RiCheckLine,
   RiArrowRightLine,
+  RiTrophyLine,
+  RiTimerLine,
+  RiFlashlightLine,
+  RiArrowUpLine,
+  RiArrowRightSLine,
 } from "react-icons/ri";
 
 const Dashboard = () => {
@@ -32,13 +37,11 @@ const Dashboard = () => {
   const adminUser = getAdminUser();
   const adminToken = getAdminToken() || localStorage.getItem("token");
 
-  // CountUp hooks
   const totalCount = useCountUp(stats.total, 1200, 0);
   const pendingCount = useCountUp(stats.pending, 1200, 0);
   const inProgressCount = useCountUp(stats.inProgress, 1200, 0);
   const resolvedCount = useCountUp(stats.resolved, 1200, 0);
 
-  // ✅ FIXED: Data fetch with proper stats extraction
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -49,9 +52,7 @@ const Dashboard = () => {
           return;
         }
 
-        // Fetch complaints
         const allComplaints = await getAllComplaints(adminToken);
-        console.log("Dashboard Complaints:", allComplaints);
         
         if (Array.isArray(allComplaints)) {
           const sorted = [...allComplaints].sort((a, b) => 
@@ -60,14 +61,10 @@ const Dashboard = () => {
           setRecentComplaints(sorted.slice(0, 5));
         }
 
-        // ✅ FIXED: Fetch stats and extract properly
         const statsData = await getStats(adminToken);
-        console.log("Dashboard Stats Response:", statsData);
         
         if (statsData) {
-          // Handle both response formats
           const statsObj = statsData.stats || statsData;
-          
           setStats({
             total: statsObj.total || 0,
             pending: statsObj.pending || 0,
@@ -75,16 +72,9 @@ const Dashboard = () => {
             resolved: statsObj.resolved || 0,
             rejected: statsObj.rejected || 0,
           });
-          
-          console.log("✅ Stats set:", {
-            total: statsObj.total,
-            pending: statsObj.pending,
-            inProgress: statsObj.inProgress,
-            resolved: statsObj.resolved,
-          });
         }
       } catch (err) {
-        console.error("❌ Dashboard error:", err);
+        console.error("Dashboard error:", err);
         info("Failed to fetch data. Please refresh.");
       } finally {
         setLoading(false);
@@ -95,7 +85,6 @@ const Dashboard = () => {
     if (adminToken) fetchData();
   }, [adminToken, info]);
 
-  // Welcome toast - single execution
   const welcomeToastRef = useRef(false);
 
   useEffect(() => {
@@ -122,7 +111,6 @@ const Dashboard = () => {
   }, [dataLoaded, stats.pending, adminUser, info, success]);
 
   const handleStatClick = (status) => {
-    console.log("Stat card clicked:", status);
     navigate("/complaints", { state: { filterStatus: status } });
   };
 
@@ -149,182 +137,324 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 page-enter">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
         <Loading type="chart" />
       </div>
     );
   }
 
+  const statsCards = [
+    {
+      label: "Total Complaints",
+      value: totalCount,
+      subtitle: "All time",
+      icon: RiFileListLine,
+      color: "indigo",
+      status: "all",
+    },
+    {
+      label: "Pending",
+      value: pendingCount,
+      subtitle: "Awaiting action",
+      icon: RiTimeLine,
+      color: "amber",
+      status: "Pending",
+    },
+    {
+      label: "In Progress",
+      value: inProgressCount,
+      subtitle: "Being handled",
+      icon: RiLoader4Line,
+      color: "blue",
+      status: "In Progress",
+      spin: true,
+    },
+    {
+      label: "Resolved",
+      value: resolvedCount,
+      subtitle: "Completed",
+      icon: RiCheckLine,
+      color: "emerald",
+      status: "Resolved",
+    },
+  ];
+
+  const colorClasses = {
+    indigo: {
+      icon: "bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400",
+      text: "text-indigo-600 dark:text-indigo-400",
+      border: "border-gray-200 dark:border-gray-800",
+      hover: "hover:border-indigo-300 dark:hover:border-indigo-700",
+    },
+    amber: {
+      icon: "bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400",
+      text: "text-amber-600 dark:text-amber-400",
+      border: "border-gray-200 dark:border-gray-800",
+      hover: "hover:border-amber-300 dark:hover:border-amber-700",
+    },
+    blue: {
+      icon: "bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400",
+      text: "text-blue-600 dark:text-blue-400",
+      border: "border-gray-200 dark:border-gray-800",
+      hover: "hover:border-blue-300 dark:hover:border-blue-700",
+    },
+    emerald: {
+      icon: "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400",
+      text: "text-emerald-600 dark:text-emerald-400",
+      border: "border-gray-200 dark:border-gray-800",
+      hover: "hover:border-emerald-300 dark:hover:border-emerald-700",
+    },
+  };
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8 page-enter">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200">
-          Welcome back, {adminUser?.name || "Admin"}!
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">
-          Here's a quick overview of all complaints and activities.
-        </p>
-      </div>
-
-      {/* Stats Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {/* Total Complaints Card */}
-        <div 
-          onClick={() => handleStatClick("all")} 
-          className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-300 active:scale-100"
-        >
-          <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 overflow-x-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        {/* Header Section */}
+        <div className="mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">Total Complaints</p>
-              <p className="text-3xl font-bold text-gray-800 dark:text-gray-200 mt-2">{totalCount}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">All time</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+                Welcome back, {adminUser?.name?.split(' ')[0] || "Admin"}! 👋
+              </h1>
+              <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm sm:text-base">
+                Here's a quick overview of all complaints and activities.
+              </p>
             </div>
-            <div className="bg-indigo-100 dark:bg-indigo-900/30 p-4 rounded-full">
-              <RiFileListLine className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-            </div>
+            <button
+              onClick={() => navigate("/complaints")}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-sm shadow-lg shadow-indigo-500/30 transition-all duration-200 hover:shadow-xl hover:shadow-indigo-500/40 hover:-translate-y-0.5 active:translate-y-0"
+            >
+              View All Complaints
+              <RiArrowRightLine className="h-4 w-4" />
+            </button>
           </div>
         </div>
 
-        {/* Pending Card */}
-        <div 
-          onClick={() => handleStatClick("Pending")} 
-          className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-300 active:scale-100"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">Pending</p>
-              <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400 mt-2">{pendingCount}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Awaiting action</p>
-            </div>
-            <div className="bg-yellow-100 dark:bg-yellow-900/30 p-4 rounded-full">
-              <RiTimeLine className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
-            </div>
-          </div>
+        {/* Stats Cards Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-8">
+          {statsCards.map((stat, index) => {
+            const colors = colorClasses[stat.color];
+            const Icon = stat.icon;
+            
+            return (
+              <div
+                key={index}
+                onClick={() => handleStatClick(stat.status)}
+                className={`
+                  relative bg-white dark:bg-gray-900 rounded-2xl p-4 sm:p-5 lg:p-6 
+                  border ${colors.border} ${colors.hover}
+                  cursor-pointer group
+                  transition-all duration-300 ease-out
+                  hover:shadow-xl hover:-translate-y-1
+                  active:translate-y-0 active:shadow-lg
+                `}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
+                      {stat.label}
+                    </p>
+                    <p className={`text-xl sm:text-2xl lg:text-3xl font-bold mt-1 sm:mt-2 ${colors.text}`}>
+                      {stat.value}
+                    </p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 hidden sm:block">
+                      {stat.subtitle}
+                    </p>
+                  </div>
+                  <div className={`p-2 sm:p-2.5 lg:p-3 rounded-xl ${colors.icon} transition-transform duration-300 group-hover:scale-110`}>
+                    <Icon className={`h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 ${stat.spin ? 'animate-spin' : ''}`} />
+                  </div>
+                </div>
+                
+                <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <RiArrowRightSLine className={`h-4 w-4 sm:h-5 sm:w-5 ${colors.text}`} />
+                </div>
+              </div>
+            );
+          })}
         </div>
 
-        {/* In Progress Card */}
-        <div 
-          onClick={() => handleStatClick("In Progress")} 
-          className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-300 active:scale-100"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">In Progress</p>
-              <p className="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-2">{inProgressCount}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Being handled</p>
+        {/* Recent Complaints Section */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 mb-8">
+          {/* Section Header */}
+          <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
+                <RiFileListLine className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <div>
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
+                  Recent Complaints
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
+                  Latest submissions requiring attention
+                </p>
+              </div>
             </div>
-            <div className="bg-blue-100 dark:bg-blue-900/30 p-4 rounded-full">
-              <RiLoader4Line className="h-6 w-6 text-blue-600 dark:text-blue-400 animate-spin" />
-            </div>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                navigate("/complaints");
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-colors"
+            >
+              <span className="hidden sm:inline">View All</span>
+              <span className="sm:hidden">All</span>
+              <RiArrowRightLine className="h-4 w-4" />
+            </button>
           </div>
-        </div>
 
-        {/* Resolved Card */}
-        <div 
-          onClick={() => handleStatClick("Resolved")} 
-          className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-300 active:scale-100"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">Resolved</p>
-              <p className="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">{resolvedCount}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Completed</p>
+          {/* Content */}
+          {recentComplaints.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 sm:py-16 px-4">
+              <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-2xl mb-4">
+                <RiFileListLine className="h-8 w-8 sm:h-10 sm:w-10 text-gray-400" />
+              </div>
+              <p className="text-gray-600 dark:text-gray-400 font-medium">No complaints yet</p>
+              <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+                New complaints will appear here
+              </p>
             </div>
-            <div className="bg-green-100 dark:bg-green-900/30 p-4 rounded-full">
-              <RiCheckLine className="h-6 w-6 text-green-600 dark:text-green-400" />
-            </div>
-          </div>
-        </div>
-      </div>
+          ) : (
+            <>
+              {/* Desktop Table - Only table scrolls horizontally */}
+              <div className="hidden md:block">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[600px]">
+                    <thead>
+                      <tr className="bg-gray-50 dark:bg-gray-800/50">
+                        <th className="text-left py-3 px-6 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Title
+                        </th>
+                        <th className="text-left py-3 px-6 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Category
+                        </th>
+                        <th className="text-left py-3 px-6 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="text-left py-3 px-6 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Submitted
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                      {recentComplaints.map((complaint, index) => (
+                        <tr
+                          key={complaint._id || complaint.id || index}
+                          onClick={(e) => handleComplaintRowClick(e, complaint._id || complaint.id)}
+                          className="hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors group"
+                        >
+                          <td className="py-4 px-6">
+                            <p className="font-medium text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate max-w-xs">
+                              {complaint.title || complaint.subject || "Untitled"}
+                            </p>
+                          </td>
+                          <td className="py-4 px-6">
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-xs font-medium text-gray-600 dark:text-gray-400">
+                              {complaint.category || "General"}
+                            </span>
+                          </td>
+                          <td className="py-4 px-6">
+                            <Badge status={complaint.status}>{complaint.status}</Badge>
+                          </td>
+                          <td className="py-4 px-6 text-sm text-gray-500 dark:text-gray-400">
+                            {formatDate(complaint.createdAt || complaint.submittedAt)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
 
-      {/* Recent Complaints Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-            <RiFileListLine className="h-6 w-6" /> Recent Complaints
-          </h3>
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              navigate("/complaints");
-            }}
-            className="flex items-center gap-2 px-4 py-2 text-indigo-600 dark:text-indigo-400 font-semibold hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors text-sm active:scale-95"
-          >
-            View All <RiArrowRightLine className="h-4 w-4" />
-          </button>
-        </div>
-
-        {recentComplaints.length === 0 ? (
-          <div className="text-center py-12">
-            <RiFileListLine className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-600 dark:text-gray-400 font-medium">No complaints yet.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="border-b-2 border-gray-200 dark:border-gray-700">
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Title</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Category</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Status</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Submitted</th>
-                </tr>
-              </thead>
-              <tbody>
+              {/* Mobile Cards */}
+              <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
                 {recentComplaints.map((complaint, index) => (
-                  <tr
+                  <div
                     key={complaint._id || complaint.id || index}
                     onClick={(e) => handleComplaintRowClick(e, complaint._id || complaint.id)}
-                    className="border-b border-gray-200 dark:border-gray-700 hover:bg-indigo-50 dark:hover:bg-gray-700/50 transition-all cursor-pointer"
+                    className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors active:bg-gray-100 dark:active:bg-gray-800"
                   >
-                    <td className="py-4 px-4 text-gray-800 dark:text-gray-200 font-medium">
-                      {complaint.title || complaint.subject || "Untitled"}
-                    </td>
-                    <td className="py-4 px-4 text-gray-600 dark:text-gray-400">
-                      {complaint.category || "General"}
-                    </td>
-                    <td className="py-4 px-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 dark:text-white truncate">
+                          {complaint.title || complaint.subject || "Untitled"}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-xs font-medium text-gray-600 dark:text-gray-400">
+                            {complaint.category || "General"}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            {formatDate(complaint.createdAt || complaint.submittedAt)}
+                          </span>
+                        </div>
+                      </div>
                       <Badge status={complaint.status}>{complaint.status}</Badge>
-                    </td>
-                    <td className="py-4 px-4 text-gray-600 dark:text-gray-400 text-xs">
-                      {formatDate(complaint.createdAt || complaint.submittedAt)}
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Quick Stats Footer */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Resolution Rate */}
+          <div className="relative overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-5 sm:p-6 text-white">
+            <div className="relative z-10">
+              <div className="flex items-center gap-2 mb-3">
+                <RiTrophyLine className="h-5 w-5 text-white/80" />
+                <p className="text-sm font-medium text-white/80">Resolution Rate</p>
+              </div>
+              <p className="text-2xl sm:text-3xl lg:text-4xl font-bold">
+                {stats.total > 0 ? Math.round((stats.resolved / stats.total) * 100) : 0}%
+              </p>
+              <p className="text-sm text-white/70 mt-2">
+                {stats.resolved} of {stats.total} resolved
+              </p>
+            </div>
+            <div className="absolute -right-4 -bottom-4 opacity-10">
+              <RiTrophyLine className="h-24 w-24 sm:h-32 sm:w-32" />
+            </div>
           </div>
-        )}
-      </div>
 
-      {/* Quick Stats Footer */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-               {/* Quick Stats Footer - Continuation */}
-        <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-900/10 rounded-lg p-4 sm:p-6 border border-indigo-200 dark:border-indigo-900/30 hover:shadow-md transition-shadow">
-          <p className="text-sm text-indigo-700 dark:text-indigo-300 font-medium">Resolution Rate</p>
-          <p className="text-2xl sm:text-3xl font-bold text-indigo-900 dark:text-indigo-200 mt-1">
-            {stats.total > 0 ? Math.round((stats.resolved / stats.total) * 100) : 0}%
-          </p>
-          <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-1">
-            {stats.resolved} of {stats.total} resolved
-          </p>
-        </div>
+          {/* Average Response */}
+          <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-5 sm:p-6 text-white">
+            <div className="relative z-10">
+              <div className="flex items-center gap-2 mb-3">
+                <RiTimerLine className="h-5 w-5 text-white/80" />
+                <p className="text-sm font-medium text-white/80">Avg. Response</p>
+              </div>
+              <p className="text-2xl sm:text-3xl lg:text-4xl font-bold">2.4 hrs</p>
+              <div className="flex items-center gap-1 mt-2">
+                <RiArrowUpLine className="h-4 w-4 text-emerald-200" />
+                <p className="text-sm text-white/70">12% faster this week</p>
+              </div>
+            </div>
+            <div className="absolute -right-4 -bottom-4 opacity-10">
+              <RiTimerLine className="h-24 w-24 sm:h-32 sm:w-32" />
+            </div>
+          </div>
 
-        <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-900/10 rounded-lg p-4 sm:p-6 border border-green-200 dark:border-green-900/30 hover:shadow-md transition-shadow">
-          <p className="text-sm text-green-700 dark:text-green-300 font-medium">Average Response</p>
-          <p className="text-2xl sm:text-3xl font-bold text-green-900 dark:text-green-200 mt-1">2.4 hrs</p>
-          <p className="text-xs text-green-600 dark:text-green-400 mt-1">Estimated response time</p>
-        </div>
-
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-900/10 rounded-lg p-4 sm:p-6 border border-purple-200 dark:border-purple-900/30 hover:shadow-md transition-shadow">
-          <p className="text-sm text-purple-700 dark:text-purple-300 font-medium">Active Rate</p>
-          <p className="text-2xl sm:text-3xl font-bold text-purple-900 dark:text-purple-200 mt-1">
-            {stats.total > 0 ? Math.round(((stats.pending + stats.inProgress) / stats.total) * 100) : 0}%
-          </p>
-          <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
-            {stats.pending + stats.inProgress} active complaints
-          </p>
+          {/* Active Rate */}
+          <div className="relative overflow-hidden bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-5 sm:p-6 text-white">
+            <div className="relative z-10">
+              <div className="flex items-center gap-2 mb-3">
+                <RiFlashlightLine className="h-5 w-5 text-white/80" />
+                <p className="text-sm font-medium text-white/80">Active Rate</p>
+              </div>
+              <p className="text-2xl sm:text-3xl lg:text-4xl font-bold">
+                {stats.total > 0 ? Math.round(((stats.pending + stats.inProgress) / stats.total) * 100) : 0}%
+              </p>
+              <p className="text-sm text-white/70 mt-2">
+                {stats.pending + stats.inProgress} active complaints
+              </p>
+            </div>
+            <div className="absolute -right-4 -bottom-4 opacity-10">
+              <RiFlashlightLine className="h-24 w-24 sm:h-32 sm:w-32" />
+            </div>
+          </div>
         </div>
       </div>
     </div>

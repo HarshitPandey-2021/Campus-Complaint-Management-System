@@ -216,7 +216,7 @@ export default function ComplaintTable({
                     </button>
 
                     {/* 3-dot Dropdown */}
-                    <ActionsDropdown
+                    {/* <ActionsDropdown
                       complaintId={id}
                       openDropdownId={openDropdownId}
                       setOpenDropdownId={setOpenDropdownId}
@@ -228,7 +228,7 @@ export default function ComplaintTable({
                         console.log(`🔧 ${action} clicked for:`, cId);
                         onActionClick && onActionClick(action, complaint);
                       }}
-                    />
+                    /> */}
                   </div>
                 </td>
               </tr>

@@ -270,17 +270,19 @@ export default function NotificationPanel() {
     <div className="relative" ref={panelRef}>
       {/* Bell Button */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 rounded-lg hover:bg-indigo-600/20 dark:hover:bg-gray-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:focus:ring-gray-500 group"
-        aria-label="Notifications"
-      >
-        <RiBellLine className="h-6 w-6 text-white dark:text-gray-300 group-hover:scale-110 transition-transform" />
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg border-2 border-indigo-700 dark:border-gray-800 animate-bounce">
-            {unreadCount > 9 ? "9+" : unreadCount}
-          </span>
-        )}
-      </button>
+  onClick={() => setIsOpen(!isOpen)}
+  className="relative p-2 rounded-lg hover:bg-indigo-600/20 dark:hover:bg-gray-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:focus:ring-gray-500 group"
+  aria-label="Notifications"
+>
+  <RiBellLine className="h-6 w-6 text-gray-800 dark:text-gray-300 group-hover:scale-110 transition-transform" />
+
+  {unreadCount > 0 && (
+    <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg border-2 border-white dark:border-gray-800 animate-bounce">
+      {unreadCount > 9 ? "9+" : unreadCount}
+    </span>
+  )}
+</button>
+
 
       {/* Overlay */}
       {isOpen && (

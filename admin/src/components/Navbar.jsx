@@ -1,14 +1,11 @@
-// src/components/Navbar.jsx
-
+// src/components/Navbar.jsx (Admin - Updated notification icon)
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { RiMenuFoldLine, RiLogoutBoxRLine } from "react-icons/ri";
+import { RiMenuLine, RiLogoutBoxRLine, RiShieldUserLine } from "react-icons/ri";
 import DarkModeToggle from "./DarkModeToggle";
 import Tooltip from "./Tooltip";
 import NotificationPanel from "./NotificationPanel";
-import UniversityLogo from "./UniversityLogo";
 import { getAdminUser, logoutAdmin } from "../utils/tokenUtils";
-import universityLogo from "../assets/logo.png";
 
 const Navbar = ({ toggleSidebar }) => {
   const navigate = useNavigate();
@@ -17,85 +14,99 @@ const Navbar = ({ toggleSidebar }) => {
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to logout?")) {
       logoutAdmin();
-      localStorage.removeItem("dashboard-welcome-seen"); // UI flag only
+      localStorage.removeItem("dashboard-welcome-seen");
       window.location.href = "https://ccms-home.vercel.app/";
     }
   };
 
   return (
-    <nav className="sticky top-0 z-50 w-full bg-gradient-to-r from-indigo-700 to-indigo-800 dark:from-gray-900 dark:to-gray-800 text-white shadow-lg">
-      <div className="mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+    <nav className="sticky top-0 z-40 w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
+      <div className="flex h-16 items-center justify-between px-4 sm:px-6">
+        {/* Left Section */}
+        <div className="flex items-center gap-4">
+          {/* Mobile Menu Button */}
           <button
             onClick={toggleSidebar}
-            className="md:hidden flex-shrink-0 rounded-lg p-2 text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all"
+            className="lg:hidden p-2.5 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200"
             aria-label="Toggle sidebar"
           >
-            <RiMenuFoldLine className="h-6 w-6" />
+            <RiMenuLine className="h-5 w-5" />
           </button>
 
-          <div className="min-w-0">
-            <UniversityLogo
-              imagePath={universityLogo}
-              universityName="University of Lucknow"
-            />
+          {/* Logo & Brand - Desktop */}
+          <div className="hidden lg:flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+              <RiShieldUserLine className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">
+                CCMS Admin
+              </h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                University of Lucknow
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-          <div className="flex items-center gap-2 md:hidden">
+        {/* Right Section */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Notification & Theme - FIXED: Better icon visibility */}
+          <div className="flex items-center gap-1 sm:gap-2">
             <Tooltip text="Notifications">
               <NotificationPanel />
             </Tooltip>
+
             <Tooltip text="Toggle theme">
               <DarkModeToggle />
             </Tooltip>
-            <Tooltip text="Logout">
-              <button
-                onClick={handleLogout}
-                className="rounded-lg p-2 text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all"
-                aria-label="Logout"
-              >
-                <RiLogoutBoxRLine className="h-6 w-6" />
-              </button>
-            </Tooltip>
           </div>
 
-          <div className="hidden md:flex items-center gap-4">
-            <Tooltip text="Notifications">
-              <NotificationPanel />
-            </Tooltip>
+          {/* Divider - Desktop Only */}
+          <div className="hidden md:block h-8 w-px bg-gray-200 dark:bg-gray-700 mx-1" />
 
-            <Tooltip text="Toggle dark mode">
-              <DarkModeToggle />
-            </Tooltip>
-
-            <div className="h-8 w-px bg-white/20" />
-
+          {/* Profile Section - Desktop Only */}
+          <div className="hidden md:flex items-center gap-3">
             <Tooltip text="View profile">
               <button
                 onClick={() => navigate("/profile")}
-                className="text-right hover:bg-white/10 px-3 py-2 rounded-lg transition-all group"
+                className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 group"
               >
-                <p className="text-sm font-semibold group-hover:text-indigo-200 transition-colors truncate max-w-[150px]">
-                  {adminUser?.name || "Admin"}
-                </p>
-                <p className="text-xs text-indigo-200 dark:text-gray-400 truncate max-w-[150px]">
-                  {(adminUser?.role || "Admin") + " • UoL"}
-                </p>
+                <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm shadow-md">
+                  {adminUser?.name?.charAt(0)?.toUpperCase() || "A"}
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate max-w-[120px]">
+                    {adminUser?.name || "Admin"}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]">
+                    {adminUser?.role || "Administrator"}
+                  </p>
+                </div>
               </button>
             </Tooltip>
 
             <Tooltip text="Sign out">
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-2 rounded-lg bg-white/10 hover:bg-white/20 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-white/50"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 font-medium text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500"
               >
                 <RiLogoutBoxRLine className="h-5 w-5" />
                 <span className="hidden lg:inline">Logout</span>
               </button>
             </Tooltip>
           </div>
+
+          {/* Mobile Logout Button */}
+          <Tooltip text="Logout">
+            <button
+              onClick={handleLogout}
+              className="md:hidden p-2.5 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200"
+              aria-label="Logout"
+            >
+              <RiLogoutBoxRLine className="h-5 w-5" />
+            </button>
+          </Tooltip>
         </div>
       </div>
     </nav>

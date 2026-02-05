@@ -25,7 +25,6 @@ const Complaints = () => {
   const location = useLocation();
   const { success, error } = useToast();
 
-  // Initialize filters from URL state or defaults
   const initialFilters = useMemo(() => {
     if (location.state?.filterStatus) {
       const filterValue = location.state.filterStatus;
@@ -40,25 +39,22 @@ const Complaints = () => {
     return { status: "", search: "", dateRange: "all", priority: "" };
   }, [location.state]);
 
-  // State management
   const [complaints, setComplaints] = useState([]);
   const [filteredComplaints, setFilteredComplaints] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState(initialFilters);
   const [selectedComplaint, setSelectedComplaint] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false); // ✅ NEW: Track edit mode
+  const [isEditMode, setIsEditMode] = useState(false);
   const [filterHighlight, setFilterHighlight] = useState(
     !!location.state?.filterStatus
   );
 
   const token = getAdminToken() || localStorage.getItem("token");
 
-  // Apply filters to complaints list
   const applyFilters = useCallback((complaintsToFilter, currentFilters) => {
     let filtered = [...complaintsToFilter];
 
-    // Filter by status
     if (currentFilters.status && currentFilters.status !== "All") {
       filtered = filtered.filter(
         (c) =>
@@ -66,7 +62,6 @@ const Complaints = () => {
       );
     }
 
-    // Filter by priority
     if (currentFilters.priority && currentFilters.priority !== "all") {
       const target = currentFilters.priority.toLowerCase();
       filtered = filtered.filter((c) => {
@@ -78,7 +73,6 @@ const Complaints = () => {
       });
     }
 
-    // Filter by search term
     if (currentFilters.search && currentFilters.search.trim() !== "") {
       const term = currentFilters.search.toLowerCase();
       filtered = filtered.filter((c) => {
@@ -95,7 +89,6 @@ const Complaints = () => {
       });
     }
 
-    // Filter by date range
     if (currentFilters.dateRange && currentFilters.dateRange !== "all") {
       const now = new Date();
       let threshold = new Date();
@@ -128,7 +121,6 @@ const Complaints = () => {
     setFilteredComplaints(filtered);
   }, []);
 
-  // Fetch all complaints from backend
   useEffect(() => {
     const fetchComplaints = async () => {
       try {
@@ -140,8 +132,7 @@ const Complaints = () => {
           return;
         }
 
-        const response = await getAllComplaints(); //token parameter removed
-        console.log("📦 Complaints fetched:", response?.length || 0);
+        const response = await getAllComplaints();
 
         if (!Array.isArray(response)) {
           console.error("Response is not an array:", response);
@@ -168,36 +159,10 @@ const Complaints = () => {
     }
   }, [token, applyFilters, initialFilters, error]);
 
-  // ✅ NEW: Handle notification clicks - Auto-open complaint from URL
-  useEffect(() => {
-    const urlParams = new URLSearchParams(location.search);
-    const complaintId = urlParams.get('id');
-    
-    if (complaintId && complaints.length > 0) {
-      console.log('🔔 Auto-opening complaint from notification:', complaintId);
-      
-      // Check if this complaint exists in our list
-      const exists = complaints.find(c => c._id === complaintId || c.id === complaintId);
-      
-      if (exists) {
-        // Auto-open the complaint
-        openComplaintDetails(complaintId, false);
-        
-        // Clean the URL (remove ?id= parameter)
-        window.history.replaceState({}, '', '/complaints');
-      } else {
-        console.warn('Complaint not found in current list:', complaintId);
-        error('⚠️ Complaint not found or access denied');
-      }
-    }
-  }, [complaints, location.search, error]); // Note: openComplaintDetails added in next useEffect
-
-  // Re-apply filters when they change
   useEffect(() => {
     applyFilters(complaints, filters);
   }, [filters, complaints, applyFilters]);
 
-  // Handle filter changes
   const handleFilterChange = useCallback((newFilters) => {
     setFilters((prev) => ({
       ...prev,
@@ -205,7 +170,6 @@ const Complaints = () => {
     }));
   }, []);
 
-  // Clear all filters
   const handleClearFilters = useCallback(() => {
     const cleared = { status: "", search: "", dateRange: "all", priority: "" };
     setFilters(cleared);
@@ -214,24 +178,18 @@ const Complaints = () => {
     success("🔄 Filters cleared!");
   }, [applyFilters, complaints, success]);
 
-  // Open complaint details modal (view mode)
   const openComplaintDetails = useCallback(
     async (complaintId, editMode = false) => {
-      console.log("🎯 openComplaintDetails with ID:", complaintId, "Edit mode:", editMode);
-
       try {
         if (!complaintId) {
-          console.error("❌ No complaint ID provided");
           error("⚠️ Invalid complaint ID");
           return;
         }
 
-        console.log("🔍 Fetching complaint details for:", complaintId);
-        const complaintDetails = await getComplaintById(complaintId); //token param removed
-        console.log("✅ Complaint details fetched:", complaintDetails);
+        const complaintDetails = await getComplaintById(complaintId);
 
         setSelectedComplaint(complaintDetails);
-        setIsEditMode(editMode); // ✅ Set edit mode
+        setIsEditMode(editMode);
         setIsModalOpen(true);
 
         logActivity(ACTIVITY_TYPES.COMPLAINT_VIEW, {
@@ -242,38 +200,29 @@ const Complaints = () => {
           action: editMode ? "Editing complaint" : "Viewed complaint details",
         });
       } catch (err) {
-        console.error("❌ Error loading complaint:", err);
+        console.error("Error loading complaint:", err);
         error("⚠️ Failed to load complaint details.");
       }
     },
-    [token, error]
+    [error]
   );
 
-  // ✅ Update the auto-open useEffect to include openComplaintDetails dependency
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
     const complaintId = urlParams.get('id');
     
     if (complaintId && complaints.length > 0 && openComplaintDetails) {
-      console.log('🔔 Auto-opening complaint from notification:', complaintId);
-      
-      // Check if this complaint exists in our list
       const exists = complaints.find(c => c._id === complaintId || c.id === complaintId);
       
       if (exists) {
-        // Auto-open the complaint
         openComplaintDetails(complaintId, false);
-        
-        // Clean the URL (remove ?id= parameter)
         window.history.replaceState({}, '', '/complaints');
       } else {
-        console.warn('Complaint not found in current list:', complaintId);
         error('⚠️ Complaint not found or access denied');
       }
     }
   }, [complaints, location.search, openComplaintDetails, error]);
 
-  // Handle row click (view mode)
   const handleRowClick = useCallback(
     (complaintId) => {
       openComplaintDetails(complaintId, false);
@@ -281,34 +230,25 @@ const Complaints = () => {
     [openComplaintDetails]
   );
 
-  // ✅ Handle action click from 3-dot menu (view/edit)
   const handleActionClick = useCallback(
     (action, complaint) => {
       if (!complaint?._id) return;
 
       if (action === "view") {
-        openComplaintDetails(complaint._id, false); // View mode
+        openComplaintDetails(complaint._id, false);
       } else if (action === "edit") {
-        openComplaintDetails(complaint._id, true); // Edit mode
+        openComplaintDetails(complaint._id, true);
       }
     },
     [openComplaintDetails]
   );
 
-  // Handle status update from modal
   const handleStatusUpdate = useCallback(
     async (complaintId, newStatus, remarks) => {
-      console.log("📝 handleStatusUpdate called:", {
-        complaintId,
-        newStatus,
-        remarks,
-      });
-
       try {
         const updateSuccess = await updateComplaintStatus(
           complaintId,
           newStatus,
-          // token,
           remarks
         );
 
@@ -329,7 +269,6 @@ const Complaints = () => {
           setSelectedComplaint(null);
           setIsEditMode(false);
 
-          // Refresh complaints list
           const refreshed = await getAllComplaints();
           if (Array.isArray(refreshed)) {
             setComplaints(refreshed);
@@ -346,17 +285,12 @@ const Complaints = () => {
     [selectedComplaint, filters, applyFilters, success, error]
   );
 
-  // ✅ NEW: Handle complaint update (from edit mode)
   const handleComplaintUpdate = useCallback(async () => {
-    console.log("🔄 Complaint updated, refreshing list...");
-    
     try {
-      // Close modal
       setIsModalOpen(false);
       setSelectedComplaint(null);
       setIsEditMode(false);
 
-      // Refresh complaints
       const refreshed = await getAllComplaints();
       if (Array.isArray(refreshed)) {
         setComplaints(refreshed);
@@ -368,17 +302,14 @@ const Complaints = () => {
       console.error("Error refreshing complaints:", err);
       error("⚠️ Failed to refresh complaints list.");
     }
-  }, [token, filters, applyFilters, success, error]);
+  }, [filters, applyFilters, success, error]);
 
-  // Close modal
   const handleCloseModal = useCallback(() => {
-    console.log("🚪 Closing modal");
     setIsModalOpen(false);
     setSelectedComplaint(null);
     setIsEditMode(false);
   }, []);
 
-  // Export to CSV
   const handleExportCSV = useCallback(() => {
     try {
       const filename = `complaints_${new Date()
@@ -404,7 +335,6 @@ const Complaints = () => {
     }
   }, [filteredComplaints, filters, success, error]);
 
-  // Print complaints
   const handlePrint = useCallback(() => {
     try {
       exportToPrint(filteredComplaints);
@@ -422,7 +352,6 @@ const Complaints = () => {
     }
   }, [filteredComplaints, filters, success, error]);
 
-  // Get empty state type
   const getEmptyStateType = () => {
     if (filters.search) return "search";
     if (
@@ -434,24 +363,23 @@ const Complaints = () => {
     return "complaints";
   };
 
-  // Show loading state
   if (isLoading) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4">
         <Loading type="table" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 overflow-x-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Page Header */}
         <div className="mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-gray-200">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
             Manage Complaints
           </h1>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-2">
+          <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-1">
             Filter and manage all campus complaints efficiently.
           </p>
         </div>
@@ -467,18 +395,18 @@ const Complaints = () => {
         {/* Filter Highlight Banner */}
         {filterHighlight && filters.status && (
           <div
-            className={`mb-4 border-l-4 p-4 rounded-lg shadow-sm animate-slideDown relative ${
+            className={`mb-4 border-l-4 p-4 rounded-xl shadow-sm relative ${
               filters.status === "Resolved"
-                ? "border-green-600 bg-green-50 dark:bg-green-900/20"
+                ? "border-green-500 bg-green-50 dark:bg-green-900/20"
                 : filters.status === "Pending"
-                ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20"
+                ? "border-amber-500 bg-amber-50 dark:bg-amber-900/20"
                 : filters.status === "In Progress"
-                ? "border-yellow-600 bg-yellow-50 dark:bg-yellow-900/20"
-                : "border-red-600 bg-red-50 dark:bg-red-900/20"
+                ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                : "border-red-500 bg-red-50 dark:bg-red-900/20"
             }`}
           >
             <div className="flex items-center gap-3">
-              <span className="text-2xl sm:text-3xl">
+              <span className="text-2xl">
                 {filters.status === "Resolved"
                   ? "✅"
                   : filters.status === "Pending"
@@ -488,10 +416,10 @@ const Complaints = () => {
                   : "❌"}
               </span>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-800 dark:text-gray-200 truncate">
+                <p className="font-semibold text-gray-900 dark:text-white truncate">
                   Showing {filters.status} complaints
                 </p>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   Found {filteredComplaints.length} item
                   {filteredComplaints.length !== 1 ? "s" : ""}
                 </p>
@@ -501,55 +429,60 @@ const Complaints = () => {
                 className="flex-shrink-0 p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
                 aria-label="Close filter banner"
               >
-                <RiCloseLine className="h-5 w-5" />
+                <RiCloseLine className="h-5 w-5 text-gray-500" />
               </button>
             </div>
           </div>
         )}
 
-        {/* Table Header with Export Buttons */}
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-t-lg shadow-sm border border-gray-200 dark:border-gray-700 border-b-0">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-200">
-              {filteredComplaints.length} Complaint
-              {filteredComplaints.length !== 1 ? "s" : ""}
-            </h2>
-            {filteredComplaints.length > 0 && (
-              <div className="flex gap-2 w-full sm:w-auto">
-                <button
-                  onClick={handleExportCSV}
-                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 active:bg-green-800 transition-all text-sm font-medium"
-                >
-                  <RiDownloadLine className="h-4 w-4" />
-                  <span>CSV</span>
-                </button>
-                <button
-                  onClick={handlePrint}
-                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-all text-sm font-medium"
-                >
-                  <RiPrinterLine className="h-4 w-4" />
-                  <span>Print</span>
-                </button>
-              </div>
-            )}
+        {/* Table Container */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+          {/* Table Header */}
+          <div className="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {filteredComplaints.length} Complaint
+                {filteredComplaints.length !== 1 ? "s" : ""}
+              </h2>
+              {filteredComplaints.length > 0 && (
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <button
+                    onClick={handleExportCSV}
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium text-sm transition-all active:scale-95"
+                  >
+                    <RiDownloadLine className="h-4 w-4" />
+                    <span>CSV</span>
+                  </button>
+                  <button
+                    onClick={handlePrint}
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium text-sm transition-all active:scale-95"
+                  >
+                    <RiPrinterLine className="h-4 w-4" />
+                    <span>Print</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Table or Empty State */}
-        {filteredComplaints.length === 0 ? (
-          <EmptyState
-            type={getEmptyStateType()}
-            searchTerm={filters.search}
-            onAction={handleClearFilters}
-            actionLabel="Clear All Filters"
-          />
-        ) : (
-          <ComplaintTable
-            complaints={filteredComplaints}
-            onRowClick={handleRowClick}
-            onActionClick={handleActionClick}
-          />
-        )}
+          {/* Table or Empty State */}
+          {filteredComplaints.length === 0 ? (
+            <div className="p-8">
+              <EmptyState
+                type={getEmptyStateType()}
+                searchTerm={filters.search}
+                onAction={handleClearFilters}
+                actionLabel="Clear All Filters"
+              />
+            </div>
+          ) : (
+            <ComplaintTable
+              complaints={filteredComplaints}
+              onRowClick={handleRowClick}
+              onActionClick={handleActionClick}
+            />
+          )}
+        </div>
       </div>
 
       {/* Complaint Details Modal */}
@@ -559,8 +492,8 @@ const Complaints = () => {
           isOpen={isModalOpen}
           onClose={handleCloseModal}
           onStatusUpdate={handleStatusUpdate}
-          onComplaintUpdate={handleComplaintUpdate} // ✅ NEW: Pass update handler
-          isEditMode={isEditMode} // ✅ NEW: Pass edit mode flag
+          onComplaintUpdate={handleComplaintUpdate}
+          isEditMode={isEditMode}
         />
       )}
     </div>
