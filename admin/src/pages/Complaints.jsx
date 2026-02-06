@@ -1,8 +1,8 @@
-// src/pages/Complaints.jsx
+// src/pages/Complaints.jsx - CLEAN VERSION
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import ComplaintFilters from "../components/ComplaintFilters";
-import ComplaintTable from "../components/ComplaintTable/ComplaintTable";
+import ComplaintTable from "../components/ComplaintTable";
 import ComplaintDetails from "../components/ComplaintDetails";
 import Loading from "../components/Loading";
 import EmptyState from "../components/EmptyState";
@@ -17,6 +17,7 @@ import {
   RiDownloadLine,
   RiPrinterLine,
   RiCloseLine,
+  RiFileList3Line,
 } from "react-icons/ri";
 import { exportToCSV, exportToPrint } from "../utils/exportUtils";
 import { logActivity, ACTIVITY_TYPES } from "../services/activityLogger";
@@ -57,8 +58,7 @@ const Complaints = () => {
 
     if (currentFilters.status && currentFilters.status !== "All") {
       filtered = filtered.filter(
-        (c) =>
-          (c.status || c.Status || "").toString() === currentFilters.status
+        (c) => (c.status || c.Status || "").toString() === currentFilters.status
       );
     }
 
@@ -80,11 +80,13 @@ const Complaints = () => {
         const desc = (c.description || "").toString().toLowerCase();
         const cat = (c.category || c.department || "").toString().toLowerCase();
         const loc = (c.location || "").toString().toLowerCase();
+        const name = (c.submittedBy || c.name || "").toString().toLowerCase();
         return (
           title.includes(term) ||
           desc.includes(term) ||
           cat.includes(term) ||
-          loc.includes(term)
+          loc.includes(term) ||
+          name.includes(term)
         );
       });
     }
@@ -164,10 +166,7 @@ const Complaints = () => {
   }, [filters, complaints, applyFilters]);
 
   const handleFilterChange = useCallback((newFilters) => {
-    setFilters((prev) => ({
-      ...prev,
-      ...newFilters,
-    }));
+    setFilters((prev) => ({ ...prev, ...newFilters }));
   }, []);
 
   const handleClearFilters = useCallback(() => {
@@ -209,16 +208,18 @@ const Complaints = () => {
 
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
-    const complaintId = urlParams.get('id');
-    
+    const complaintId = urlParams.get("id");
+
     if (complaintId && complaints.length > 0 && openComplaintDetails) {
-      const exists = complaints.find(c => c._id === complaintId || c.id === complaintId);
-      
+      const exists = complaints.find(
+        (c) => c._id === complaintId || c.id === complaintId
+      );
+
       if (exists) {
         openComplaintDetails(complaintId, false);
-        window.history.replaceState({}, '', '/complaints');
+        window.history.replaceState({}, "", "/complaints");
       } else {
-        error('⚠️ Complaint not found or access denied');
+        error("⚠️ Complaint not found or access denied");
       }
     }
   }, [complaints, location.search, openComplaintDetails, error]);
@@ -256,9 +257,7 @@ const Complaints = () => {
           logActivity(ACTIVITY_TYPES.STATUS_CHANGE, {
             complaintId,
             complaintSubject:
-              selectedComplaint?.title ||
-              selectedComplaint?.subject ||
-              "Unknown",
+              selectedComplaint?.title || selectedComplaint?.subject || "Unknown",
             previousStatus: selectedComplaint?.status || "Unknown",
             newStatus,
             remarks: remarks || "No remarks provided",
@@ -312,9 +311,7 @@ const Complaints = () => {
 
   const handleExportCSV = useCallback(() => {
     try {
-      const filename = `complaints_${new Date()
-        .toISOString()
-        .split("T")[0]}.csv`;
+      const filename = `complaints_${new Date().toISOString().split("T")[0]}.csv`;
       exportToCSV(filteredComplaints, filename);
 
       logActivity(ACTIVITY_TYPES.COMPLAINT_EXPORT, {
@@ -365,127 +362,143 @@ const Complaints = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-4">
+      <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-950 p-4">
         <Loading type="table" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 overflow-x-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* Page Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-            Manage Complaints
-          </h1>
-          <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-1">
-            Filter and manage all campus complaints efficiently.
-          </p>
-        </div>
-
-        {/* Filters Component */}
-        <div className="mb-4">
-          <ComplaintFilters
-            onFilterChange={handleFilterChange}
-            initialFilters={filters}
-          />
-        </div>
-
-        {/* Filter Highlight Banner */}
-        {filterHighlight && filters.status && (
-          <div
-            className={`mb-4 border-l-4 p-4 rounded-xl shadow-sm relative ${
-              filters.status === "Resolved"
-                ? "border-green-500 bg-green-50 dark:bg-green-900/20"
-                : filters.status === "Pending"
-                ? "border-amber-500 bg-amber-50 dark:bg-amber-900/20"
-                : filters.status === "In Progress"
-                ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                : "border-red-500 bg-red-50 dark:bg-red-900/20"
-            }`}
-          >
+    <div className="flex-1 flex flex-col min-h-0 bg-gray-50 dark:bg-gray-950">
+      {/* Main scrollable area */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
+          {/* Page Header */}
+          <div className="mb-4 sm:mb-6">
             <div className="flex items-center gap-3">
-              <span className="text-2xl">
-                {filters.status === "Resolved"
-                  ? "✅"
-                  : filters.status === "Pending"
-                  ? "⏳"
-                  : filters.status === "In Progress"
-                  ? "🔧"
-                  : "❌"}
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-900 dark:text-white truncate">
-                  Showing {filters.status} complaints
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Found {filteredComplaints.length} item
-                  {filteredComplaints.length !== 1 ? "s" : ""}
+              <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
+                <RiFileList3Line className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <div>
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
+                  Manage Complaints
+                </h1>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                  {complaints.length} total complaints in the system
                 </p>
               </div>
-              <button
-                onClick={() => setFilterHighlight(false)}
-                className="flex-shrink-0 p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                aria-label="Close filter banner"
-              >
-                <RiCloseLine className="h-5 w-5 text-gray-500" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Table Container */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-          {/* Table Header */}
-          <div className="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {filteredComplaints.length} Complaint
-                {filteredComplaints.length !== 1 ? "s" : ""}
-              </h2>
-              {filteredComplaints.length > 0 && (
-                <div className="flex gap-2 w-full sm:w-auto">
-                  <button
-                    onClick={handleExportCSV}
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium text-sm transition-all active:scale-95"
-                  >
-                    <RiDownloadLine className="h-4 w-4" />
-                    <span>CSV</span>
-                  </button>
-                  <button
-                    onClick={handlePrint}
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium text-sm transition-all active:scale-95"
-                  >
-                    <RiPrinterLine className="h-4 w-4" />
-                    <span>Print</span>
-                  </button>
-                </div>
-              )}
             </div>
           </div>
 
-          {/* Table or Empty State */}
-          {filteredComplaints.length === 0 ? (
-            <div className="p-8">
-              <EmptyState
-                type={getEmptyStateType()}
-                searchTerm={filters.search}
-                onAction={handleClearFilters}
-                actionLabel="Clear All Filters"
-              />
-            </div>
-          ) : (
-            <ComplaintTable
-              complaints={filteredComplaints}
-              onRowClick={handleRowClick}
-              onActionClick={handleActionClick}
+          {/* Filters */}
+          <div className="mb-4">
+            <ComplaintFilters
+              onFilterChange={handleFilterChange}
+              initialFilters={filters}
             />
+          </div>
+
+          {/* Filter Banner */}
+          {filterHighlight && filters.status && (
+            <div
+              className={`mb-4 border-l-4 p-3 rounded-r-lg ${
+                filters.status === "Resolved"
+                  ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
+                  : filters.status === "Pending"
+                  ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                  : filters.status === "In Progress"
+                  ? "border-amber-500 bg-amber-50 dark:bg-amber-900/20"
+                  : "border-red-500 bg-red-50 dark:bg-red-900/20"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-lg flex-shrink-0">
+                    {filters.status === "Resolved"
+                      ? "✅"
+                      : filters.status === "Pending"
+                      ? "⏳"
+                      : filters.status === "In Progress"
+                      ? "🔧"
+                      : "❌"}
+                  </span>
+                  <p className="font-semibold text-sm text-gray-900 dark:text-white">
+                    Showing {filteredComplaints.length} {filters.status} complaint
+                    {filteredComplaints.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setFilterHighlight(false)}
+                  className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+                >
+                  <RiCloseLine className="h-4 w-4 text-gray-500" />
+                </button>
+              </div>
+            </div>
           )}
+
+          {/* Table Container */}
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+            {/* Table Header */}
+            <div className="px-3 sm:px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">
+                    {filteredComplaints.length}
+                  </span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    {filteredComplaints.length === 1 ? "Complaint" : "Complaints"}
+                  </span>
+                  {(filters.status || filters.priority || filters.search || filters.dateRange !== "all") && (
+                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                      (filtered)
+                    </span>
+                  )}
+                </div>
+                {filteredComplaints.length > 0 && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleExportCSV}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-xs transition-all shadow-sm"
+                    >
+                      <RiDownloadLine className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Export</span>
+                      <span>CSV</span>
+                    </button>
+                    <button
+                      onClick={handlePrint}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium text-xs transition-all shadow-sm"
+                    >
+                      <RiPrinterLine className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Print</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Table Content */}
+            {filteredComplaints.length === 0 ? (
+              <div className="p-6 sm:p-8">
+                <EmptyState
+                  type={getEmptyStateType()}
+                  searchTerm={filters.search}
+                  onAction={handleClearFilters}
+                  actionLabel="Clear All Filters"
+                />
+              </div>
+            ) : (
+              <ComplaintTable
+                complaints={filteredComplaints}
+                onRowClick={handleRowClick}
+                onActionClick={handleActionClick}
+              />
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Complaint Details Modal */}
+      {/* Modal */}
       {selectedComplaint && isModalOpen && (
         <ComplaintDetails
           complaint={selectedComplaint}

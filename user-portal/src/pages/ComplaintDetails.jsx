@@ -74,7 +74,7 @@ const ComplaintDetails = () => {
             The complaint you're looking for doesn't exist or has been removed.
           </p>
           <button
-            onClick={() => navigate('/user/complaints')}
+            onClick={() => navigate('/user/my-complaints')}
             className="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-all hover:scale-105"
           >
             Back to My Complaints
@@ -90,7 +90,7 @@ const ComplaintDetails = () => {
         {/* Header */}
         <div className="flex items-center justify-between mb-6 animate-fadeIn">
           <button
-            onClick={() => navigate('/user/complaints')}
+            onClick={() => navigate('/user/my-complaints')}
             className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors group"
           >
             <RiArrowLeftLine className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />

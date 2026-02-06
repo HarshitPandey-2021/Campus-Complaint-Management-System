@@ -1,8 +1,10 @@
+// src/utils/tokenUtils.js - FIXED VERSION
+
 const ADMIN_TOKEN_KEY = "adminToken";
 const ADMIN_REFRESH_KEY = "adminRefreshToken";
 const ADMIN_SESSION_KEY = "ccms-admin-session";
 
-export function saveAdminSession(token, refreshToken, user) {
+export function saveAdminSession(user, token, refreshToken) {
   if (!token || !user) return;
 
   localStorage.setItem(ADMIN_TOKEN_KEY, token);
@@ -13,7 +15,7 @@ export function saveAdminSession(token, refreshToken, user) {
   localStorage.setItem(
     ADMIN_SESSION_KEY,
     JSON.stringify({
-      id: user.id,
+      userId: user.userId || user.id,
       name: user.name,
       email: user.email,
       role: user.role,
@@ -38,9 +40,20 @@ export function getAdminUser() {
   }
 }
 
+// ✅ Get dynamic home URL
+export const getHomeURL = () => {
+  const isLocalhost = window.location.hostname === 'localhost' || 
+                     window.location.hostname === '127.0.0.1';
+  
+  return isLocalhost 
+    ? 'http://localhost:5174'
+    : 'https://ccms-home.vercel.app/';
+};
+
+// ✅ FIXED: Use dynamic URL
 export function logoutAdmin() {
   localStorage.removeItem(ADMIN_TOKEN_KEY);
   localStorage.removeItem(ADMIN_REFRESH_KEY);
   localStorage.removeItem(ADMIN_SESSION_KEY);
-    window.location.replace("https://ccms-home.vercel.app");
+  window.location.replace(getHomeURL()); // ✅ Use dynamic URL
 }
