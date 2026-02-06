@@ -1,4 +1,4 @@
-// src/components/Sidebar.jsx - CLEAN, NO SCROLLING
+// src/components/Sidebar.jsx - ALIGNED VERSION
 import React, { useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
@@ -76,32 +76,30 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
           shadow-2xl lg:shadow-none
         `}
       >
-        {/* ========== HEADER ========== */}
-        <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-800">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 min-w-0">
-              {/* Logo Icon */}
-              <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/30 flex-shrink-0">
-                <RiShieldUserLine className="h-6 w-6 text-white" />
-              </div>
-              <div className="min-w-0">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                  CCMS Admin
-                </h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  University of Lucknow
-                </p>
-              </div>
+        {/* ========== HEADER (h-16 to match Navbar) ========== */}
+        <div className="flex-shrink-0 h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-800">
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Logo Icon */}
+            <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/30 flex-shrink-0">
+              <RiShieldUserLine className="h-6 w-6 text-white" />
             </div>
-            {/* Close Button - Mobile Only */}
-            <button
-              onClick={toggleSidebar}
-              className="lg:hidden p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors flex-shrink-0"
-              aria-label="Close sidebar"
-            >
-              <RiCloseLine className="h-5 w-5" />
-            </button>
+            <div className="min-w-0">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                CCMS Admin
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                University of Lucknow
+              </p>
+            </div>
           </div>
+          {/* Close Button - Mobile Only */}
+          <button
+            onClick={toggleSidebar}
+            className="lg:hidden p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors flex-shrink-0"
+            aria-label="Close sidebar"
+          >
+            <RiCloseLine className="h-5 w-5" />
+          </button>
         </div>
 
         {/* ========== NAVIGATION (NO SCROLL) ========== */}

@@ -1,7 +1,7 @@
-// src/components/Navbar.jsx - FINAL CLEAN VERSION
+// src/components/Navbar.jsx - ALIGNED VERSION
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { RiMenuLine, RiLogoutBoxRLine, RiShieldUserLine } from "react-icons/ri";
+import { RiMenuLine, RiLogoutBoxRLine, RiShieldUserLine,RiLogoutBoxLine } from "react-icons/ri";
 import DarkModeToggle from "./DarkModeToggle";
 import Tooltip from "./Tooltip";
 import NotificationPanel from "./NotificationPanel";
@@ -20,7 +20,8 @@ const Navbar = ({ toggleSidebar }) => {
 
   return (
     <nav className="sticky top-0 z-40 w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm flex-shrink-0">
-      <div className="flex h-14 sm:h-16 items-center justify-between px-3 sm:px-4 lg:px-6">
+      {/* ✅ Changed: h-16 on all screens to match sidebar header */}
+      <div className="flex h-16 items-center justify-between px-3 sm:px-4 lg:px-6">
         {/* Left Section */}
         <div className="flex items-center gap-3">
           {/* Mobile Menu Button */}
@@ -108,7 +109,7 @@ const Navbar = ({ toggleSidebar }) => {
             className="md:hidden p-2 rounded-xl text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 flex-shrink-0"
             aria-label="Logout"
           >
-            <RiLogoutBoxRLine className="h-5 w-5" />
+            <RiLogoutBoxLine className="h-5 w-5" />
           </button>
         </div>
       </div>
