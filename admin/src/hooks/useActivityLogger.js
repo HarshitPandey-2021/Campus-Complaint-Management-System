@@ -1,4 +1,4 @@
-// src/hooks/useActivityLogger.js - CREATE THIS NEW FILE
+// src/hooks/useActivityLogger.js - COMPLETELY FIXED
 
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
@@ -11,10 +11,11 @@ export const usePageViewLogger = () => {
   useEffect(() => {
     const pageName = getPageName(location.pathname);
     
-    logActivity(ACTIVITY_TYPES.COMPLAINT_VIEW, {
+    // ✅ FIXED: Use PAGE_VIEW, not COMPLAINT_VIEW!
+    logActivity(ACTIVITY_TYPES.PAGE_VIEW, {
       page: pageName,
       path: location.pathname,
-      action: 'Page Visit'
+      action: `Viewed ${pageName} page`
     });
   }, [location.pathname]);
 };
@@ -30,5 +31,5 @@ const getPageName = (path) => {
   return routes[path] || 'Unknown Page';
 };
 
-// Export the logging function for manual use
+// Export for manual use
 export { logActivity, ACTIVITY_TYPES };

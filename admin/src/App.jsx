@@ -1,133 +1,194 @@
-// src/App.jsx
+// src/App.jsx - EMERGENCY FIX
 
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import Navbar from './components/Navbar';
-import Sidebar from './components/Sidebar';
-import Breadcrumb from './components/Breadcrumb';
-import useKeyboardShortcuts from './hooks/useKeyboardShortcuts';
-import { ToastProvider } from './context/ToastContext';
-import { initializeActivityLogger, logActivity, ACTIVITY_TYPES } from './services/activityLogger';
+import React, { useEffect, useState } from "react";
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate, useNavigate } from "react-router-dom";
+import Navbar from "./components/Navbar.jsx";
+import Sidebar from "./components/Sidebar.jsx";
+import Breadcrumb from "./components/Breadcrumb.jsx";
+import AuthInitializer from "./components/AuthInitializer.jsx";
+import useKeyboardShortcuts from "./hooks/useKeyboardShortcuts.js";
+import { ToastProvider } from "./context/ToastContext.jsx";
+import { usePageViewLogger } from "./hooks/useActivityLogger.js";
+import {
+  initializeActivityLogger,
+  logActivity,
+  ACTIVITY_TYPES,
+} from "./services/activityLogger.js";
+import {
+  getAdminToken,
+  getAdminUser,
+} from "./utils/tokenUtils.js";
+import Dashboard from "./pages/Dashboard.jsx";
+import Complaints from "./pages/Complaints.jsx";
+import Analytics from "./pages/Analytics.jsx";
+import ActivityLogs from "./pages/ActivityLogs.jsx";
+import Profile from "./pages/Profile.jsx";
 
-// Import Pages
-import Dashboard from './pages/Dashboard';
-import Complaints from './pages/Complaints';
-import Analytics from './pages/Analytics';
-import ActivityLogs from './pages/ActivityLogs';
-import Profile from './pages/Profile';
-import NotFound from './pages/NotFound';
+// ✅ Get home URL based on environment
+function getHomeURL() {
+  const isLocalhost = window.location.hostname === 'localhost' || 
+                     window.location.hostname === '127.0.0.1';
+  
+  return isLocalhost 
+    ? 'http://localhost:5174'
+    : 'https://ccms-home.vercel.app/';
+}
 
-// Main App Content
-const AppContent = () => {
+// ✅ FIXED: Get page name, default to Dashboard
+function getPageName(path) {
+  const routes = {
+    "/": "Dashboard",
+    "/dashboard": "Dashboard",
+    "/complaints": "Complaints",
+    "/analytics": "Analytics",
+    "/activity-logs": "Activity Logs",
+    "/profile": "Profile",
+    "/unauthorized": "Unauthorized"
+  };
+  return routes[path] || "Dashboard";
+}
+
+// ✅ Route Handler - Fixes refresh 404
+function RouteHandler() {
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    const validRoutes = ['/', '/dashboard', '/complaints', '/analytics', '/activity-logs', '/profile', '/unauthorized'];
+    const currentPath = window.location.pathname;
+    
+    if (!validRoutes.includes(currentPath)) {
+      const token = getAdminToken();
+      if (token) {
+        console.log('🔄 Invalid route, redirecting to dashboard');
+        navigate('/', { replace: true });
+      }
+    }
+  }, [navigate]);
+  
+  return null;
+}
+
+// ✅ FIXED: Simplified ProtectedRoute - Just check if token and user exist
+function ProtectedRoute({ children }) {
+  const token = getAdminToken();
+  const user = getAdminUser();
+
+  // ✅ FIXED: Just check if authenticated (backend already verified admin role)
+  const isAuthenticated = !!token && !!user;
+
+  if (!isAuthenticated) {
+    console.log("❌ Not authenticated, redirecting to /unauthorized");
+    return <Navigate to="/unauthorized" replace />;
+  }
+
+  console.log("✅ ProtectedRoute: User authenticated:", user?.name, user?.email);
+  return children;
+}
+
+// ✅ Main App Content
+function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
 
-  // Enable keyboard shortcuts
   useKeyboardShortcuts();
+  usePageViewLogger(); // ✅ Automatically logs page views
 
-  // Initialize activity logger on mount
+  // ✅ Initialize activity logger ONCE on mount
   useEffect(() => {
     initializeActivityLogger();
-    // Log initial app load
-    logActivity(ACTIVITY_TYPES.LOGIN, {
-      action: 'Application Started',
-      timestamp: new Date().toISOString()
-    });
+    
+    // Only log login once when app first loads
+    const hasLoggedLogin = sessionStorage.getItem('login-logged');
+    if (!hasLoggedLogin) {
+      const user = getAdminUser();
+      logActivity(ACTIVITY_TYPES.LOGIN, {
+        action: "Admin panel opened",
+        adminName: user?.name || "Admin",
+        timestamp: new Date().toISOString(),
+      });
+      sessionStorage.setItem('login-logged', 'true');
+    }
   }, []);
 
-  // ✅ ADD THIS - Log page navigation
+  // Close sidebar on mobile when navigating
   useEffect(() => {
-    const pageName = getPageName(location.pathname);
-    logActivity(ACTIVITY_TYPES.COMPLAINT_VIEW, {
-      page: pageName,
-      path: location.pathname,
-      action: 'Navigated to page'
-    });
-  }, [location.pathname]);
-
-  // Helper to get page name
-  const getPageName = (path) => {
-    const routes = {
-      '/': 'Dashboard',
-      '/complaints': 'Complaints',
-      '/analytics': 'Analytics',
-      '/activity-logs': 'Activity Logs',
-      '/profile': 'Profile'
-    };
-    return routes[path] || 'Unknown Page';
-  };
-
-  // Close sidebar on route change (mobile only)
-  useEffect(() => {
-    if (window.innerWidth < 768) {
+    if (window.innerWidth < 1024) {
       setSidebarOpen(false);
     }
-  }, [location]);
+  }, [location.pathname]);
 
-  // Open sidebar by default on desktop
+  // Handle sidebar state based on screen size
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 768) {
+    function handleResize() {
+      if (window.innerWidth >= 1024) {
         setSidebarOpen(true);
       } else {
         setSidebarOpen(false);
       }
-    };
-    
+    }
     handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+  function toggleSidebar() {
+    setSidebarOpen((prev) => !prev);
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
-      {/* Fixed Navbar */}
-      <Navbar onMenuToggle={toggleSidebar} />
-      
-      {/* Mobile Backdrop */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 z-30 bg-black bg-opacity-50 md:hidden transition-opacity duration-300"
-          onClick={toggleSidebar}
-          aria-hidden="true"
-        />
-      )}
-      
-      {/* Main Layout */}
-      <div className="flex pt-16">
-        {/* Sidebar */}
+    <ToastProvider>
+      <RouteHandler />
+      <div className="min-h-screen flex bg-gray-50 dark:bg-gray-900">
         <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-        
-        {/* Main Content */}
-        <main className="flex-1 min-w-0">
-          {/* Breadcrumb Navigation */}
+        <div className="flex flex-col flex-1 min-h-screen">
+          <Navbar toggleSidebar={toggleSidebar} />
           <Breadcrumb />
-          
-          {/* Routes */}
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/complaints" element={<Complaints />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/activity-logs" element={<ActivityLogs />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </main>
+          <main className="flex-1 bg-gray-50 dark:bg-gray-900 overflow-hidden">
+            <Routes>
+              <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/complaints" element={<ProtectedRoute><Complaints /></ProtectedRoute>} />
+              <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+              <Route path="/activity-logs" element={<ProtectedRoute><ActivityLogs /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              
+              {/* Unauthorized Page */}
+              <Route
+                path="/unauthorized"
+                element={
+                  <div className="flex flex-col items-center justify-center min-h-screen text-center bg-gray-900 p-4">
+                    <h1 className="text-2xl sm:text-3xl font-semibold mb-4 text-white">
+                      Unauthorized Access
+                    </h1>
+                    <p className="text-gray-400 mb-6 max-w-md text-sm sm:text-base">
+                      You need to login as an admin from the main portal to access this panel.
+                    </p>
+                    <a
+                      href={getHomeURL()}
+                      className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold"
+                    >
+                      Go to Home Portal
+                    </a>
+                  </div>
+                }
+              />
+              
+              {/* Catch all - redirect to dashboard */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </main>
+        </div>
       </div>
-    </div>
-  );
-};
-
-function App() {
-  return (
-    <Router>
-      <ToastProvider>
-        <AppContent />
-      </ToastProvider>
-    </Router>
+    </ToastProvider>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <Router>
+      <AuthInitializer>
+        <AppContent />
+      </AuthInitializer>
+    </Router>
+  );
+}

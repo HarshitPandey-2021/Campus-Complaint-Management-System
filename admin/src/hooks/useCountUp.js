@@ -1,6 +1,7 @@
+// src/hooks/useCountUp.js
 import { useState, useEffect } from 'react';
 
-export default function useCountUp(end, duration = 1000, start = 0) {
+export function useCountUp(end, duration = 1000, start = 0) {
   const [count, setCount] = useState(start);
 
   useEffect(() => {
@@ -25,3 +26,5 @@ export default function useCountUp(end, duration = 1000, start = 0) {
 
   return count;
 }
+
+export default useCountUp;

@@ -1,31 +1,41 @@
-const { MongoClient } = require('mongodb');
-require('dotenv').config();
+const { MongoClient } = require("mongodb");
 
-const uri = process.env.MONGODB_URI;
-const dbName = process.env.DB_NAME;
+// DB connection
+async function initializeDb() {
+  const uri = process.env.MONGODB_URI;
+  const dbName = process.env.DB_NAME;
 
-// Check if the necessary environment variables are defined
-if (!uri || !dbName) {
-  throw new Error('MONGODB_URI or DB_NAME is not defined in .env');
-}
-
-// Initialize the MongoDB connection
-async function initializeDB() {
-  const client = new MongoClient(uri); // Removed deprecated options
-
-  try {
-    // Connect to the MongoDB server
-    await client.connect();
-    const db = client.db(dbName);  // Get the database
-
-    console.log(`Connected to database: ${dbName}`);
-
-    // Return the database and client for use in the app
-    return { db, client };
-  } catch (error) {
-    console.error('Error connecting to MongoDB:', error);
-    throw error;  // Throw the error to be caught in app.js
+  if (!uri || !dbName) {
+    throw new Error("MONGODB_URI or DB_NAME missing");
   }
+
+  const client = new MongoClient(uri);
+  await client.connect();
+
+  const db = client.db(dbName);
+  const Users = db.collection("Users");
+  const Complaints = db.collection("Complaints");
+  const AdminLogs = db.collection("AdminLogs");
+  const Departments = db.collection("Departments");
+
+  // DB indexes
+  await Users.createIndex({ email: 1 }, { unique: true });
+  await Departments.createIndex({ name: 1 }, { unique: true });
+  await Complaints.createIndex({ userId: 1 });
+  await Complaints.createIndex({ status: 1, priority: 1 });
+  await Complaints.createIndex({ assignedTo: 1 });
+  await Complaints.createIndex({ submittedAt: -1 });
+  await Complaints.createIndex({ subject: "text", description: "text" });
+
+  console.log("? MongoDB connected. DB:", dbName);
+
+  return {
+    db,
+    client,
+    collections: { Users, Complaints, AdminLogs, Departments },
+  };
 }
 
-module.exports = { initializeDB };
+module.exports = {
+  initializeDb,
+};
