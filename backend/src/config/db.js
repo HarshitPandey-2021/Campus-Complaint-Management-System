@@ -1,11 +1,7 @@
-// src/config/db.js
-
 const { MongoClient } = require("mongodb");
-const { ensureUsersIndexes } = require("../models/usersModel");
-const { ensureAdminLogsIndexes } = require("../models/adminLogsModel");
 
-// Connect to MongoDB and init indexes
-async function initializeDB() {
+// DB connection
+async function initializeDb() {
   const uri = process.env.MONGODB_URI;
   const dbName = process.env.DB_NAME;
 
@@ -17,17 +13,29 @@ async function initializeDB() {
   await client.connect();
 
   const db = client.db(dbName);
-  console.log("✅ MongoDB connected:", dbName);
+  const Users = db.collection("Users");
+  const Complaints = db.collection("Complaints");
+  const AdminLogs = db.collection("AdminLogs");
+  const Departments = db.collection("Departments");
 
-  // Ensure indexes
-  await ensureUsersIndexes(db);
-  await ensureAdminLogsIndexes(db);
+  // DB indexes
+  await Users.createIndex({ email: 1 }, { unique: true });
+  await Departments.createIndex({ name: 1 }, { unique: true });
+  await Complaints.createIndex({ userId: 1 });
+  await Complaints.createIndex({ status: 1, priority: 1 });
+  await Complaints.createIndex({ assignedTo: 1 });
+  await Complaints.createIndex({ submittedAt: -1 });
+  await Complaints.createIndex({ subject: "text", description: "text" });
 
-  console.log("✅ Users/AdminLogs indexes ready");
+  console.log("? MongoDB connected. DB:", dbName);
 
-  return { db, client };
+  return {
+    db,
+    client,
+    collections: { Users, Complaints, AdminLogs, Departments },
+  };
 }
 
 module.exports = {
-  initializeDB,
+  initializeDb,
 };
