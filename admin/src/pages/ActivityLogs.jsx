@@ -2,10 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { useToast } from "../hooks/useToast";
-import { exportActivityLogsToCSV } from "../utils/exportUtils"; // ✅ Change this
+import { exportToExcel } from "../utils/exportUtils";
 import {
   getAllLogs,
-  exportLogsToCSV,
   clearAllLogs,
   getLogStatistics,
   ACTIVITY_TYPES,
@@ -24,7 +23,6 @@ import {
   RiLoginCircleLine,
   RiLogoutCircleLine,
   RiFilterLine,
-  RiEditLine,
   RiLockLine,
   RiPagesLine,
 } from "react-icons/ri";
@@ -44,7 +42,7 @@ const ActivityLogs = () => {
     try {
       setLoading(true);
       const allLogs = getAllLogs();
-      console.log("📊 Loaded logs:", allLogs.length, allLogs.slice(0, 3)); // Debug
+      console.log("📊 Loaded logs:", allLogs.length, allLogs.slice(0, 3));
       setLogs(allLogs);
       setFilteredLogs(allLogs);
       setStats(getLogStatistics(allLogs));
@@ -55,12 +53,12 @@ const ActivityLogs = () => {
     }
   };
 
-  // ✅ FIXED: Just load logs, no wrong logging here!
+  // ✅ Sirf logs load, yahan koi logging nahi
   useEffect(() => {
     loadLogs();
   }, []);
 
-  // Apply filters
+  // Filters apply
   useEffect(() => {
     let filtered = [...logs];
 
@@ -70,24 +68,36 @@ const ActivityLogs = () => {
 
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
-      filtered = filtered.filter((log) =>
-        (log?.admin?.name || '').toLowerCase().includes(term) ||
-        (log?.admin?.email || '').toLowerCase().includes(term) ||
-        getActivityLabel(log?.type).toLowerCase().includes(term) ||
-        getActivitySummary(log).toLowerCase().includes(term)
+      filtered = filtered.filter(
+        (log) =>
+          (log?.admin?.name || "").toLowerCase().includes(term) ||
+          (log?.admin?.email || "").toLowerCase().includes(term) ||
+          getActivityLabel(log?.type).toLowerCase().includes(term) ||
+          getActivitySummary(log).toLowerCase().includes(term)
       );
     }
 
     setFilteredLogs(filtered);
   }, [searchTerm, activeQuickFilter, logs]);
 
-  const handleExport = () => {
-    logActivity(ACTIVITY_TYPES.COMPLAINT_EXPORT, { 
-      count: filteredLogs.length,
-      action: 'Exported activity logs'
-    });
- exportActivityLogsToCSV(filteredLogs); // ✅ Use the new function
-  success(`✅ Exported ${filteredLogs.length} logs`);
+  const handleExport = async () => {
+    try {
+      logActivity(ACTIVITY_TYPES.COMPLAINT_EXPORT, {
+        count: filteredLogs.length,
+        action: "Exported activity logs",
+      });
+
+      const filename = `activity_logs_${new Date()
+        .toISOString()
+        .split("T")[0]}.xlsx`;
+
+      await exportToExcel(filteredLogs, filename);
+
+      success(`✅ Exported ${filteredLogs.length} logs to Excel`);
+    } catch (err) {
+      console.error("Export error:", err);
+      error("❌ Failed to export activity logs");
+    }
   };
 
   const handleClearAll = () => {
@@ -98,7 +108,7 @@ const ActivityLogs = () => {
     }
   };
 
-  // ✅ FIXED: Correct icon for each type
+  // ✅ Correct icon for each type
   const getActivityIcon = (type) => {
     switch (type) {
       case ACTIVITY_TYPES.LOGIN:
@@ -124,7 +134,7 @@ const ActivityLogs = () => {
     }
   };
 
-  // ✅ FIXED: Correct colors for each type
+  // ✅ Correct colors for each type
   const getActivityColor = (type) => {
     switch (type) {
       case ACTIVITY_TYPES.LOGIN:
@@ -150,7 +160,7 @@ const ActivityLogs = () => {
     }
   };
 
-  // ✅ FIXED: Human-readable labels
+  // ✅ Human-readable labels
   const getActivityLabel = (type) => {
     const labels = {
       [ACTIVITY_TYPES.LOGIN]: "Login",
@@ -167,10 +177,10 @@ const ActivityLogs = () => {
     return labels[type] || type || "Activity";
   };
 
-  // ✅ FIXED: Correct summary based on type
+  // ✅ Correct summary based on type
   const getActivitySummary = (log) => {
     if (!log) return "Activity";
-    
+
     const { details, type } = log;
 
     switch (type) {
@@ -179,17 +189,26 @@ const ActivityLogs = () => {
       case ACTIVITY_TYPES.LOGOUT:
         return "Admin logged out";
       case ACTIVITY_TYPES.PAGE_VIEW:
-        return `Viewed ${details?.page || 'page'}`;
+        return `Viewed ${details?.page || "page"}`;
       case ACTIVITY_TYPES.STATUS_CHANGE:
-        return `Changed status: ${details?.previousStatus || '?'} → ${details?.newStatus || '?'}`;
-      case ACTIVITY_TYPES.COMPLAINT_VIEW:
-        // ✅ FIXED: Show complaint title properly
-        const title = details?.complaintTitle || details?.title || details?.subject;
-        return title ? `Viewed: ${title}` : `Viewed complaint #${details?.complaintId || 'unknown'}`;
+        return `Changed status: ${details?.previousStatus || "?"} → ${
+          details?.newStatus || "?"
+        }`;
+      case ACTIVITY_TYPES.COMPLAINT_VIEW: {
+        const title =
+          details?.complaintTitle || details?.title || details?.subject;
+        return title
+          ? `Viewed: ${title}`
+          : `Viewed complaint #${details?.complaintId || "unknown"}`;
+      }
       case ACTIVITY_TYPES.FILTER_APPLY:
-        return `Applied filter: ${details?.filter || details?.status || 'custom'}`;
+        return `Applied filter: ${
+          details?.filter || details?.status || "custom"
+        }`;
       case ACTIVITY_TYPES.COMPLAINT_EXPORT:
-        return `Exported ${details?.count || details?.complaintCount || 0} items`;
+        return `Exported ${
+          details?.count || details?.complaintCount || 0
+        } items`;
       case ACTIVITY_TYPES.PROFILE_UPDATE:
         return details?.action || "Updated profile";
       case ACTIVITY_TYPES.PASSWORD_CHANGE:
@@ -202,8 +221,9 @@ const ActivityLogs = () => {
   };
 
   const getAdminDisplay = (log) => ({
-    name: log?.admin?.name || log?.admin?.email?.split('@')[0] || 'Admin',
-    email: log?.admin?.email || 'N/A'
+    name:
+      log?.admin?.name || log?.admin?.email?.split("@")[0] || "Admin",
+    email: log?.admin?.email || "N/A",
   });
 
   const formatDate = (dateString) => {
@@ -243,12 +263,27 @@ const ActivityLogs = () => {
             {[
               { label: "Total", value: stats.total, color: "text-gray-900" },
               { label: "Today", value: stats.today, color: "text-green-600" },
-              { label: "This Week", value: stats.thisWeek, color: "text-blue-600" },
-              { label: "This Month", value: stats.thisMonth, color: "text-purple-600" },
+              {
+                label: "This Week",
+                value: stats.thisWeek,
+                color: "text-blue-600",
+              },
+              {
+                label: "This Month",
+                value: stats.thisMonth,
+                color: "text-purple-600",
+              },
             ].map((stat, i) => (
-              <div key={i} className="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-xl border">
-                <p className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">{stat.label}</p>
-                <p className={`text-lg sm:text-xl lg:text-2xl font-bold ${stat.color} dark:text-gray-200 mt-1`}>
+              <div
+                key={i}
+                className="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-xl border"
+              >
+                <p className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">
+                  {stat.label}
+                </p>
+                <p
+                  className={`text-lg sm:text-xl lg:text-2xl font-bold ${stat.color} dark:text-gray-200 mt-1`}
+                >
                   {stat.value}
                 </p>
               </div>
@@ -311,7 +346,10 @@ const ActivityLogs = () => {
             ))}
             {hasActiveFilters && (
               <button
-                onClick={() => { setSearchTerm(""); setActiveQuickFilter("all"); }}
+                onClick={() => {
+                  setSearchTerm("");
+                  setActiveQuickFilter("all");
+                }}
                 className="px-2.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300"
               >
                 Reset
@@ -336,8 +374,12 @@ const ActivityLogs = () => {
           ) : filteredLogs.length === 0 ? (
             <div className="p-8 sm:p-12 text-center">
               <RiHistoryLine className="h-12 w-12 mx-auto mb-4 opacity-40 text-gray-400" />
-              <p className="font-medium text-gray-600 dark:text-gray-400">No activity logs</p>
-              <p className="text-xs sm:text-sm text-gray-500 mt-1">Activities will appear here</p>
+              <p className="font-medium text-gray-600 dark:text-gray-400">
+                No activity logs
+              </p>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                Activities will appear here
+              </p>
             </div>
           ) : (
             <div className="divide-y divide-gray-100 dark:divide-gray-700 max-h-[60vh] overflow-y-auto">
@@ -347,11 +389,18 @@ const ActivityLogs = () => {
                   <div
                     key={log.id || index}
                     className="p-3 sm:p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group cursor-pointer"
-                    onClick={() => { setSelectedLog(log); setShowModal(true); }}
+                    onClick={() => {
+                      setSelectedLog(log);
+                      setShowModal(true);
+                    }}
                   >
                     <div className="flex items-start gap-2 sm:gap-3">
                       {/* Icon */}
-                      <div className={`p-2 sm:p-2.5 rounded-lg flex-shrink-0 ${getActivityColor(log.type)}`}>
+                      <div
+                        className={`p-2 sm:p-2.5 rounded-lg flex-shrink-0 ${getActivityColor(
+                          log.type
+                        )}`}
+                      >
                         {getActivityIcon(log.type)}
                       </div>
 
@@ -361,12 +410,18 @@ const ActivityLogs = () => {
                           <h4 className="font-medium text-sm sm:text-base text-gray-900 dark:text-white truncate">
                             {getActivitySummary(log)}
                           </h4>
-                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium ${getActivityColor(log.type)}`}>
+                          <span
+                            className={`inline-flex px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium ${getActivityColor(
+                              log.type
+                            )}`}
+                          >
                             {getActivityLabel(log.type)}
                           </span>
                         </div>
                         <div className="flex flex-wrap items-center gap-x-2 text-[10px] sm:text-xs text-gray-500">
-                          <span className="font-medium">{adminInfo.name}</span>
+                          <span className="font-medium">
+                            {adminInfo.name}
+                          </span>
                           <span>•</span>
                           <span>{formatDate(log.timestamp)}</span>
                         </div>
@@ -374,7 +429,11 @@ const ActivityLogs = () => {
 
                       {/* Action */}
                       <button
-                        onClick={(e) => { e.stopPropagation(); setSelectedLog(log); setShowModal(true); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedLog(log);
+                          setShowModal(true);
+                        }}
                         className="p-1.5 text-indigo-600 hover:bg-indigo-100 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
                       >
                         <RiEyeLine className="h-4 w-4" />
@@ -401,14 +460,20 @@ const ActivityLogs = () => {
               <div className="sticky top-0 p-4 sm:p-5 border-b bg-white dark:bg-gray-900 z-10">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`p-2.5 rounded-xl ${getActivityColor(selectedLog.type)}`}>
+                    <div
+                      className={`p-2.5 rounded-xl ${getActivityColor(
+                        selectedLog.type
+                      )}`}
+                    >
                       {getActivityIcon(selectedLog.type)}
                     </div>
                     <div>
                       <h2 className="text-lg font-bold text-gray-900 dark:text-white">
                         Activity Details
                       </h2>
-                      <p className="text-sm text-gray-500">{getActivityLabel(selectedLog.type)}</p>
+                      <p className="text-sm text-gray-500">
+                        {getActivityLabel(selectedLog.type)}
+                      </p>
                     </div>
                   </div>
                   <button
@@ -427,23 +492,32 @@ const ActivityLogs = () => {
                   <p className="font-medium text-gray-900 dark:text-white">
                     {getActivitySummary(selectedLog)}
                   </p>
-                  <p className="text-sm text-gray-500 mt-1">{formatDate(selectedLog.timestamp)}</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {formatDate(selectedLog.timestamp)}
+                  </p>
                 </div>
 
                 <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl">
-                  <p className="text-sm font-medium text-indigo-800 dark:text-indigo-300 mb-2">Admin</p>
-                  <p className="font-medium text-gray-900 dark:text-white">{getAdminDisplay(selectedLog).name}</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 break-all">{getAdminDisplay(selectedLog).email}</p>
+                  <p className="text-sm font-medium text-indigo-800 dark:text-indigo-300 mb-2">
+                    Admin
+                  </p>
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {getAdminDisplay(selectedLog).name}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 break-all">
+                    {getAdminDisplay(selectedLog).email}
+                  </p>
                 </div>
 
-                {selectedLog.details && Object.keys(selectedLog.details).length > 0 && (
-                  <div>
-                    <p className="text-sm text-gray-500 mb-2">Details</p>
-                    <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-3 rounded-xl overflow-x-auto">
-                      {JSON.stringify(selectedLog.details, null, 2)}
-                    </pre>
-                  </div>
-                )}
+                {selectedLog.details &&
+                  Object.keys(selectedLog.details).length > 0 && (
+                    <div>
+                      <p className="text-sm text-gray-500 mb-2">Details</p>
+                      <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-3 rounded-xl overflow-x-auto">
+                        {JSON.stringify(selectedLog.details, null, 2)}
+                      </pre>
+                    </div>
+                  )}
               </div>
             </div>
           </div>

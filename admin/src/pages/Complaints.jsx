@@ -1,4 +1,5 @@
-// src/pages/Complaints.jsx - CLEAN VERSION
+// src/pages/Complaints.jsx - CLEAN VERSION (Excel spacing + print ready)
+
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import ComplaintFilters from "../components/ComplaintFilters";
@@ -19,7 +20,7 @@ import {
   RiCloseLine,
   RiFileList3Line,
 } from "react-icons/ri";
-import { exportToCSV, exportToPrint } from "../utils/exportUtils";
+import { exportToExcel, exportToPrint } from "../utils/exportUtils";
 import { logActivity, ACTIVITY_TYPES } from "../services/activityLogger";
 
 const Complaints = () => {
@@ -257,7 +258,9 @@ const Complaints = () => {
           logActivity(ACTIVITY_TYPES.STATUS_CHANGE, {
             complaintId,
             complaintSubject:
-              selectedComplaint?.title || selectedComplaint?.subject || "Unknown",
+              selectedComplaint?.title ||
+              selectedComplaint?.subject ||
+              "Unknown",
             previousStatus: selectedComplaint?.status || "Unknown",
             newStatus,
             remarks: remarks || "No remarks provided",
@@ -274,7 +277,7 @@ const Complaints = () => {
             applyFilters(refreshed, filters);
           }
         } else {
-          error(`❌ Failed to update complaint`);
+          error("❌ Failed to update complaint");
         }
       } catch (err) {
         console.error("Error updating complaint:", err);
@@ -309,13 +312,21 @@ const Complaints = () => {
     setIsEditMode(false);
   }, []);
 
-  const handleExportCSV = useCallback(() => {
+  const handleExportExcel = useCallback(() => {
     try {
-      const filename = `complaints_${new Date().toISOString().split("T")[0]}.csv`;
-      exportToCSV(filteredComplaints, filename);
+      if (!filteredComplaints.length) {
+        error("⚠️ No complaints to export");
+        return;
+      }
+
+      const filename = `complaints_${new Date()
+        .toISOString()
+        .split("T")[0]}.xlsx`;
+
+      exportToExcel(filteredComplaints, filename);
 
       logActivity(ACTIVITY_TYPES.COMPLAINT_EXPORT, {
-        action: "Exported complaints to CSV",
+        action: "Exported complaints to Excel",
         filename,
         complaintCount: filteredComplaints.length,
         filters,
@@ -324,7 +335,7 @@ const Complaints = () => {
       success(
         `✅ Exported ${filteredComplaints.length} complaint${
           filteredComplaints.length !== 1 ? "s" : ""
-        } to CSV!`
+        } to Excel!`
       );
     } catch (err) {
       console.error("Export error:", err);
@@ -334,6 +345,11 @@ const Complaints = () => {
 
   const handlePrint = useCallback(() => {
     try {
+      if (!filteredComplaints.length) {
+        error("⚠️ No complaints to print");
+        return;
+      }
+
       exportToPrint(filteredComplaints);
 
       logActivity(ACTIVITY_TYPES.COMPLAINT_EXPORT, {
@@ -449,7 +465,10 @@ const Complaints = () => {
                   <span className="text-sm text-gray-500 dark:text-gray-400">
                     {filteredComplaints.length === 1 ? "Complaint" : "Complaints"}
                   </span>
-                  {(filters.status || filters.priority || filters.search || filters.dateRange !== "all") && (
+                  {(filters.status ||
+                    filters.priority ||
+                    filters.search ||
+                    filters.dateRange !== "all") && (
                     <span className="text-xs text-gray-400 dark:text-gray-500">
                       (filtered)
                     </span>
@@ -458,12 +477,12 @@ const Complaints = () => {
                 {filteredComplaints.length > 0 && (
                   <div className="flex gap-2">
                     <button
-                      onClick={handleExportCSV}
+                      onClick={handleExportExcel}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-xs transition-all shadow-sm"
                     >
                       <RiDownloadLine className="h-3.5 w-3.5" />
                       <span className="hidden sm:inline">Export</span>
-                      <span>CSV</span>
+                      <span>Excel</span>
                     </button>
                     <button
                       onClick={handlePrint}

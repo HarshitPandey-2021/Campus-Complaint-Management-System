@@ -1,4 +1,5 @@
 // api.js
+
 import {
   getAdminToken,
   getAdminRefreshToken,
@@ -9,16 +10,13 @@ const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
 
 function isTokenExpired(token) {
   if (!token) return true;
-
   try {
     const parts = token.split(".");
     const payload = JSON.parse(atob(parts[1]));
     if (!payload.exp) return false;
-
     const expiryTime = payload.exp * 1000;
     const now = Date.now();
     const buffer = 5 * 60 * 1000;
-
     return expiryTime - now < buffer;
   } catch {
     return true;
@@ -54,7 +52,6 @@ async function refreshAccessToken() {
 
 async function getAuthHeaders() {
   let token = getAdminToken();
-
   if (isTokenExpired(token)) {
     token = await refreshAccessToken();
     if (!token) {
@@ -94,6 +91,7 @@ async function apiCall(url, options = {}) {
 
 async function handleResponse(res) {
   let data = null;
+
   try {
     data = await res.json();
   } catch {
@@ -118,6 +116,7 @@ export async function getAllComplaints() {
     }
 
     const data = await handleResponse(res);
+
     if (Array.isArray(data)) {
       return data.map((c) => ({
         ...c,
@@ -167,16 +166,20 @@ export async function getComplaintById(id) {
     }
   }
 
-  throw new Error('Complaint not found - all routes failed');
+  throw new Error("Complaint not found - all routes failed");
 }
 
 // ✅ FIXED: Update complaint STATUS (resolve, reject, start work)
-export async function updateComplaintStatus(id, status, adminRemarks, assignedTo = null) {
+export async function updateComplaintStatus(
+  id,
+  status,
+  adminRemarks,
+  assignedTo = null
+) {
   const body = { status };
   if (adminRemarks) body.adminRemarks = adminRemarks;
   if (assignedTo) body.assignedTo = assignedTo;
 
-  // Try multiple routes (same pattern as getComplaintById)
   const routesToTry = [
     `${API_BASE}/complaints/admin/${id}/status`,
     `${API_BASE}/admin/complaints/${id}/status`,
@@ -197,17 +200,15 @@ export async function updateComplaintStatus(id, status, adminRemarks, assignedTo
     }
   }
 
-  throw new Error('Failed to update status - all routes failed');
+  throw new Error("Failed to update status - all routes failed");
 }
 
 // ✅ FIXED: Update complaint DETAILS (edit title, description, etc.)
 export async function updateComplaint(id, updates) {
-  // If only status is being updated, use status endpoint
   if (updates && Object.keys(updates).length === 1 && updates.status) {
     return updateComplaintStatus(id, updates.status);
   }
 
-  // Try multiple routes for editing complaint details
   const routesToTry = [
     `${API_BASE}/complaints/admin/${id}`,
     `${API_BASE}/admin/complaints/${id}`,
@@ -229,7 +230,7 @@ export async function updateComplaint(id, updates) {
     }
   }
 
-  throw new Error('Failed to update complaint - all routes failed');
+  throw new Error("Failed to update complaint - all routes failed");
 }
 
 export async function markComplaintAsRead(id) {
@@ -253,9 +254,10 @@ export async function updateProfile(data) {
   return handleResponse(res);
 }
 
+// ✅ IMPORTANT: changePassword now uses POST and simple args
 export async function changePassword(currentPassword, newPassword) {
   const res = await apiCall(`${API_BASE}/auth/change-password`, {
-    method: "PUT",
+    method: "POST",
     body: JSON.stringify({ currentPassword, newPassword }),
   });
   return handleResponse(res);

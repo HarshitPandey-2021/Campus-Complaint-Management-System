@@ -99,6 +99,8 @@ async function handleResponse(res) {
   return data;
 }
 
+// Auth
+
 export async function login(email, password) {
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
@@ -117,6 +119,8 @@ export async function register(userData) {
   return handleResponse(res);
 }
 
+// Profile
+
 export async function getProfile() {
   try {
     const res = await apiCall(`${API_BASE}/profile`);
@@ -134,28 +138,17 @@ export async function updateProfile(data) {
   return handleResponse(res);
 }
 
+// ✅ FIXED: changePassword – use POST and common auth flow
+
 export async function changePassword(currentPassword, newPassword) {
-  try {
-    let token = localStorage.getItem("token");
-    if (isTokenExpired(token)) {
-      token = await refreshAccessToken();
-      if (!token) throw new Error("Authentication failed");
-    }
-
-    const res = await fetch(`${API_BASE}/auth/change-password`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ currentPassword, newPassword }),
-    });
-
-    return handleResponse(res);
-  } catch (error) {
-    throw error;
-  }
+  const res = await apiCall(`${API_BASE}/auth/change-password`, {
+    method: "POST",
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+  return handleResponse(res);
 }
+
+// Stats
 
 export async function getMyStats() {
   try {
@@ -165,6 +158,8 @@ export async function getMyStats() {
     return { total: 0, pending: 0, inProgress: 0, resolved: 0 };
   }
 }
+
+// Complaints (student)
 
 export async function getMyComplaints() {
   try {
@@ -230,6 +225,8 @@ export async function updateComplaint(id, formData) {
   }
 }
 
+// Departments
+
 export async function getDepartments() {
   try {
     const res = await apiCall(`${API_BASE}/departments`);
@@ -238,6 +235,8 @@ export async function getDepartments() {
     return [];
   }
 }
+
+// PDF helpers
 
 export function getViewablePdfUrl(url) {
   if (!url) return null;

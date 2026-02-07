@@ -31,6 +31,7 @@ async function register(req, res) {
     }
 
     const normalizedRole = normalizeRole(role);
+
     if (normalizedRole === "student" && !roll) {
       return res
         .status(400)
@@ -38,6 +39,7 @@ async function register(req, res) {
     }
 
     const { Users } = getCollections(req);
+
     const existing = await Users.findOne({ email });
     if (existing) {
       return res.status(400).json({ message: "Email already registered" });
@@ -60,6 +62,7 @@ async function register(req, res) {
     const userId = r.insertedId.toString();
 
     const payload = { userId, email, role: normalizedRole };
+
     const accessToken = jwt.sign(payload, process.env.JWT_SECRET, {
       expiresIn: process.env.JWT_EXPIRES_IN || "24h",
     });
@@ -67,7 +70,7 @@ async function register(req, res) {
     const refreshToken = jwt.sign(
       { ...payload, type: "refresh" },
       process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
-      { expiresIn: "30d" },
+      { expiresIn: "30d" }
     );
 
     res.status(201).json({
@@ -100,6 +103,7 @@ async function login(req, res) {
   try {
     const { Users } = getCollections(req);
     const user = await Users.findOne({ email });
+
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -136,7 +140,7 @@ async function login(req, res) {
     const refreshToken = jwt.sign(
       { ...payload, type: "refresh" },
       process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
-      { expiresIn: "30d" },
+      { expiresIn: "30d" }
     );
 
     const { password: _, ...safeUser } = user;
@@ -168,7 +172,7 @@ async function refresh(req, res) {
 
     const decoded = jwt.verify(
       refreshToken,
-      process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
+      process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET
     );
 
     if (decoded.type !== "refresh") {
@@ -182,7 +186,7 @@ async function refresh(req, res) {
         role: decoded.role,
       },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || "24h" },
+      { expiresIn: process.env.JWT_EXPIRES_IN || "24h" }
     );
 
     res.json({ token: newAccessToken });
@@ -196,6 +200,7 @@ async function refresh(req, res) {
 async function changePassword(req, res) {
   try {
     const { currentPassword, newPassword } = req.body;
+
     if (!currentPassword || !newPassword) {
       return res
         .status(400)
@@ -209,9 +214,11 @@ async function changePassword(req, res) {
     }
 
     const { Users, AdminLogs } = getCollections(req);
+
     const user = await Users.findOne({
       _id: toObjectId(ObjectId, req.user.userId),
     });
+
     if (!user) return res.status(404).json({ message: "User not found" });
 
     const isMatch = await bcrypt.compare(currentPassword, user.password);
@@ -220,9 +227,10 @@ async function changePassword(req, res) {
     }
 
     const hash = await bcrypt.hash(newPassword, 10);
+
     await Users.updateOne(
       { _id: toObjectId(ObjectId, req.user.userId) },
-      { $set: { password: hash, updatedAt: new Date() } },
+      { $set: { password: hash, updatedAt: new Date() } }
     );
 
     if (req.user.role === "admin") {
@@ -244,6 +252,7 @@ async function changePassword(req, res) {
 async function createAdminSessionCode(req, res) {
   try {
     const { token, refreshToken, user } = req.body;
+
     if (!token || !user || user.role !== "admin") {
       return res.status(400).json({ message: "Invalid admin session data" });
     }
@@ -257,7 +266,8 @@ async function createAdminSessionCode(req, res) {
       createdAt: Date.now(),
     });
 
-    console.log("? One-time code generated for admin:", user.email);
+    console.log("➕ One-time code generated for admin:", user.email);
+
     res.json({ code });
   } catch (error) {
     console.error("Session code generation error:", error);
@@ -268,23 +278,27 @@ async function createAdminSessionCode(req, res) {
 async function exchangeAdminCode(req, res) {
   try {
     const { code } = req.body;
+
     if (!code) {
       return res.status(400).json({ message: "Code required" });
     }
 
     const sessionData = oneTimeCodes.get(code);
+
     if (!sessionData) {
       return res.status(401).json({ message: "Invalid or expired code" });
     }
 
     const age = Date.now() - sessionData.createdAt;
+
     if (age > 2 * 60 * 1000) {
       oneTimeCodes.delete(code);
       return res.status(401).json({ message: "Code expired" });
     }
 
     oneTimeCodes.delete(code);
-    console.log("? Code exchanged for admin:", sessionData.user.email);
+
+    console.log("✅ Code exchanged for admin:", sessionData.user.email);
 
     res.json({
       token: sessionData.token,
