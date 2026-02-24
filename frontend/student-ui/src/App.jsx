@@ -1,4 +1,5 @@
 // frontend/student-ui/src/App.jsx
+import React, { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import LandingPage from "./pages/LandingPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
@@ -20,16 +21,12 @@ function App() {
   );
 }
 
-// Add this logout handler component
 function LogoutHandler() {
-  // Clear any remaining auth data and redirect to home
-  React.useEffect(() => {
-    // Clear all possible auth data
+  useEffect(() => {
     localStorage.clear();
     sessionStorage.clear();
-    
-    // Redirect to landing page
-    window.location.href = '/';
+
+    window.location.href = "/";
   }, []);
 
   return (

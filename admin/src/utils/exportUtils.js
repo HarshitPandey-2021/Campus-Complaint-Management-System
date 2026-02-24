@@ -66,27 +66,6 @@ const formatDateExcel = (dateString) => {
 };
 
 /**
- * Old compact format (if needed somewhere else)
- */
-const formatDateCompact = (dateString) => {
-  if (!dateString) return "N/A";
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return "Invalid Date";
-
-    return date.toLocaleString("en-IN", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return "Invalid Date";
-  }
-};
-
-/**
  * Get status badge class for print styling
  */
 const getStatusClass = (status) => {
@@ -143,6 +122,7 @@ const ensureXLSX = () =>
 
 /**
  * Export complaints to Excel with proper column spacing
+ * (Admin complaints table)
  */
 export const exportToExcel = async (complaints, filename = null) => {
   if (!Array.isArray(complaints) || complaints.length === 0) {
@@ -257,6 +237,121 @@ export const exportToExcel = async (complaints, filename = null) => {
   XLSX.writeFile(workbook, finalFilename);
 
   console.log(`✅ Exported ${complaints.length} complaints to ${finalFilename}`);
+};
+
+/* ================================================================== */
+/*   EXPORT ACTIVITY LOGS TO EXCEL (CORRECT STATS)                    */
+/* ================================================================== */
+
+export const exportLogsToExcel = async (logs, filename = null) => {
+  if (!Array.isArray(logs) || logs.length === 0) {
+    alert("❌ No logs to export");
+    return;
+  }
+
+  await ensureXLSX();
+
+  const timestamp = new Date().toISOString().split("T")[0];
+  const finalFilename = filename || `CCMS_Activity_Logs_${timestamp}.xlsx`;
+
+  const now = new Date();
+  const reportDate = now.toLocaleString("en-IN", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const stats = logs.reduce(
+    (acc, log) => {
+      acc.total += 1;
+      const type = safe(log.type || "UNKNOWN");
+      acc.byType[type] = (acc.byType[type] || 0) + 1;
+      return acc;
+    },
+    { total: 0, byType: {} }
+  );
+
+  const byTypeSummary = Object.entries(stats.byType)
+    .map(([type, count]) => `${type}: ${count}`)
+    .join(" | ");
+
+  const worksheet = XLSX.utils.aoa_to_sheet([
+    [`CCMS Activity Logs Report - ${reportDate}`, "", "", "", "", "", ""],
+    [],
+    [`Total: ${stats.total}${byTypeSummary ? " | " + byTypeSummary : ""}`],
+    [],
+  ]);
+
+  worksheet["!merges"] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } },
+    { s: { r: 2, c: 0 }, e: { r: 2, c: 7 } },
+  ];
+
+  const headers = [
+    "Timestamp",
+    "Type",
+    "Admin Name",
+    "Admin Email",
+    "Summary / Action",
+    "Details (JSON)",
+    "URL",
+    "Session",
+  ];
+
+  XLSX.utils.sheet_add_aoa(worksheet, [headers], { origin: "A5" });
+
+  logs.forEach((log, index) => {
+    const ts = formatDateExcel(log.timestamp);
+    const type = safe(log.type);
+    const adminName = safe(log.admin?.name || "Admin");
+    const adminEmail = safe(log.admin?.email || "");
+    const summary =
+      safe(log.details?.action) ||
+      safe(log.details?.page) ||
+      safe(log.details?.complaintTitle || log.details?.title || log.details?.subject) ||
+      type;
+
+    const detailsJson = safe(log.details && Object.keys(log.details).length
+      ? JSON.stringify(log.details)
+      : "");
+
+    const url = safe(log.url || "");
+    const sessionId = safe(log.sessionId || "");
+
+    const rowData = [
+      ts,
+      type,
+      adminName,
+      adminEmail,
+      summary,
+      detailsJson,
+      url,
+      sessionId,
+    ];
+
+    XLSX.utils.sheet_add_aoa(worksheet, [rowData], {
+      origin: `A${index + 6}`,
+    });
+  });
+
+  worksheet["!cols"] = [
+    { wch: 20 }, // Timestamp
+    { wch: 16 }, // Type
+    { wch: 22 }, // Admin Name
+    { wch: 26 }, // Admin Email
+    { wch: 32 }, // Summary
+    { wch: 40 }, // Details
+    { wch: 30 }, // URL
+    { wch: 18 }, // Session
+  ];
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Activity Logs");
+  XLSX.writeFile(workbook, finalFilename);
+
+  console.log(`✅ Exported ${logs.length} logs to ${finalFilename}`);
 };
 
 /* ================================================================== */

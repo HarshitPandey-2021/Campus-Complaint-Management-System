@@ -5,7 +5,6 @@ const ComplaintTimeline = ({ complaint }) => {
 
   // Safe destructure with default values
   const {
-    timeline = [],
     submittedAt,
     status,
     resolvedAt,

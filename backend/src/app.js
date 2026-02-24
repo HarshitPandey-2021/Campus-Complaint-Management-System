@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
 const multer = require("multer");
 
 const authRoutes = require("./routes/auth");
@@ -10,6 +11,13 @@ const filesRoutes = require("./routes/files");
 const healthRoutes = require("./routes/health");
 
 const app = express();
+
+// Basic security headers
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
 
 // CORS settings
 app.use(

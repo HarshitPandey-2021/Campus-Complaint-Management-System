@@ -129,7 +129,7 @@ const Dashboard = () => {
         day: "numeric",
         year: "numeric",
       });
-    } catch (e) {
+    } catch {
       return "Invalid Date";
     }
   };

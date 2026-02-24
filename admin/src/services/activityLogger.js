@@ -140,8 +140,6 @@ export const exportLogsToCSV = (logs = null) => {
     return;
   }
 
-    exportActivityLogsToCSV(logsToExport); // ✅ Use centralized function
-
   const headers = ["Timestamp", "Type", "Admin Name", "Admin Email", "Details", "URL"];
   const rows = logsToExport.map((log) => [
     new Date(log.timestamp).toLocaleString("en-IN"),

@@ -34,20 +34,6 @@ function getHomeURL() {
     : 'https://ccms-home.vercel.app/';
 }
 
-// ✅ FIXED: Get page name, default to Dashboard
-function getPageName(path) {
-  const routes = {
-    "/": "Dashboard",
-    "/dashboard": "Dashboard",
-    "/complaints": "Complaints",
-    "/analytics": "Analytics",
-    "/activity-logs": "Activity Logs",
-    "/profile": "Profile",
-    "/unauthorized": "Unauthorized"
-  };
-  return routes[path] || "Dashboard";
-}
-
 // ✅ Route Handler - Fixes refresh 404
 function RouteHandler() {
   const navigate = useNavigate();

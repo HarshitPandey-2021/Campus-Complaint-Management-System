@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useToast } from "../hooks/useToast";
-import { exportToExcel } from "../utils/exportUtils";
+import { exportLogsToExcel } from "../utils/exportUtils";
 import {
   getAllLogs,
   clearAllLogs,
@@ -91,7 +91,7 @@ const ActivityLogs = () => {
         .toISOString()
         .split("T")[0]}.xlsx`;
 
-      await exportToExcel(filteredLogs, filename);
+      await exportLogsToExcel(filteredLogs, filename);
 
       success(`✅ Exported ${filteredLogs.length} logs to Excel`);
     } catch (err) {

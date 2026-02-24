@@ -153,7 +153,6 @@ const Analytics = () => {
   // Calculate rates
   const resolutionRate = stats.total > 0 ? Math.round((stats.resolved / stats.total) * 100) : 0;
   const activeRate = stats.total > 0 ? Math.round(((stats.pending + stats.inProgress) / stats.total) * 100) : 0;
-  const rejectionRate = stats.total > 0 ? Math.round((stats.rejected / stats.total) * 100) : 0;
 
   if (loading) {
     return (

@@ -1,13 +1,16 @@
-// src/utils/tokenUtils.js - FIXED VERSION
+// src/utils/tokenUtils.js - unified admin session utils
 
 const ADMIN_TOKEN_KEY = "adminToken";
 const ADMIN_REFRESH_KEY = "adminRefreshToken";
 const ADMIN_SESSION_KEY = "ccms-admin-session";
 
-export function saveAdminSession(user, token, refreshToken) {
+// Save admin auth session after successful login.
+// Signature matches student-ui: (token, refreshToken, user)
+export function saveAdminSession(token, refreshToken, user) {
   if (!token || !user) return;
 
   localStorage.setItem(ADMIN_TOKEN_KEY, token);
+
   if (refreshToken) {
     localStorage.setItem(ADMIN_REFRESH_KEY, refreshToken);
   }
@@ -40,20 +43,21 @@ export function getAdminUser() {
   }
 }
 
-// ✅ Get dynamic home URL
+// Get dynamic home URL
 export const getHomeURL = () => {
-  const isLocalhost = window.location.hostname === 'localhost' || 
-                     window.location.hostname === '127.0.0.1';
-  
-  return isLocalhost 
-    ? 'http://localhost:5174'
-    : 'https://ccms-home.vercel.app/';
+  const isLocalhost =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1";
+
+  return isLocalhost
+    ? "http://localhost:5174"
+    : "https://ccms-home.vercel.app/";
 };
 
-// ✅ FIXED: Use dynamic URL
+// Logout helper
 export function logoutAdmin() {
   localStorage.removeItem(ADMIN_TOKEN_KEY);
   localStorage.removeItem(ADMIN_REFRESH_KEY);
   localStorage.removeItem(ADMIN_SESSION_KEY);
-  window.location.replace(getHomeURL()); // ✅ Use dynamic URL
+  window.location.replace(getHomeURL());
 }

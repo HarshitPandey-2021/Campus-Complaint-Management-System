@@ -23,7 +23,7 @@ import {
 
 const SubmitComplaint = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  useAuth();
   const { success, error: showError } = useToast();
 
   const [loading, setLoading] = useState(false);

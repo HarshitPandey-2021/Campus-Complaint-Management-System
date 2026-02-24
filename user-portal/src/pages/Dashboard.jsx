@@ -46,7 +46,9 @@ const Dashboard = () => {
         const token = localStorage.getItem("token");
 
         if (!token) {
-          window.location.href = "http://localhost:5174/login";
+          window.location.href =
+            (import.meta.env.VITE_ADMIN_APP_URL || "http://localhost:5174") +
+            "/login";
           return;
         }
 

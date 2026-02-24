@@ -90,16 +90,18 @@ const ComplaintTable = ({ complaints = [], onRowClick, onActionClick }) => {
           aVal = new Date(a.submittedAt || a.createdAt);
           bVal = new Date(b.submittedAt || b.createdAt);
           break;
-        case "priority":
+        case "priority": {
           const order = { High: 3, Medium: 2, Low: 1 };
           aVal = order[a.priority] || 0;
           bVal = order[b.priority] || 0;
           break;
-        case "status":
+        }
+        case "status": {
           const statusOrder = { Pending: 1, "In Progress": 2, Resolved: 3, Rejected: 4 };
           aVal = statusOrder[a.status] || 0;
           bVal = statusOrder[b.status] || 0;
           break;
+        }
         default:
           aVal = a[key];
           bVal = b[key];

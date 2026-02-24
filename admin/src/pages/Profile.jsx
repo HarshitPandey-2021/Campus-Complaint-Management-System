@@ -100,15 +100,12 @@ const Profile = () => {
         setProfileData(uiProfile);
         setEditedData({ name: uiProfile.name, email: uiProfile.email });
 
-        saveAdminSession(
-          {
-            name: uiProfile.name,
-            email: uiProfile.email,
-            role: uiProfile.role,
-            userId: uiProfile.userId,
-          },
-          token
-        );
+        saveAdminSession(token, null, {
+          name: uiProfile.name,
+          email: uiProfile.email,
+          role: uiProfile.role,
+          userId: uiProfile.userId,
+        });
 
         logActivity(ACTIVITY_TYPES.PAGE_VIEW, { page: "Profile" });
       } catch (err) {
@@ -127,7 +124,8 @@ const Profile = () => {
     logoutAdmin();
     success("Logged out successfully!");
     setTimeout(() => {
-      window.location.href = "http://localhost:5174";
+      window.location.href =
+        import.meta.env.VITE_ADMIN_APP_URL || "http://localhost:5174";
     }, 1000);
   };
 
@@ -150,15 +148,12 @@ const Profile = () => {
       setProfileData(updated);
       setIsEditing(false);
 
-      saveAdminSession(
-        {
-          name: updated.name,
-          email: updated.email,
-          role: updated.role,
-          userId: updated.userId,
-        },
-        token
-      );
+      saveAdminSession(token, null, {
+        name: updated.name,
+        email: updated.email,
+        role: updated.role,
+        userId: updated.userId,
+      });
 
       logActivity(ACTIVITY_TYPES.PROFILE_UPDATE, {
         action: "Updated profile",

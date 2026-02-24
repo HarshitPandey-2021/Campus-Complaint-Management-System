@@ -1,5 +1,7 @@
 // user-portal/src/api.js
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+const ADMIN_APP_URL =
+  import.meta.env.VITE_ADMIN_APP_URL || "http://localhost:5174";
 
 function isTokenExpired(token) {
   if (!token) return true;
@@ -35,13 +37,13 @@ async function refreshAccessToken() {
       return data.token;
     }
     return null;
-  } catch {
-    localStorage.removeItem("token");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("user");
-    window.location.href = "http://localhost:5174/login";
-    return null;
-  }
+    } catch {
+      localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
+      window.location.href = `${ADMIN_APP_URL}/login`;
+      return null;
+    }
 }
 
 async function getAuthHeaders() {
@@ -83,6 +85,7 @@ async function apiCall(url, options = {}) {
 }
 
 async function handleResponse(res) {
+  // eslint-disable-next-line no-useless-assignment
   let data = null;
 
   try {
@@ -180,49 +183,41 @@ export async function getComplaintById(id) {
 }
 
 export async function submitComplaintWithFiles(formData) {
-  try {
-    let token = localStorage.getItem("token");
-    if (isTokenExpired(token)) {
-      token = await refreshAccessToken();
-      if (!token) throw new Error("Authentication failed");
-    }
-
-    const res = await fetch(`${API_BASE}/complaints`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    });
-
-    return handleResponse(res);
-  } catch (error) {
-    throw error;
+  let token = localStorage.getItem("token");
+  if (isTokenExpired(token)) {
+    token = await refreshAccessToken();
+    if (!token) throw new Error("Authentication failed");
   }
+
+  const res = await fetch(`${API_BASE}/complaints`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  return handleResponse(res);
 }
 
 export const submitComplaint = submitComplaintWithFiles;
 
 export async function updateComplaint(id, formData) {
-  try {
-    let token = localStorage.getItem("token");
-    if (isTokenExpired(token)) {
-      token = await refreshAccessToken();
-      if (!token) throw new Error("Authentication failed");
-    }
-
-    const res = await fetch(`${API_BASE}/complaints/${id}`, {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    });
-
-    return handleResponse(res);
-  } catch (error) {
-    throw error;
+  let token = localStorage.getItem("token");
+  if (isTokenExpired(token)) {
+    token = await refreshAccessToken();
+    if (!token) throw new Error("Authentication failed");
   }
+
+  const res = await fetch(`${API_BASE}/complaints/${id}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  return handleResponse(res);
 }
 
 // Departments
@@ -271,29 +266,25 @@ export async function viewPdf(url) {
 
 export async function downloadPdf(url, filename = "document.pdf") {
   if (!url) throw new Error("No PDF URL provided");
-  try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error("Failed to fetch PDF");
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("Failed to fetch PDF");
 
-    const blob = await response.blob();
-    const pdfBlob = new Blob([blob], { type: "application/pdf" });
-    const blobUrl = window.URL.createObjectURL(pdfBlob);
+  const blob = await response.blob();
+  const pdfBlob = new Blob([blob], { type: "application/pdf" });
+  const blobUrl = window.URL.createObjectURL(pdfBlob);
 
-    const link = document.createElement("a");
-    link.href = blobUrl;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 
-    setTimeout(() => {
-      window.URL.revokeObjectURL(blobUrl);
-    }, 100);
+  setTimeout(() => {
+    window.URL.revokeObjectURL(blobUrl);
+  }, 100);
 
-    return true;
-  } catch (error) {
-    throw error;
-  }
+  return true;
 }
 
 const api = {

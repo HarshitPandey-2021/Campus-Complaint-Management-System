@@ -21,7 +21,7 @@ A modern **full-stack web application** for managing campus facility complaints 
 | 🏠 Landing Page | https://ccms-home.vercel.app | ✅ Live |
 | 👨‍💼 Admin Dashboard | https://ccms-admin-rho.vercel.app | ✅ Live |
 | 📚 Student Portal | https://ccms-student.vercel.app | ✅ Live |
-| ⚙️ Backend API | https://campus-backend-rq7f.onrender.com | ✅ Live |
+| ⚙️ Backend API | https://campus-complaint-management-system-1vlf.onrender.com | ✅ Live |
 
 👉 **Start Here:** [Landing Page](https://ccms-home.vercel.app)
 
@@ -157,7 +157,7 @@ npm run dev
 ### Frontend
 
 ```env
-VITE_API_URL=https://campus-backend-rq7f.onrender.com/api
+VITE_API_URL=https://campus-complaint-management-system-1vlf.onrender.com/api
 VITE_ADMIN_APP_URL=https://ccms-admin-rho.vercel.app
 VITE_USER_APP_URL=https://ccms-student.vercel.app
 ```

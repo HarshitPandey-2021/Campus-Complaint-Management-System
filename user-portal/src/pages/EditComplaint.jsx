@@ -15,7 +15,7 @@ import {
 const EditComplaint = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  useAuth();
   const { success, error: showError, warning } = useToast();
 
   const [loading, setLoading] = useState(true);

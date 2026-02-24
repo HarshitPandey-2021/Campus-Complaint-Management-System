@@ -6,3 +6,4 @@ build/
 .vite/
 *.log
 .DS_Store
+node_modules/ 

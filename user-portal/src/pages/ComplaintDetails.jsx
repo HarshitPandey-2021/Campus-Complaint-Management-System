@@ -16,7 +16,7 @@ import {
 const ComplaintDetails = () => {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  useAuth();
 
   const [loading, setLoading] = useState(true)
   const [complaint, setComplaint] = useState(null)

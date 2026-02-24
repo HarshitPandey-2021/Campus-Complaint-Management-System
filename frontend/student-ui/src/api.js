@@ -1,6 +1,7 @@
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
 
 async function handleResponse(res) {
+  // eslint-disable-next-line no-useless-assignment
   let data = null;
 
   try {

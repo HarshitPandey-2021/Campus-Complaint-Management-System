@@ -16,8 +16,6 @@ export default function ComplaintTable({
     direction: "desc",
   });
 
-  const [openDropdownId, setOpenDropdownId] = useState(null);
-
   const handleSort = (key) => {
     setSortConfig((prev) => ({
       key,
