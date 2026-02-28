@@ -12,7 +12,6 @@ export default function LoginPage() {
   const [form, setForm] = useState({
     email: "",
     password: "",
-    role: "student",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -47,7 +46,7 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const resp = await loginApi(form.email.trim(), form.password, form.role);
+      const resp = await loginApi(form.email.trim(), form.password);
 
       if (!resp || !resp.user || !resp.token) {
         setError("Invalid response from server.");
@@ -162,34 +161,6 @@ export default function LoginPage() {
             disabled={loading}
           />
 
-          <div className="flex gap-6 mt-2">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="role"
-                value="student"
-                checked={form.role === "student"}
-                onChange={handleChange}
-                disabled={loading}
-                className="cursor-pointer"
-              />
-              <span>Student</span>
-            </label>
-
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="role"
-                value="admin"
-                checked={form.role === "admin"}
-                onChange={handleChange}
-                disabled={loading}
-                className="cursor-pointer"
-              />
-              <span>Admin</span>
-            </label>
-          </div>
-
           <button
             type="submit"
             disabled={loading}
@@ -201,6 +172,16 @@ export default function LoginPage() {
             {loading ? "Logging in..." : "Login"}
           </button>
         </form>
+
+        <p className="text-center text-gray-700 mt-3">
+          <Link
+            to="/forgot-password"
+            className="font-semibold hover:underline"
+            style={{ color: "#0ea5e9" }}
+          >
+            Forgot password?
+          </Link>
+        </p>
 
         <p className="text-center text-gray-700 mt-4">
           New user?{" "}

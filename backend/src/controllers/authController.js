@@ -2,6 +2,7 @@
 
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const nodemailer = require("nodemailer");
 const { normalizeRole } = require("../utils/normalizeRole");
 const { ObjectId } = require("mongodb");
 const { toObjectId } = require("../utils/toObjectId");
@@ -19,6 +20,53 @@ setInterval(() => {
 
 function getCollections(req) {
   return req.app.locals.collections;
+}
+
+function generateOtp() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+async function sendOtpEmail(to, otp) {
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM, NODE_ENV } =
+    process.env;
+
+  const smtpConfigured = SMTP_HOST && SMTP_USER && SMTP_PASS;
+
+  if (!smtpConfigured) {
+    if (NODE_ENV === "production") {
+      throw new Error("SMTP not configured; cannot send OTP email");
+    }
+    // Dev only: log without exposing OTP in shared logs; skip send
+    console.warn("[PasswordReset] SMTP not configured. Skipping email (dev only).");
+    return;
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: Number(SMTP_PORT || 587),
+    secure: false,
+    auth: {
+      user: SMTP_USER,
+      pass: SMTP_PASS,
+    },
+  });
+
+  await transporter.sendMail({
+    from: MAIL_FROM || "no-reply@ccms.com",
+    to,
+    subject: "CCMS Password Reset OTP",
+    text: `Your CCMS password reset OTP is: ${otp}. This code is valid for 10 minutes.`,
+  });
+}
+
+async function findUserByIdentifier(Users, identifier) {
+  if (!identifier) return null;
+
+  if (identifier.includes("@")) {
+    return Users.findOne({ email: identifier.trim().toLowerCase() });
+  }
+
+  return Users.findOne({ roll: identifier.trim(), role: "student" });
 }
 
 // Register
@@ -248,6 +296,184 @@ async function changePassword(req, res) {
   }
 }
 
+async function requestPasswordReset(req, res) {
+  try {
+    const { identifier } = req.body;
+
+    if (!identifier) {
+      return res.status(400).json({ message: "Identifier is required" });
+    }
+
+    const { Users, PasswordResets } = getCollections(req);
+
+    const user = await findUserByIdentifier(Users, identifier);
+
+    if (!user) {
+      return res.json({
+        message:
+          "If an account exists for the provided details, an OTP has been sent.",
+      });
+    }
+
+    // Production: require SMTP so we never "succeed" without sending email
+    if (process.env.NODE_ENV === "production") {
+      const hasSmtp =
+        process.env.SMTP_HOST &&
+        process.env.SMTP_USER &&
+        process.env.SMTP_PASS;
+      if (!hasSmtp) {
+        return res.status(503).json({
+          message: "Password reset is temporarily unavailable. Please try again later.",
+        });
+      }
+    }
+
+    const otp = generateOtp();
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 10 * 60 * 1000);
+
+    const otpHash = await bcrypt.hash(otp, 10);
+
+    await PasswordResets.deleteMany({ userId: user._id.toString() });
+
+    await PasswordResets.insertOne({
+      userId: user._id.toString(),
+      otpHash,
+      createdAt: now,
+      expiresAt,
+    });
+
+    await sendOtpEmail(user.email, otp);
+
+    const responsePayload = {
+      message:
+        "If an account exists for the provided details, an OTP has been sent.",
+    };
+
+    // In non-production environments, include OTP in response for easier testing
+    if (process.env.NODE_ENV !== "production") {
+      responsePayload.devOtp = otp;
+    }
+
+    return res.json(responsePayload);
+  } catch (e) {
+    console.error("requestPasswordReset error:", e);
+    if (e.message && e.message.includes("SMTP")) {
+      return res.status(503).json({
+        message: "Password reset is temporarily unavailable. Please try again later.",
+      });
+    }
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+async function verifyPasswordResetOtp(req, res) {
+  try {
+    const { identifier, otp } = req.body;
+
+    if (!identifier || !otp) {
+      return res
+        .status(400)
+        .json({ message: "Identifier and OTP are required" });
+    }
+
+    const { Users, PasswordResets } = getCollections(req);
+
+    const user = await findUserByIdentifier(Users, identifier);
+    if (!user) {
+      return res.status(400).json({ message: "Invalid identifier or OTP" });
+    }
+
+    const reset = await PasswordResets.findOne({ userId: user._id.toString() });
+    if (!reset) {
+      return res.status(400).json({ message: "Invalid identifier or OTP" });
+    }
+
+    const now = new Date();
+    if (reset.expiresAt < now) {
+      await PasswordResets.deleteOne({ _id: reset._id });
+      return res
+        .status(400)
+        .json({ message: "OTP expired. Please request a new one." });
+    }
+
+    const isMatch = await bcrypt.compare(otp, reset.otpHash);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid identifier or OTP" });
+    }
+
+    const resetToken = jwt.sign(
+      { userId: user._id.toString(), type: "password-reset" },
+      process.env.JWT_SECRET,
+      { expiresIn: "15m" }
+    );
+
+    return res.json({ message: "OTP verified", resetToken });
+  } catch (e) {
+    console.error("verifyPasswordResetOtp error:", e);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+async function resetPassword(req, res) {
+  try {
+    const { resetToken, newPassword } = req.body;
+
+    if (!resetToken || !newPassword) {
+      return res
+        .status(400)
+        .json({ message: "Reset token and new password are required" });
+    }
+
+    if (newPassword.length < 6) {
+      return res
+        .status(400)
+        .json({ message: "Password must be at least 6 characters" });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(resetToken, process.env.JWT_SECRET);
+    } catch {
+      return res
+        .status(400)
+        .json({ message: "Invalid or expired reset token" });
+    }
+
+    if (decoded.type !== "password-reset") {
+      return res.status(400).json({ message: "Invalid reset token type" });
+    }
+
+    const userId = decoded.userId;
+
+    const { Users, PasswordResets } = getCollections(req);
+
+    const hash = await bcrypt.hash(newPassword, 10);
+
+  const result = await Users.updateOne(
+      { _id: toObjectId(ObjectId, userId) },
+      { $set: { password: hash, updatedAt: new Date() } }
+    );
+
+  if (!result.matchedCount) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  if (!result.modifiedCount) {
+    return res
+      .status(400)
+      .json({ message: "Password was not changed. Try a different password." });
+  }
+
+    await PasswordResets.deleteMany({ userId });
+
+    return res.json({ message: "Password reset successfully" });
+  } catch (e) {
+    console.error("resetPassword error:", e);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
 // Admin session code
 async function createAdminSessionCode(req, res) {
   try {
@@ -318,4 +544,7 @@ module.exports = {
   changePassword,
   createAdminSessionCode,
   exchangeAdminCode,
+  requestPasswordReset,
+  verifyPasswordResetOtp,
+  resetPassword,
 };

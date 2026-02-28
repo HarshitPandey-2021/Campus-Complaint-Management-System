@@ -42,3 +42,14 @@ Controllers do the work: validation, database queries, response.
 - `src/utils/toObjectId.js` convert string to Mongo ObjectId
 - `src/utils/normalizeRole.js` normalize role text
 - `src/utils/cloudinaryUpload.js` upload file buffer to Cloudinary
+
+---
+
+## Production
+
+- Set `NODE_ENV=production`.
+- Use strong, unique values for `JWT_SECRET` and `JWT_REFRESH_SECRET`.
+- For **forgot-password** to work in production, configure SMTP:
+  - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`
+  - Without these, `/auth/forgot-password/request` returns 503.
+- Copy `.env.example` to `.env` and fill in all required variables.

@@ -18,13 +18,49 @@ async function handleResponse(res) {
   return data;
 }
 
-export async function loginApi(email, password, role) {
+export async function loginApi(email, password) {
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ email, password, role }),
+    body: JSON.stringify({ email, password }),
+  });
+
+  return handleResponse(res);
+}
+
+export async function requestPasswordResetApi(identifier) {
+  const res = await fetch(`${API_BASE}/auth/forgot-password/request`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ identifier }),
+  });
+
+  return handleResponse(res);
+}
+
+export async function verifyPasswordResetOtpApi(identifier, otp) {
+  const res = await fetch(`${API_BASE}/auth/forgot-password/verify`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ identifier, otp }),
+  });
+
+  return handleResponse(res);
+}
+
+export async function resetPasswordApi(resetToken, newPassword) {
+  const res = await fetch(`${API_BASE}/auth/forgot-password/reset`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ resetToken, newPassword }),
   });
 
   return handleResponse(res);

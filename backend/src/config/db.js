@@ -17,6 +17,7 @@ async function initializeDb() {
   const Complaints = db.collection("Complaints");
   const AdminLogs = db.collection("AdminLogs");
   const Departments = db.collection("Departments");
+  const PasswordResets = db.collection("PasswordResets");
 
   // DB indexes
   await Users.createIndex({ email: 1 }, { unique: true });
@@ -27,12 +28,19 @@ async function initializeDb() {
   await Complaints.createIndex({ submittedAt: -1 });
   await Complaints.createIndex({ subject: "text", description: "text" });
 
+  // Password reset indexes (auto-expire after 1 hour)
+  await PasswordResets.createIndex(
+    { createdAt: 1 },
+    { expireAfterSeconds: 60 * 60 }
+  );
+  await PasswordResets.createIndex({ userId: 1 });
+
   console.log("? MongoDB connected. DB:", dbName);
 
   return {
     db,
     client,
-    collections: { Users, Complaints, AdminLogs, Departments },
+    collections: { Users, Complaints, AdminLogs, Departments, PasswordResets },
   };
 }
 
