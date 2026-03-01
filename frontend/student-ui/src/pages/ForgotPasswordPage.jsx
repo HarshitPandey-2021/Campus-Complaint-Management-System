@@ -29,20 +29,15 @@ export default function ForgotPasswordPage() {
     setError("");
     setMessage("");
     if (!identifier) {
-      setError("Please enter your roll number or email.");
+      setError("Please enter your registered email address.");
       return;
     }
     setLoading(true);
     try {
       const res = await requestPasswordResetApi(identifier.trim());
       setMessage(
-        res.message || "If an account exists, an OTP has been sent."
+        res.message || "OTP has been sent to your registered email address."
       );
-
-      // Only in development: show OTP in console for testing (never in production build)
-      if (import.meta.env.DEV && res.devOtp) {
-        console.log("DEV ONLY - OTP:", res.devOtp);
-      }
 
       if (!isResend) {
         setStep("otp");
@@ -148,8 +143,8 @@ export default function ForgotPasswordPage() {
             className="space-y-4 text-gray-800"
           >
             <input
-              type="text"
-              placeholder="Roll number or email"
+              type="email"
+              placeholder="Email"
               className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#c026d3] outline-none"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}

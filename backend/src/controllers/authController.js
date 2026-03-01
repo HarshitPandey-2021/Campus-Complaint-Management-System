@@ -62,11 +62,8 @@ async function sendOtpEmail(to, otp) {
 async function findUserByIdentifier(Users, identifier) {
   if (!identifier) return null;
 
-  if (identifier.includes("@")) {
-    return Users.findOne({ email: identifier.trim().toLowerCase() });
-  }
-
-  return Users.findOne({ roll: identifier.trim(), role: "student" });
+  const email = identifier.trim().toLowerCase();
+  return Users.findOne({ email });
 }
 
 // Register
@@ -274,6 +271,12 @@ async function changePassword(req, res) {
       return res.status(401).json({ message: "Current password incorrect" });
     }
 
+    if (currentPassword === newPassword) {
+      return res.status(400).json({
+        message: "New password cannot be same as current password",
+      });
+    }
+
     const hash = await bcrypt.hash(newPassword, 10);
 
     await Users.updateOne(
@@ -301,7 +304,7 @@ async function requestPasswordReset(req, res) {
     const { identifier } = req.body;
 
     if (!identifier) {
-      return res.status(400).json({ message: "Identifier is required" });
+      return res.status(400).json({ message: "Email is required" });
     }
 
     const { Users, PasswordResets } = getCollections(req);
@@ -309,9 +312,8 @@ async function requestPasswordReset(req, res) {
     const user = await findUserByIdentifier(Users, identifier);
 
     if (!user) {
-      return res.json({
-        message:
-          "If an account exists for the provided details, an OTP has been sent.",
+      return res.status(404).json({
+        message: "No account found for the provided email address.",
       });
     }
 
@@ -345,17 +347,9 @@ async function requestPasswordReset(req, res) {
 
     await sendOtpEmail(user.email, otp);
 
-    const responsePayload = {
-      message:
-        "If an account exists for the provided details, an OTP has been sent.",
-    };
-
-    // In non-production environments, include OTP in response for easier testing
-    if (process.env.NODE_ENV !== "production") {
-      responsePayload.devOtp = otp;
-    }
-
-    return res.json(responsePayload);
+    return res.json({
+      message: "OTP has been sent to your registered email address.",
+    });
   } catch (e) {
     console.error("requestPasswordReset error:", e);
     if (e.message && e.message.includes("SMTP")) {
@@ -374,19 +368,19 @@ async function verifyPasswordResetOtp(req, res) {
     if (!identifier || !otp) {
       return res
         .status(400)
-        .json({ message: "Identifier and OTP are required" });
+        .json({ message: "Email and OTP are required" });
     }
 
     const { Users, PasswordResets } = getCollections(req);
 
     const user = await findUserByIdentifier(Users, identifier);
     if (!user) {
-      return res.status(400).json({ message: "Invalid identifier or OTP" });
+      return res.status(400).json({ message: "Invalid email or OTP" });
     }
 
     const reset = await PasswordResets.findOne({ userId: user._id.toString() });
     if (!reset) {
-      return res.status(400).json({ message: "Invalid identifier or OTP" });
+      return res.status(400).json({ message: "Invalid email or OTP" });
     }
 
     const now = new Date();
@@ -448,9 +442,24 @@ async function resetPassword(req, res) {
 
     const { Users, PasswordResets } = getCollections(req);
 
+    const user = await Users.findOne({
+      _id: toObjectId(ObjectId, userId),
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    if (isSamePassword) {
+      return res.status(400).json({
+        message: "New password cannot be same as old password",
+      });
+    }
+
     const hash = await bcrypt.hash(newPassword, 10);
 
-  const result = await Users.updateOne(
+    const result = await Users.updateOne(
       { _id: toObjectId(ObjectId, userId) },
       { $set: { password: hash, updatedAt: new Date() } }
     );
