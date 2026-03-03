@@ -9,6 +9,25 @@ const { toObjectId } = require("../utils/toObjectId");
 
 const oneTimeCodes = new Map();
 
+function getSaltRounds() {
+  const raw = process.env.SALT_ROUNDS;
+  const n = Number.parseInt(raw, 10);
+  // Keep it sane: bcrypt cost too high can DOS your server
+  if (Number.isFinite(n) && n >= 8 && n <= 15) return n;
+  return 10;
+}
+
+function isStrongPassword(password) {
+  // 8+ chars, 1 uppercase, 1 lowercase, 1 special symbol
+  return /^(?=.*[A-Z])(?=.*[a-z])(?=.*[^A-Za-z0-9]).{8,}$/.test(
+    password || "",
+  );
+}
+
+function strongPasswordMessage() {
+  return "Password must be at least 8 characters and include 1 uppercase, 1 lowercase, and 1 special character.";
+}
+
 setInterval(() => {
   const now = Date.now();
   for (const [code, data] of oneTimeCodes.entries()) {
@@ -44,7 +63,7 @@ async function sendOtpEmail(to, otp) {
   const transporter = nodemailer.createTransport({
     host: SMTP_HOST,
     port: Number(SMTP_PORT || 587),
-    secure: false,
+    secure: Number(SMTP_PORT) === 465,
     auth: {
       user: SMTP_USER,
       pass: SMTP_PASS,
@@ -75,6 +94,10 @@ async function register(req, res) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
+    if (!isStrongPassword(password)) {
+      return res.status(400).json({ message: strongPasswordMessage() });
+    }
+
     const normalizedRole = normalizeRole(role);
 
     if (normalizedRole === "student" && !roll) {
@@ -90,7 +113,7 @@ async function register(req, res) {
       return res.status(400).json({ message: "Email already registered" });
     }
 
-    const hash = await bcrypt.hash(password, 10);
+    const hash = await bcrypt.hash(password, getSaltRounds());
     const now = new Date();
 
     const newUser = {
@@ -252,10 +275,8 @@ async function changePassword(req, res) {
         .json({ message: "Current and new password required" });
     }
 
-    if (newPassword.length < 6) {
-      return res
-        .status(400)
-        .json({ message: "New password must be at least 6 characters" });
+    if (!isStrongPassword(newPassword)) {
+      return res.status(400).json({ message: strongPasswordMessage() });
     }
 
     const { Users, AdminLogs } = getCollections(req);
@@ -277,7 +298,7 @@ async function changePassword(req, res) {
       });
     }
 
-    const hash = await bcrypt.hash(newPassword, 10);
+    const hash = await bcrypt.hash(newPassword, getSaltRounds());
 
     await Users.updateOne(
       { _id: toObjectId(ObjectId, req.user.userId) },
@@ -334,7 +355,7 @@ async function requestPasswordReset(req, res) {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 10 * 60 * 1000);
 
-    const otpHash = await bcrypt.hash(otp, 10);
+    const otpHash = await bcrypt.hash(otp, getSaltRounds());
 
     await PasswordResets.deleteMany({ userId: user._id.toString() });
 
@@ -419,10 +440,8 @@ async function resetPassword(req, res) {
         .json({ message: "Reset token and new password are required" });
     }
 
-    if (newPassword.length < 6) {
-      return res
-        .status(400)
-        .json({ message: "Password must be at least 6 characters" });
+    if (!isStrongPassword(newPassword)) {
+      return res.status(400).json({ message: strongPasswordMessage() });
     }
 
     let decoded;
@@ -457,7 +476,7 @@ async function resetPassword(req, res) {
       });
     }
 
-    const hash = await bcrypt.hash(newPassword, 10);
+    const hash = await bcrypt.hash(newPassword, getSaltRounds());
 
     const result = await Users.updateOne(
       { _id: toObjectId(ObjectId, userId) },

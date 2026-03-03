@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
+import { PASSWORD_EXAMPLE, PASSWORD_HINT, validatePassword } from "../../utils/validators";
 
 export default function SignupForm() {
   const { signup } = useAuth();
@@ -18,16 +19,12 @@ export default function SignupForm() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const validatePassword = (pwd) => {
-    return /[A-Z]/.test(pwd) && /[0-9]/.test(pwd) && pwd.length >= 8;
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
     setError("");
 
     if (!validatePassword(form.password)) {
-      return setError("Password must be 8+ chars, include a number and uppercase letter");
+      return setError(PASSWORD_HINT);
     }
 
     if (form.password !== form.confirmPassword) {
@@ -71,6 +68,12 @@ export default function SignupForm() {
         className="p-3 border rounded"
         onChange={handleChange}
       />
+      <p
+        className="text-xs text-gray-500 -mt-3 cursor-help underline decoration-dotted"
+        title={PASSWORD_EXAMPLE}
+      >
+        {PASSWORD_HINT}
+      </p>
 
       <input
         name="confirmPassword"

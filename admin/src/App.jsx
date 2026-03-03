@@ -57,17 +57,19 @@ function RouteHandler() {
 // ✅ FIXED: Simplified ProtectedRoute - Just check if token and user exist
 function ProtectedRoute({ children }) {
   const token = getAdminToken();
-  const user = getAdminUser();
 
-  // ✅ FIXED: Just check if authenticated (backend already verified admin role)
-  const isAuthenticated = !!token && !!user;
+  // ✅ More robust: token alone gates access.
+  // Some flows refresh token without re-writing user session;
+  // requiring user here can cause sudden redirects.
+  const isAuthenticated = !!token;
 
   if (!isAuthenticated) {
     console.log("❌ Not authenticated, redirecting to /unauthorized");
     return <Navigate to="/unauthorized" replace />;
   }
 
-  console.log("✅ ProtectedRoute: User authenticated:", user?.name, user?.email);
+  const user = getAdminUser();
+  console.log("✅ ProtectedRoute: Token present. User:", user?.name, user?.email);
   return children;
 }
 

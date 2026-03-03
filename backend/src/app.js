@@ -67,9 +67,10 @@ app.use((err, req, res, next) => {
 
   if (err) {
     console.error("Server error:", err);
-    return res
-      .status(500)
-      .json({ message: err.message || "Internal server error" });
+    const isProd = process.env.NODE_ENV === "production";
+    return res.status(500).json({
+      message: isProd ? "Internal server error" : err.message || "Internal server error",
+    });
   }
 
   next();

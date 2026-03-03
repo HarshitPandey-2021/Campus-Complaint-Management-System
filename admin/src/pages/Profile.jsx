@@ -24,6 +24,12 @@ import {
 import { logActivity, ACTIVITY_TYPES } from "../services/activityLogger";
 import { getProfile, updateProfile, changePassword } from "../api";
 
+const PASSWORD_HINT =
+  "At least 8 characters with 1 uppercase, 1 lowercase, and 1 special character.";
+const PASSWORD_EXAMPLE = "Example: Campus@2026";
+const isStrongPassword = (pwd) =>
+  /^(?=.*[A-Z])(?=.*[a-z])(?=.*[^A-Za-z0-9]).{8,}$/.test(pwd || "");
+
 const Profile = () => {
   const navigate = useNavigate();
   const { success, error } = useToast();
@@ -177,8 +183,8 @@ const Profile = () => {
       return;
     }
 
-    if (passwords.new.length < 6) {
-      error("Password must be at least 6 characters");
+    if (!isStrongPassword(passwords.new)) {
+      error(PASSWORD_HINT);
       return;
     }
 
@@ -483,7 +489,14 @@ const Profile = () => {
                           }))
                         }
                         className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        title={PASSWORD_EXAMPLE}
                       />
+                      <p
+                        className="mt-1 text-[11px] text-gray-500 dark:text-gray-400 underline decoration-dotted cursor-help"
+                        title={PASSWORD_EXAMPLE}
+                      >
+                        {PASSWORD_HINT}
+                      </p>
                     </div>
                     <div>
                       <label className="block text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-1">

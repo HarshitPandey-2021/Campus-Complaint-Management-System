@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { signupApi } from "../api.js";
+import { PASSWORD_EXAMPLE, PASSWORD_HINT, validatePassword } from "../utils/validators.js";
+import PasswordStrengthPanel from "../components/common/PasswordStrengthPanel.jsx";
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -14,16 +16,12 @@ export default function SignupPage() {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPwdPanel, setShowPwdPanel] = useState(false);
 
   function handleChange(e) {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
     setError("");
-  }
-
-  function isStrongPassword(pwd) {
-    const regex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
-    return regex.test(pwd);
   }
 
   async function handleSubmit(e) {
@@ -35,10 +33,8 @@ export default function SignupPage() {
       return;
     }
 
-    if (!isStrongPassword(form.password)) {
-      setError(
-        "Password must be at least 8 characters and include a number and an uppercase letter."
-      );
+    if (!validatePassword(form.password)) {
+      setError(PASSWORD_HINT);
       return;
     }
 
@@ -142,17 +138,32 @@ export default function SignupPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Password <span className="text-red-500">*</span>
             </label>
-            <input
-              name="password"
-              type="password"
-              placeholder="Create a strong password"
-              className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-[#c026d3] focus:border-transparent outline-none transition-all"
-              onChange={handleChange}
-              value={form.password}
-              required
-            />
+            <div className="relative">
+              <input
+                name="password"
+                type="password"
+                placeholder={PASSWORD_EXAMPLE}
+                className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-[#c026d3] focus:border-transparent outline-none transition-all"
+                onChange={handleChange}
+                value={form.password}
+                required
+                onFocus={() => setShowPwdPanel(true)}
+                onBlur={() => setShowPwdPanel(false)}
+              />
+
+              {showPwdPanel && (
+                <div className="absolute top-0 left-full ml-4 hidden lg:block">
+                  <PasswordStrengthPanel password={form.password} />
+                </div>
+              )}
+            </div>
             <p className="text-xs text-gray-500 mt-1">
-              Must be 8+ characters with uppercase & number
+              <span
+                className="underline decoration-dotted cursor-help"
+                title={PASSWORD_EXAMPLE}
+              >
+                {PASSWORD_HINT}
+              </span>
             </p>
           </div>
 

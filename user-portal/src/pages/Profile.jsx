@@ -22,6 +22,12 @@ import {
 } from "react-icons/ri";
 import { getMyStats, updateProfile, changePassword } from "../api";
 
+const PASSWORD_HINT =
+  "At least 8 characters with 1 uppercase, 1 lowercase, and 1 special character.";
+const PASSWORD_EXAMPLE = "Example: Campus@2026";
+const isStrongPassword = (pwd) =>
+  /^(?=.*[A-Z])(?=.*[a-z])(?=.*[^A-Za-z0-9]).{8,}$/.test(pwd || "");
+
 const Profile = () => {
   const navigate = useNavigate();
   const { user, logout, updateUser } = useAuth();
@@ -182,8 +188,8 @@ const Profile = () => {
         error("New passwords do not match");
         return;
       }
-      if (passwords.new.length < 6) {
-        error("Password must be at least 6 characters");
+      if (!isStrongPassword(passwords.new)) {
+        error(PASSWORD_HINT);
         return;
       }
 
@@ -566,8 +572,15 @@ const Profile = () => {
                             setPasswords({ ...passwords, new: e.target.value })
                           }
                           className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500"
-                          placeholder="Min 6 characters"
+                          placeholder={PASSWORD_EXAMPLE}
+                          title={PASSWORD_EXAMPLE}
                         />
+                        <p
+                          className="mt-1 text-[11px] text-gray-500 dark:text-gray-400 underline decoration-dotted cursor-help"
+                          title={PASSWORD_EXAMPLE}
+                        >
+                          {PASSWORD_HINT}
+                        </p>
                       </div>
                       <div>
                         <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">

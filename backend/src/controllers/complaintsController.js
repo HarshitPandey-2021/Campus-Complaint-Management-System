@@ -167,10 +167,20 @@ async function getComplaintById(req, res) {
       return res.status(403).json({ message: "Access denied" });
     }
 
+    let effectiveComplaint = complaint;
+    if (req.user.role === "admin" && !complaint.readByAdmin) {
+      const now = new Date();
+      await Complaints.updateOne(
+        { _id: toObjectId(ObjectId, id) },
+        { $set: { readByAdmin: true, readAt: now } },
+      );
+      effectiveComplaint = { ...complaint, readByAdmin: true, readAt: now };
+    }
+
     const transformed = {
-      ...complaint,
-      title: complaint.title || complaint.subject,
-      createdAt: complaint.createdAt || complaint.submittedAt,
+      ...effectiveComplaint,
+      title: effectiveComplaint.title || effectiveComplaint.subject,
+      createdAt: effectiveComplaint.createdAt || effectiveComplaint.submittedAt,
     };
 
     res.json(transformed);
@@ -370,7 +380,9 @@ async function getAllComplaints(req, res) {
       createdAt: c.createdAt || c.submittedAt,
     }));
 
-    console.log(`? Returning ${transformed.length} complaints to admin`);
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`? Returning ${transformed.length} complaints to admin`);
+    }
     res.json(transformed);
   } catch (err) {
     console.error("Error fetching all complaints:", err);
@@ -659,11 +671,13 @@ async function getPublicStats(req, res) {
         ? Math.round((totalResolved / totalComplaints) * 100)
         : 95;
 
-    console.log("? Landing stats:", {
-      totalResolved,
-      avgResponseHours,
-      satisfactionRate,
-    });
+    if (process.env.NODE_ENV !== "production") {
+      console.log("? Landing stats:", {
+        totalResolved,
+        avgResponseHours,
+        satisfactionRate,
+      });
+    }
 
     res.status(200).json({
       totalResolved: totalResolved || 50,

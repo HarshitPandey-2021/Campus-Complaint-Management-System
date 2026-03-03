@@ -5,6 +5,8 @@ import {
   verifyPasswordResetOtpApi,
   resetPasswordApi,
 } from "../api.js";
+import { PASSWORD_EXAMPLE, PASSWORD_HINT, validatePassword } from "../utils/validators.js";
+import PasswordStrengthPanel from "../components/common/PasswordStrengthPanel.jsx";
 
 export default function ForgotPasswordPage() {
   const [step, setStep] = useState("identifier");
@@ -16,6 +18,7 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [showPwdPanel, setShowPwdPanel] = useState(false);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -85,6 +88,10 @@ export default function ForgotPasswordPage() {
     setMessage("");
     if (!newPassword) {
       setError("Please enter a new password.");
+      return;
+    }
+    if (!validatePassword(newPassword)) {
+      setError(PASSWORD_HINT);
       return;
     }
     setLoading(true);
@@ -207,14 +214,32 @@ export default function ForgotPasswordPage() {
               onSubmit={handleResetSubmit}
               className="space-y-4 text-gray-800"
             >
-              <input
-                type="password"
-                placeholder="Enter new password"
-                className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#c026d3] outline-none"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                disabled={loading}
-              />
+              <div className="relative">
+                <input
+                  type="password"
+                  placeholder={PASSWORD_EXAMPLE}
+                  className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#c026d3] outline-none"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  disabled={loading}
+                  onFocus={() => setShowPwdPanel(true)}
+                  onBlur={() => setShowPwdPanel(false)}
+                />
+
+                {showPwdPanel && (
+                  <div className="absolute top-0 left-full ml-4 hidden lg:block">
+                    <PasswordStrengthPanel password={newPassword} />
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                <span
+                  className="underline decoration-dotted cursor-help"
+                  title={PASSWORD_EXAMPLE}
+                >
+                  {PASSWORD_HINT}
+                </span>
+              </p>
               <button
                 type="submit"
                 disabled={loading}
