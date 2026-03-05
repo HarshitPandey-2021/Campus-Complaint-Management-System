@@ -16,6 +16,7 @@ import {
   RiCheckboxCircleLine,
   RiHistoryLine,
 } from "react-icons/ri";
+import PasswordInput from "../components/PasswordInput";
 import {
   getAdminToken,
   logoutAdmin,
@@ -295,12 +296,7 @@ const Profile = () => {
                     {profileData.userId}
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <RiCalendarLine className="h-4 w-4 text-gray-400" />
-                  <span className="text-gray-700 dark:text-gray-200">
-                    Joined: {formatDate(profileData.joinedDate)}
-                  </span>
-                </div>
+                {/* Joined/account created date intentionally hidden as per requirement */}
               </div>
 
               <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
@@ -462,8 +458,8 @@ const Profile = () => {
                     <label className="block text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-1">
                       Current Password
                     </label>
-                    <input
-                      type="password"
+                    <PasswordInput
+                      name="currentPassword"
                       value={passwords.current}
                       onChange={(e) =>
                         setPasswords((p) => ({
@@ -471,7 +467,8 @@ const Profile = () => {
                           current: e.target.value,
                         }))
                       }
-                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      inputClassName="px-3 py-2 text-sm focus:ring-indigo-500"
+                      autoComplete="current-password"
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -479,8 +476,8 @@ const Profile = () => {
                       <label className="block text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-1">
                         New Password
                       </label>
-                      <input
-                        type="password"
+                      <PasswordInput
+                        name="newPassword"
                         value={passwords.new}
                         onChange={(e) =>
                           setPasswords((p) => ({
@@ -488,8 +485,8 @@ const Profile = () => {
                             new: e.target.value,
                           }))
                         }
-                        className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        title={PASSWORD_EXAMPLE}
+                        inputClassName="px-3 py-2 text-sm focus:ring-indigo-500"
+                        autoComplete="new-password"
                       />
                       <p
                         className="mt-1 text-[11px] text-gray-500 dark:text-gray-400 underline decoration-dotted cursor-help"
@@ -502,8 +499,8 @@ const Profile = () => {
                       <label className="block text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-1">
                         Confirm New Password
                       </label>
-                      <input
-                        type="password"
+                      <PasswordInput
+                        name="confirmNewPassword"
                         value={passwords.confirm}
                         onChange={(e) =>
                           setPasswords((p) => ({
@@ -511,7 +508,8 @@ const Profile = () => {
                             confirm: e.target.value,
                           }))
                         }
-                        className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        inputClassName="px-3 py-2 text-sm focus:ring-indigo-500"
+                        autoComplete="new-password"
                       />
                     </div>
                   </div>

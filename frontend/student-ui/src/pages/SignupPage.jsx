@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { signupApi } from "../api.js";
 import { PASSWORD_EXAMPLE, PASSWORD_HINT, validatePassword } from "../utils/validators.js";
 import PasswordStrengthPanel from "../components/common/PasswordStrengthPanel.jsx";
+import PasswordInput from "../components/common/PasswordInput.jsx";
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -139,16 +140,15 @@ export default function SignupPage() {
               Password <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <input
+              <PasswordInput
                 name="password"
-                type="password"
                 placeholder={PASSWORD_EXAMPLE}
-                className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-[#c026d3] focus:border-transparent outline-none transition-all"
-                onChange={handleChange}
                 value={form.password}
+                onChange={handleChange}
                 required
                 onFocus={() => setShowPwdPanel(true)}
                 onBlur={() => setShowPwdPanel(false)}
+                inputClassName="focus:ring-[#c026d3]"
               />
 
               {showPwdPanel && (
@@ -171,14 +171,14 @@ export default function SignupPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Confirm Password <span className="text-red-500">*</span>
             </label>
-            <input
+            <PasswordInput
               name="confirmPassword"
-              type="password"
               placeholder="Re-enter your password"
-              className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-[#0ea5e9] focus:border-transparent outline-none transition-all"
-              onChange={handleChange}
               value={form.confirmPassword}
+              onChange={handleChange}
               required
+              inputClassName="focus:ring-[#0ea5e9]"
+              autoComplete="new-password"
             />
           </div>
 

@@ -20,6 +20,7 @@ import {
   RiPhoneLine,
   RiBookOpenLine,
 } from "react-icons/ri";
+import PasswordInput from "../components/common/PasswordInput";
 import { getMyStats, updateProfile, changePassword } from "../api";
 
 const PASSWORD_HINT =
@@ -500,19 +501,7 @@ const Profile = () => {
                   </div>
                 </div>
 
-                {/* Account Created */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                    <RiCalendarLine className="h-4 w-4 text-gray-400" />
-                    Account Created
-                  </label>
-                  <div className="px-4 py-3 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-xl border border-purple-200 dark:border-purple-800 text-sm">
-                    <span className="text-gray-600 dark:text-gray-400">Joined </span>
-                    <span className="font-semibold text-purple-700 dark:text-purple-300">
-                      {formatDate(profileData.joinedDate)}
-                    </span>
-                  </div>
-                </div>
+                {/* Account created date intentionally hidden as per requirement */}
               </div>
             </div>
 
@@ -551,29 +540,30 @@ const Profile = () => {
                         <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
                           Current Password
                         </label>
-                        <input
-                          type="password"
+                        <PasswordInput
+                          name="currentPassword"
                           value={passwords.current}
                           onChange={(e) =>
                             setPasswords({ ...passwords, current: e.target.value })
                           }
-                          className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500"
                           placeholder="••••••••"
+                          inputClassName="px-3 py-2.5 text-sm focus:ring-indigo-500"
+                          autoComplete="current-password"
                         />
                       </div>
                       <div>
                         <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
                           New Password
                         </label>
-                        <input
-                          type="password"
+                        <PasswordInput
+                          name="newPassword"
                           value={passwords.new}
                           onChange={(e) =>
                             setPasswords({ ...passwords, new: e.target.value })
                           }
-                          className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500"
                           placeholder={PASSWORD_EXAMPLE}
-                          title={PASSWORD_EXAMPLE}
+                          inputClassName="px-3 py-2.5 text-sm focus:ring-indigo-500"
+                          autoComplete="new-password"
                         />
                         <p
                           className="mt-1 text-[11px] text-gray-500 dark:text-gray-400 underline decoration-dotted cursor-help"
@@ -586,14 +576,15 @@ const Profile = () => {
                         <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
                           Confirm New Password
                         </label>
-                        <input
-                          type="password"
+                        <PasswordInput
+                          name="confirmNewPassword"
                           value={passwords.confirm}
                           onChange={(e) =>
                             setPasswords({ ...passwords, confirm: e.target.value })
                           }
-                          className="w-full px-3 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500"
                           placeholder="••••••••"
+                          inputClassName="px-3 py-2.5 text-sm focus:ring-indigo-500"
+                          autoComplete="new-password"
                         />
                       </div>
                     </div>

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { loginApi } from "../api.js";
+import PasswordInput from "../components/common/PasswordInput.jsx";
 
 const ADMIN_APP_URL =
   import.meta.env.VITE_ADMIN_APP_URL || "http://localhost:5173";
@@ -150,15 +151,14 @@ export default function LoginPage() {
             disabled={loading}
           />
 
-          <input
+          <PasswordInput
             name="password"
-            type="password"
             placeholder="Password"
-            className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#0ea5e9] outline-none"
-            onChange={handleChange}
             value={form.password}
-            required
+            onChange={handleChange}
             disabled={loading}
+            required
+            className="mt-1"
           />
 
           <button

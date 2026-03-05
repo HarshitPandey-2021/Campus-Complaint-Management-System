@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import PasswordInput from "../components/common/PasswordInput.jsx";
 import {
   requestPasswordResetApi,
   verifyPasswordResetOtpApi,
@@ -9,6 +10,7 @@ import { PASSWORD_EXAMPLE, PASSWORD_HINT, validatePassword } from "../utils/vali
 import PasswordStrengthPanel from "../components/common/PasswordStrengthPanel.jsx";
 
 export default function ForgotPasswordPage() {
+  const navigate = useNavigate();
   const [step, setStep] = useState("identifier");
   const [identifier, setIdentifier] = useState("");
   const [otp, setOtp] = useState("");
@@ -19,6 +21,7 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [showPwdPanel, setShowPwdPanel] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -100,6 +103,7 @@ export default function ForgotPasswordPage() {
       setMessage(
         res.message || "Password reset successfully. You can login now."
       );
+      setShowSuccessModal(true);
     } catch (err) {
       setError(err.message || "Failed to reset password.");
     } finally {
@@ -215,15 +219,17 @@ export default function ForgotPasswordPage() {
               className="space-y-4 text-gray-800"
             >
               <div className="relative">
-                <input
-                  type="password"
+                <PasswordInput
+                  name="newPassword"
                   placeholder={PASSWORD_EXAMPLE}
-                  className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#c026d3] outline-none"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   disabled={loading}
+                  required
                   onFocus={() => setShowPwdPanel(true)}
                   onBlur={() => setShowPwdPanel(false)}
+                  inputClassName="focus:ring-[#c026d3]"
+                  autoComplete="new-password"
                 />
 
                 {showPwdPanel && (
@@ -252,7 +258,7 @@ export default function ForgotPasswordPage() {
               </button>
             </form>
 
-            {message && message.toLowerCase().includes("success") && (
+            {message && message.toLowerCase().includes("success") && !showSuccessModal && (
               <p className="text-center text-gray-700 mt-4">
                 <Link
                   to="/login"
@@ -266,6 +272,31 @@ export default function ForgotPasswordPage() {
           </>
         )}
       </div>
+      {showSuccessModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full mx-4 p-6 text-center">
+            <h3 className="text-xl font-semibold mb-3 text-gray-900">
+              Password Reset Successful
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Your password has been updated. Please login again with your new credentials.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setShowSuccessModal(false);
+                navigate("/login");
+              }}
+              className="w-full text-white py-2 rounded-lg font-semibold shadow-lg transition transform hover:scale-[1.02]"
+              style={{
+                background: "linear-gradient(90deg,#c026d3,#0ea5e9,#008080)",
+              }}
+            >
+              Go to Login
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
