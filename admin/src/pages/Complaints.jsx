@@ -19,6 +19,7 @@ import {
   RiPrinterLine,
   RiCloseLine,
   RiFileList3Line,
+  RiRefreshLine,
 } from "react-icons/ri";
 import { exportToExcel, exportToPrint } from "../utils/exportUtils";
 import { logActivity, ACTIVITY_TYPES } from "../services/activityLogger";
@@ -51,6 +52,8 @@ const Complaints = () => {
   const [filterHighlight, setFilterHighlight] = useState(
     !!location.state?.filterStatus
   );
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const token = getAdminToken() || localStorage.getItem("token");
 
@@ -147,6 +150,7 @@ const Complaints = () => {
 
         setComplaints(response);
         applyFilters(response, initialFilters);
+        setLastUpdated(new Date());
       } catch (err) {
         console.error("Error fetching complaints:", err);
         error("❌ Failed to fetch complaints from the server.");
@@ -161,6 +165,45 @@ const Complaints = () => {
       fetchComplaints();
     }
   }, [token, applyFilters, initialFilters, error]);
+
+  const refreshComplaints = useCallback(
+    async (showSpinner = false) => {
+      try {
+        if (showSpinner) {
+          setIsRefreshing(true);
+        }
+
+        if (!token) {
+          return;
+        }
+
+        const refreshed = await getAllComplaints();
+
+        if (Array.isArray(refreshed)) {
+          setComplaints(refreshed);
+          applyFilters(refreshed, filters);
+          setLastUpdated(new Date());
+        }
+      } catch (err) {
+        console.error("Error refreshing complaints:", err);
+        error("⚠️ Failed to refresh complaints list.");
+      } finally {
+        setIsRefreshing(false);
+      }
+    },
+    [token, applyFilters, filters, error]
+  );
+
+  useEffect(() => {
+    if (!token) return;
+
+    const interval = setInterval(() => {
+      // Background auto-refresh without blocking UI
+      refreshComplaints(false);
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [token, refreshComplaints]);
 
   useEffect(() => {
     applyFilters(complaints, filters);
@@ -376,6 +419,19 @@ const Complaints = () => {
     return "complaints";
   };
 
+  const formatLastUpdated = () => {
+    if (!lastUpdated) return "Just now";
+    const diffMs = Date.now() - lastUpdated.getTime();
+    const diffSecs = Math.floor(diffMs / 1000);
+    if (diffSecs < 60) return `${diffSecs}s ago`;
+    const diffMins = Math.floor(diffSecs / 60);
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  };
+
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-950 p-4">
@@ -391,17 +447,40 @@ const Complaints = () => {
         <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
           {/* Page Header */}
           <div className="mb-4 sm:mb-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
-                <RiFileList3Line className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">
+                  <RiFileList3Line className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div>
+                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
+                    Manage Complaints
+                  </h1>
+                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    {complaints.length} total complaints in the system
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
-                  Manage Complaints
-                </h1>
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                  {complaints.length} total complaints in the system
-                </p>
+              <div className="flex items-center justify-between gap-2 text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
+                <span>
+                  Last updated:{" "}
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {formatLastUpdated()}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => refreshComplaints(true)}
+                  disabled={isRefreshing}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-[11px] sm:text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <RiRefreshLine
+                    className={`h-3.5 w-3.5 ${
+                      isRefreshing ? "animate-spin" : ""
+                    }`}
+                  />
+                  <span>{isRefreshing ? "Refreshing..." : "Refresh now"}</span>
+                </button>
               </div>
             </div>
           </div>

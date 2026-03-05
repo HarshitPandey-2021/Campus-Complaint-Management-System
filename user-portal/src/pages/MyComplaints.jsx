@@ -1,5 +1,5 @@
 // src/pages/MyComplaints.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   RiSearchLine,
@@ -12,6 +12,7 @@ import {
   RiCloseCircleLine,
   RiLoader4Line,
   RiDownloadLine,
+  RiRefreshLine,
 } from "react-icons/ri";
 import Sidebar from "../components/layout/Sidebar";
 import api from "../api";
@@ -30,6 +31,8 @@ const MyComplaints = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchComplaints();
@@ -42,7 +45,7 @@ const MyComplaints = () => {
     }
   }, [location.state, location.pathname, navigate]);
 
-  const fetchComplaints = async () => {
+  const fetchComplaints = useCallback(async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
@@ -51,12 +54,56 @@ const MyComplaints = () => {
       if (data && data.length) {
         console.log("Sample Complaint:", data[0]);
       }
+      setLastUpdated(new Date());
     } catch (error) {
       console.error("Failed to fetch complaints:", error);
       setComplaints([]);
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  const refreshComplaints = useCallback(
+    async (withSpinner = false) => {
+      try {
+        if (withSpinner) {
+          setRefreshing(true);
+        }
+        const token = localStorage.getItem("token");
+        const data = await api.getMyComplaints(token);
+        setComplaints(Array.isArray(data) ? data : []);
+        if (data && data.length) {
+          console.log("Sample Complaint:", data[0]);
+        }
+        setLastUpdated(new Date());
+      } catch (error) {
+        console.error("Failed to refresh complaints:", error);
+      } finally {
+        setRefreshing(false);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshComplaints(false);
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [refreshComplaints]);
+
+  const formatLastUpdated = () => {
+    if (!lastUpdated) return "Just now";
+    const diffMs = Date.now() - lastUpdated.getTime();
+    const diffSecs = Math.floor(diffMs / 1000);
+    if (diffSecs < 60) return `${diffSecs}s ago`;
+    const diffMins = Math.floor(diffSecs / 60);
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
   };
 
   const getStatusIcon = (status) => {
@@ -250,12 +297,37 @@ const MyComplaints = () => {
       <Sidebar />
       <div className="flex-1 p-4 sm:p-6 lg:p-8">
         <div className="mb-8 animate-fadeIn">
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-800 dark:text-gray-200 mb-2">
-            My Complaints
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            View and manage all your submitted complaints
-          </p>
+          <div className="flex flex-col gap-2">
+            <div>
+              <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-800 dark:text-gray-200 mb-1">
+                My Complaints
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                View and manage all your submitted complaints
+              </p>
+            </div>
+            <div className="flex items-center justify-between gap-2 text-xs text-gray-500 dark:text-gray-400">
+              <span>
+                Last updated:{" "}
+                <span className="font-medium text-gray-700 dark:text-gray-300">
+                  {formatLastUpdated()}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => refreshComplaints(true)}
+                disabled={refreshing}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <RiRefreshLine
+                  className={`h-3.5 w-3.5 ${
+                    refreshing ? "animate-spin" : ""
+                  }`}
+                />
+                <span>{refreshing ? "Refreshing..." : "Refresh now"}</span>
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Filters */}
