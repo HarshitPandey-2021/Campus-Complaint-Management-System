@@ -64,6 +64,10 @@ async function sendOtpEmail(to, otp) {
     host: SMTP_HOST,
     port: Number(SMTP_PORT || 587),
     secure: Number(SMTP_PORT) === 465,
+    // Many platforms (including some Render regions) have limited IPv6
+    // connectivity to external SMTP servers like Gmail. Force IPv4 so
+    // we don't get ENETUNREACH on IPv6-only routes.
+    family: 4,
     auth: {
       user: SMTP_USER,
       pass: SMTP_PASS,
@@ -373,7 +377,13 @@ async function requestPasswordReset(req, res) {
     });
   } catch (e) {
     console.error("requestPasswordReset error:", e);
-    if (e.message && e.message.includes("SMTP")) {
+    // Treat any SMTP / network connection failures as "service unavailable"
+    // instead of exposing raw errors to the client.
+    if (
+      (e.message && e.message.includes("SMTP")) ||
+      e.code === "ESOCKET" ||
+      e.code === "ECONNECTION"
+    ) {
       return res.status(503).json({
         message: "Password reset is temporarily unavailable. Please try again later.",
       });
