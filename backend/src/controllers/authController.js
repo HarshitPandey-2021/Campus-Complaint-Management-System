@@ -46,16 +46,53 @@ function generateOtp() {
 }
 
 async function sendOtpEmail(to, otp) {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM, NODE_ENV } =
-    process.env;
+  const {
+    SMTP_HOST,
+    SMTP_PORT,
+    SMTP_USER,
+    SMTP_PASS,
+    MAIL_FROM,
+    NODE_ENV,
+    BREVO_API_KEY,
+  } = process.env;
 
+  const fromEmail = MAIL_FROM || "no-reply@ccms.com";
+
+  // Prefer Brevo HTTP API in production (more reliable on Render than raw SMTP).
+  if (BREVO_API_KEY) {
+    const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": BREVO_API_KEY,
+      },
+      body: JSON.stringify({
+        sender: { email: fromEmail, name: "CCMS" },
+        to: [{ email: to }],
+        subject: "CCMS Password Reset OTP",
+        textContent: `Your CCMS password reset OTP is: ${otp}. This code is valid for 10 minutes.`,
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      const err = new Error(
+        `Brevo email send failed with status ${res.status}`,
+      );
+      err.details = text;
+      throw err;
+    }
+
+    return;
+  }
+
+  // Fallback to direct SMTP via Nodemailer (e.g. for local dev).
   const smtpConfigured = SMTP_HOST && SMTP_USER && SMTP_PASS;
 
   if (!smtpConfigured) {
     if (NODE_ENV === "production") {
       throw new Error("SMTP not configured; cannot send OTP email");
     }
-    // Dev only: log without exposing OTP in shared logs; skip send
     console.warn("[PasswordReset] SMTP not configured. Skipping email (dev only).");
     return;
   }
@@ -64,9 +101,6 @@ async function sendOtpEmail(to, otp) {
     host: SMTP_HOST,
     port: Number(SMTP_PORT || 587),
     secure: Number(SMTP_PORT) === 465,
-    // Many platforms (including some Render regions) have limited IPv6
-    // connectivity to external SMTP servers like Gmail. Force IPv4 so
-    // we don't get ENETUNREACH on IPv6-only routes.
     family: 4,
     auth: {
       user: SMTP_USER,
@@ -75,7 +109,7 @@ async function sendOtpEmail(to, otp) {
   });
 
   await transporter.sendMail({
-    from: MAIL_FROM || "no-reply@ccms.com",
+    from: fromEmail,
     to,
     subject: "CCMS Password Reset OTP",
     text: `Your CCMS password reset OTP is: ${otp}. This code is valid for 10 minutes.`,
@@ -342,13 +376,14 @@ async function requestPasswordReset(req, res) {
       });
     }
 
-    // Production: require SMTP so we never "succeed" without sending email
+    // Production: require a real email provider so we never "succeed" without sending email
     if (process.env.NODE_ENV === "production") {
+      const hasBrevo = !!process.env.BREVO_API_KEY;
       const hasSmtp =
         process.env.SMTP_HOST &&
         process.env.SMTP_USER &&
         process.env.SMTP_PASS;
-      if (!hasSmtp) {
+      if (!hasBrevo && !hasSmtp) {
         return res.status(503).json({
           message: "Password reset is temporarily unavailable. Please try again later.",
         });
