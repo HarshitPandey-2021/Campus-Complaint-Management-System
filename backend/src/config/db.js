@@ -1,12 +1,36 @@
 const { MongoClient } = require("mongodb");
 
+function normalizeMongoUri(raw) {
+  let uri = String(raw || "").trim();
+  if (!uri) return uri;
+
+  // Render mistake: pasting "MONGODB_URI=mongodb+srv://..." as the value
+  if (/^MONGODB_URI\s*=/i.test(uri)) {
+    uri = uri.replace(/^MONGODB_URI\s*=\s*/i, "").trim();
+  }
+  uri = uri.replace(/^["']|["']$/g, "").trim();
+
+  // mongodb+srv must not include :27017 (or any port) on the host
+  if (uri.startsWith("mongodb+srv://")) {
+    uri = uri.replace(/(@[^/?#]+):\d+(?=\/|$|\?|#)/, "$1");
+  }
+
+  return uri;
+}
+
 // DB connection
 async function initializeDb() {
-  const uri = process.env.MONGODB_URI;
+  const uri = normalizeMongoUri(process.env.MONGODB_URI);
   const dbName = process.env.DB_NAME;
 
   if (!uri || !dbName) {
     throw new Error("MONGODB_URI or DB_NAME missing");
+  }
+
+  if (!/^mongodb(\+srv)?:\/\//i.test(uri)) {
+    throw new Error(
+      'MONGODB_URI must start with "mongodb://" or "mongodb+srv://"'
+    );
   }
 
   const client = new MongoClient(uri);

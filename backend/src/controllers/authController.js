@@ -188,6 +188,7 @@ async function register(req, res) {
         name,
         email,
         role: normalizedRole,
+        createdAt: now,
         ...(normalizedRole === "student" && { roll }),
       },
     });
@@ -207,6 +208,21 @@ async function login(req, res) {
   }
 
   try {
+    // Fail fast with actionable errors if deployment env isn't set.
+    const collections = req.app?.locals?.collections;
+    if (!collections?.Users) {
+      return res.status(503).json({
+        message:
+          "Database not initialized yet. Please wait a moment and try again.",
+      });
+    }
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({
+        message:
+          "Server misconfigured: JWT_SECRET is missing. Please set it in Render env vars.",
+      });
+    }
+
     const { Users } = getCollections(req);
     const user = await Users.findOne({ email });
 
@@ -264,7 +280,9 @@ async function login(req, res) {
     });
   } catch (e) {
     console.error("Login error:", e);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({
+      message: e?.message || "Internal server error",
+    });
   }
 }
 
