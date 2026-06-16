@@ -49,7 +49,32 @@ Controllers do the work: validation, database queries, response.
 
 - Set `NODE_ENV=production`.
 - Use strong, unique values for `JWT_SECRET` and `JWT_REFRESH_SECRET`.
-- For **forgot-password** to work in production, configure SMTP:
-  - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`
-  - Without these, `/auth/forgot-password/request` returns 503.
+## Production (Render)
+
+### Required environment variables
+
+| Variable | Example / notes |
+|----------|-----------------|
+| `BREVO_API_KEY` | `xkeysib-...` from Brevo → API keys |
+| `MAIL_FROM` | Verified sender in Brevo (Senders & IP) — **not** the SMTP login |
+| `MAIL_FROM_NAME` | `CCMS Team` |
+| `SMTP_USER` | Brevo SMTP login e.g. `a440c1001@smtp-brevo.com` |
+| `SMTP_PASS` | Brevo **SMTP key** (fallback if API IP blocked) |
+| `SMTP_HOST` | `smtp-relay.brevo.com` (default if omitted) |
+| `NODE_ENV` | `production` |
+
+### Brevo IP blocking (common Render issue)
+
+If **Security → Authorized IPs → block unauthorized IPs** is ON for API keys, Render will fail with 401/403.
+
+**Permanent fix:** disable IP restriction for API keys, **or** set `SMTP_USER` + `SMTP_PASS` so the backend auto-falls back to Brevo SMTP when the API is blocked.
+
+### Verify after deploy
+
+Open: `https://your-render-url.onrender.com/health/email`
+
+- `"ok": true` → email is configured
+- `"ok": false` → check `"issues"` array and fix Render env vars
+
+Without email config, `/auth/forgot-password/request` returns **503**.
 - Copy `.env.example` to `.env` and fill in all required variables.

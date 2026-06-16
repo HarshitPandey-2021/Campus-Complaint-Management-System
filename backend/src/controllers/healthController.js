@@ -1,6 +1,7 @@
 // Health check
 
 const { cloudinary } = require("../config/cloudinary");
+const { getEmailConfigStatus } = require("../utils/emailService");
 
 // Health info
 function health(req, res) {
@@ -29,5 +30,18 @@ async function testCloudinary(req, res) {
   }
 }
 
-module.exports = { health, testCloudinary };
+// Email config check (no secrets exposed)
+function emailHealth(req, res) {
+  const status = getEmailConfigStatus();
+  res.status(status.ready ? 200 : 503).json({
+    ok: status.ready,
+    providers: status.providers,
+    mailFrom: status.mailFrom,
+    hasBrevoApiKey: status.hasBrevoApiKey,
+    hasSmtp: status.hasSmtp,
+    issues: status.issues,
+  });
+}
+
+module.exports = { health, testCloudinary, emailHealth };
 

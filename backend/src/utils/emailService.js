@@ -1,8 +1,90 @@
 const nodemailer = require("nodemailer");
 
 const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
+const DEFAULT_BREVO_SMTP_HOST = "smtp-relay.brevo.com";
 
 const EMAIL_NOTIFY_STATUSES = ["In Progress", "Resolved", "Rejected"];
+
+function getFromEmail() {
+  return process.env.MAIL_FROM || "";
+}
+
+function getFromName() {
+  return process.env.MAIL_FROM_NAME || "CCMS";
+}
+
+function isSmtpConfigured() {
+  return !!(process.env.SMTP_USER && process.env.SMTP_PASS);
+}
+
+function isBrevoApiConfigured() {
+  return !!process.env.BREVO_API_KEY;
+}
+
+function getSmtpHost() {
+  return process.env.SMTP_HOST || DEFAULT_BREVO_SMTP_HOST;
+}
+
+function getEmailConfigStatus() {
+  const issues = [];
+  const providers = [];
+
+  if (!getFromEmail()) {
+    issues.push("MAIL_FROM is not set (must be a verified Brevo sender)");
+  }
+
+  if (isBrevoApiConfigured()) {
+    providers.push("brevo-api");
+  }
+
+  if (isSmtpConfigured()) {
+    providers.push("smtp");
+  }
+
+  if (providers.length === 0) {
+    issues.push(
+      "Set BREVO_API_KEY and/or SMTP_USER + SMTP_PASS on Render",
+    );
+  }
+
+  return {
+    ready: issues.length === 0 && providers.length > 0,
+    providers,
+    mailFrom: getFromEmail() || null,
+    hasBrevoApiKey: isBrevoApiConfigured(),
+    hasSmtp: isSmtpConfigured(),
+    smtpHost: isSmtpConfigured() ? getSmtpHost() : null,
+    issues,
+  };
+}
+
+function logEmailConfigOnStartup() {
+  const status = getEmailConfigStatus();
+
+  if (process.env.NODE_ENV !== "production") {
+    if (status.ready) {
+      console.log(
+        `[email] Configured (${status.providers.join(", ")}) from ${status.mailFrom}`,
+      );
+    } else {
+      console.warn("[email] Dev mode — email issues:", status.issues.join("; "));
+    }
+    return;
+  }
+
+  if (status.ready) {
+    console.log(
+      `[email] Production ready via ${status.providers.join(" + ")} | from: ${status.mailFrom}`,
+    );
+    return;
+  }
+
+  console.error("[email] PRODUCTION EMAIL NOT CONFIGURED — OTP and notifications will fail:");
+  status.issues.forEach((issue) => console.error(`  - ${issue}`));
+  console.error(
+    "  - In Brevo: disable API IP blocking (Security → Authorized IPs) for Render",
+  );
+}
 
 function formatDate(date) {
   if (!date) return "N/A";
@@ -17,7 +99,8 @@ function formatDate(date) {
 
 function buildStatusEmailContent(complaint, status) {
   const studentName = complaint.submittedBy || "Student";
-  const complaintRef = complaint.complaintId || complaint._id?.toString() || "N/A";
+  const complaintRef =
+    complaint.complaintId || (complaint._id ? String(complaint._id) : "N/A");
   const remarks = complaint.adminRemarks || "No remarks provided.";
 
   const statusConfig = {
@@ -97,63 +180,70 @@ function buildStatusEmailContent(complaint, status) {
   };
 }
 
-async function sendEmail({ to, toName, subject, textContent, htmlContent }) {
-  const {
-    BREVO_API_KEY,
-    SMTP_HOST,
-    SMTP_PORT,
-    SMTP_USER,
-    SMTP_PASS,
-    MAIL_FROM,
-    NODE_ENV,
-  } = process.env;
+function shouldFallbackToSmtp(error) {
+  const msg = (error && error.message ? error.message : "").toLowerCase();
+  return (
+    msg.includes("(401)") ||
+    msg.includes("(403)") ||
+    msg.includes("unauthorized") ||
+    msg.includes("not authorized") ||
+    msg.includes("ip address") ||
+    msg.includes("forbidden")
+  );
+}
 
-  const fromEmail = MAIL_FROM || "no-reply@ccms.com";
-  const fromName = process.env.MAIL_FROM_NAME || "CCMS";
-
-  if (BREVO_API_KEY) {
-    const res = await fetch(BREVO_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "api-key": BREVO_API_KEY,
-      },
-      body: JSON.stringify({
-        sender: { email: fromEmail, name: fromName },
-        to: [{ email: to, name: toName || to }],
-        subject,
-        textContent,
-        htmlContent: htmlContent || undefined,
-      }),
-    });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`Brevo email send failed (${res.status}): ${text}`);
-    }
-
-    return { success: true, provider: "brevo" };
+async function sendViaBrevoApi({ to, toName, subject, textContent, htmlContent }) {
+  const fromEmail = getFromEmail();
+  if (!fromEmail) {
+    throw new Error("MAIL_FROM is not set");
   }
 
-  const smtpConfigured = SMTP_HOST && SMTP_USER && SMTP_PASS;
-  if (!smtpConfigured) {
-    if (NODE_ENV === "production") {
-      throw new Error("No email provider configured (BREVO_API_KEY or SMTP)");
-    }
-    console.warn("[email] No provider configured — skipping send (dev only)");
-    return { skipped: true, reason: "no_provider" };
+  const res = await fetch(BREVO_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "api-key": process.env.BREVO_API_KEY,
+    },
+    body: JSON.stringify({
+      sender: { email: fromEmail, name: getFromName() },
+      to: [{ email: to, name: toName || to }],
+      subject,
+      textContent,
+      htmlContent: htmlContent || undefined,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Brevo API failed (${res.status}): ${text}`);
+  }
+
+  return { success: true, provider: "brevo-api" };
+}
+
+async function sendViaSmtp({ to, subject, textContent, htmlContent }) {
+  if (!isSmtpConfigured()) {
+    throw new Error("SMTP not configured");
+  }
+
+  const fromEmail = getFromEmail();
+  if (!fromEmail) {
+    throw new Error("MAIL_FROM is not set");
   }
 
   const transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: Number(SMTP_PORT || 587),
-    secure: Number(SMTP_PORT) === 465,
+    host: getSmtpHost(),
+    port: Number(process.env.SMTP_PORT || 587),
+    secure: Number(process.env.SMTP_PORT) === 465,
     family: 4,
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
   });
 
   await transporter.sendMail({
-    from: fromEmail,
+    from: `"${getFromName()}" <${fromEmail}>`,
     to,
     subject,
     text: textContent,
@@ -163,8 +253,48 @@ async function sendEmail({ to, toName, subject, textContent, htmlContent }) {
   return { success: true, provider: "smtp" };
 }
 
+async function sendEmail({ to, toName, subject, textContent, htmlContent }) {
+  const status = getEmailConfigStatus();
+  const isProd = process.env.NODE_ENV === "production";
+
+  if (!status.ready) {
+    if (isProd) {
+      throw new Error(
+        `Email not configured: ${status.issues.join("; ")}`,
+      );
+    }
+    console.warn("[email] Skipping send in dev — not configured");
+    return { skipped: true, reason: "not_configured" };
+  }
+
+  if (isBrevoApiConfigured()) {
+    try {
+      return await sendViaBrevoApi({
+        to,
+        toName,
+        subject,
+        textContent,
+        htmlContent,
+      });
+    } catch (apiError) {
+      console.error("[email] Brevo API error:", apiError.message);
+
+      if (isSmtpConfigured() && shouldFallbackToSmtp(apiError)) {
+        console.warn(
+          "[email] Brevo API blocked (likely IP restriction) — retrying via SMTP",
+        );
+        return sendViaSmtp({ to, subject, textContent, htmlContent });
+      }
+
+      throw apiError;
+    }
+  }
+
+  return sendViaSmtp({ to, subject, textContent, htmlContent });
+}
+
 async function sendComplaintStatusEmail(complaint, status) {
-  if (!complaint?.email) {
+  if (!complaint || !complaint.email) {
     console.warn("[email] Complaint has no recipient email — skipping");
     return { skipped: true, reason: "missing_recipient" };
   }
@@ -211,6 +341,9 @@ function notifyComplaintStatusChange(complaint, status) {
 
 module.exports = {
   EMAIL_NOTIFY_STATUSES,
+  getEmailConfigStatus,
+  logEmailConfigOnStartup,
+  isEmailReady: () => getEmailConfigStatus().ready,
   sendEmail,
   sendComplaintStatusEmail,
   notifyComplaintStatusChange,
