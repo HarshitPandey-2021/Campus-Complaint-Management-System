@@ -42,3 +42,4 @@ Controllers do the work: validation, database queries, response.
 - `src/utils/toObjectId.js` convert string to Mongo ObjectId
 - `src/utils/normalizeRole.js` normalize role text
 - `src/utils/cloudinaryUpload.js` upload file buffer to Cloudinary
+- `src/utils/emailService.js` send emails via Brevo (or SMTP fallback) for complaint status updates
