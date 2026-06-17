@@ -44,8 +44,8 @@ const Toast = ({ message, type = 'success', onClose, duration = 3000 }) => {
   const styles = getToastStyles();
 
   return (
-    <div className="fixed top-20 right-4 z-[70] animate-slideInRight">
-      <div className={`${styles.bg} text-white rounded-lg shadow-2xl overflow-hidden max-w-md`}>
+    <div className="w-full max-w-md animate-slideInRight">
+      <div className={`${styles.bg} text-white rounded-lg shadow-2xl overflow-hidden`}>
         <div className="flex items-center gap-3 p-4">
           <div className="flex-shrink-0">
             {styles.icon}
@@ -74,7 +74,7 @@ const Toast = ({ message, type = 'success', onClose, duration = 3000 }) => {
 // Toast Container to manage multiple toasts
 export const ToastContainer = ({ toasts, removeToast }) => {
   return (
-    <div className="fixed top-20 right-4 z-[70] space-y-3">
+    <div className="fixed inset-x-0 top-4 z-[70] flex flex-col items-center space-y-3 px-4 sm:px-0 pointer-events-none">
       {toasts.map((toast) => (
         <Toast
           key={toast.id}
@@ -82,6 +82,7 @@ export const ToastContainer = ({ toasts, removeToast }) => {
           type={toast.type}
           onClose={() => removeToast(toast.id)}
           duration={toast.duration}
+          // Allow clicks inside toast but keep container non-blocking
         />
       ))}
     </div>

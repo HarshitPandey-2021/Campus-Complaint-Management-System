@@ -4,6 +4,7 @@ require("dotenv").config();
 const app = require("./src/app");
 const { initializeDb } = require("./src/config/db");
 const { cloudinary } = require("./src/config/cloudinary");
+const { logEmailConfigOnStartup } = require("./src/utils/emailService");
 
 const PORT = process.env.PORT || 4000;
 
@@ -30,6 +31,8 @@ async function start() {
       "? Cloudinary disabled: missing CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET"
     );
   }
+
+  logEmailConfigOnStartup();
 
   // Start HTTP server
   app.listen(PORT, () => {

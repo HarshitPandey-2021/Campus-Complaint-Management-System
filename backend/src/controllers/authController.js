@@ -2,8 +2,8 @@
 
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const nodemailer = require("nodemailer");
 const { normalizeRole } = require("../utils/normalizeRole");
+const { sendEmail, isEmailReady } = require("../utils/emailService");
 const { ObjectId } = require("mongodb");
 const { toObjectId } = require("../utils/toObjectId");
 
@@ -46,36 +46,27 @@ function generateOtp() {
 }
 
 async function sendOtpEmail(to, otp) {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM, NODE_ENV } =
-    process.env;
-
-  const smtpConfigured = SMTP_HOST && SMTP_USER && SMTP_PASS;
-
-  if (!smtpConfigured) {
-    if (NODE_ENV === "production") {
-      throw new Error("SMTP not configured; cannot send OTP email");
-    }
-    // Dev only: log without exposing OTP in shared logs; skip send
-    console.warn("[PasswordReset] SMTP not configured. Skipping email (dev only).");
-    return;
-  }
-
-  const transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: Number(SMTP_PORT || 587),
-    secure: Number(SMTP_PORT) === 465,
-    auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASS,
-    },
-  });
-
-  await transporter.sendMail({
-    from: MAIL_FROM || "no-reply@ccms.com",
+  const result = await sendEmail({
     to,
     subject: "CCMS Password Reset OTP",
-    text: `Your CCMS password reset OTP is: ${otp}. This code is valid for 10 minutes.`,
+    textContent: `Your CCMS password reset OTP is: ${otp}. This code is valid for 10 minutes.`,
   });
+
+  if (result?.skipped && process.env.NODE_ENV === "production") {
+    throw new Error("No email provider configured (BREVO_API_KEY or SMTP)");
+  }
+}
+
+function isEmailDeliveryError(error) {
+  if (!error) return false;
+  const msg = error.message || "";
+  return (
+    msg.includes("Brevo") ||
+    msg.includes("SMTP") ||
+    msg.includes("email provider") ||
+    error.code === "ESOCKET" ||
+    error.code === "ECONNECTION"
+  );
 }
 
 async function findUserByIdentifier(Users, identifier) {
@@ -150,6 +141,7 @@ async function register(req, res) {
         name,
         email,
         role: normalizedRole,
+        createdAt: now,
         ...(normalizedRole === "student" && { roll }),
       },
     });
@@ -169,6 +161,21 @@ async function login(req, res) {
   }
 
   try {
+    // Fail fast with actionable errors if deployment env isn't set.
+    const collections = req.app?.locals?.collections;
+    if (!collections?.Users) {
+      return res.status(503).json({
+        message:
+          "Database not initialized yet. Please wait a moment and try again.",
+      });
+    }
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({
+        message:
+          "Server misconfigured: JWT_SECRET is missing. Please set it in Render env vars.",
+      });
+    }
+
     const { Users } = getCollections(req);
     const user = await Users.findOne({ email });
 
@@ -226,7 +233,9 @@ async function login(req, res) {
     });
   } catch (e) {
     console.error("Login error:", e);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({
+      message: e?.message || "Internal server error",
+    });
   }
 }
 
@@ -338,17 +347,10 @@ async function requestPasswordReset(req, res) {
       });
     }
 
-    // Production: require SMTP so we never "succeed" without sending email
-    if (process.env.NODE_ENV === "production") {
-      const hasSmtp =
-        process.env.SMTP_HOST &&
-        process.env.SMTP_USER &&
-        process.env.SMTP_PASS;
-      if (!hasSmtp) {
-        return res.status(503).json({
-          message: "Password reset is temporarily unavailable. Please try again later.",
-        });
-      }
+    if (process.env.NODE_ENV === "production" && !isEmailReady()) {
+      return res.status(503).json({
+        message: "Password reset is temporarily unavailable. Please try again later.",
+      });
     }
 
     const otp = generateOtp();
@@ -372,8 +374,8 @@ async function requestPasswordReset(req, res) {
       message: "OTP has been sent to your registered email address.",
     });
   } catch (e) {
-    console.error("requestPasswordReset error:", e);
-    if (e.message && e.message.includes("SMTP")) {
+    console.error("requestPasswordReset error:", e.message, e.details || "");
+    if (isEmailDeliveryError(e)) {
       return res.status(503).json({
         message: "Password reset is temporarily unavailable. Please try again later.",
       });

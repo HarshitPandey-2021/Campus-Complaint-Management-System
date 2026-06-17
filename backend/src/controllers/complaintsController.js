@@ -3,6 +3,10 @@
 const { ObjectId } = require("mongodb");
 const { uploadToCloudinary } = require("../utils/cloudinaryUpload");
 const { toObjectId } = require("../utils/toObjectId");
+const {
+  EMAIL_NOTIFY_STATUSES,
+  notifyComplaintStatusChange,
+} = require("../utils/emailService");
 
 function getCollections(req) {
   return req.app.locals.collections;
@@ -470,6 +474,14 @@ async function updateComplaintStatus(req, res) {
       return res.status(400).json({ message: "Invalid ID" });
     }
 
+    const existingComplaint = await Complaints.findOne({
+      _id: toObjectId(ObjectId, id),
+    });
+
+    if (!existingComplaint) {
+      return res.status(404).json({ message: "Complaint not found" });
+    }
+
     const updateFields = { updatedAt: new Date() };
 
     if (status) {
@@ -507,6 +519,16 @@ async function updateComplaintStatus(req, res) {
       timestamp: new Date(),
     });
 
+    const nextStatus = status || existingComplaint.status;
+    const statusChanged = status && status !== existingComplaint.status;
+
+    if (statusChanged && EMAIL_NOTIFY_STATUSES.includes(nextStatus)) {
+      notifyComplaintStatusChange(
+        { ...existingComplaint, ...updateFields, status: nextStatus },
+        nextStatus,
+      );
+    }
+
     res.json({ message: "Complaint status updated" });
   } catch (e) {
     res.status(500).json({ message: "Internal server error" });
@@ -524,23 +546,47 @@ async function assignComplaint(req, res) {
       return res.status(400).json({ message: "Invalid ID" });
     }
 
+    const existingComplaint = await Complaints.findOne({
+      _id: toObjectId(ObjectId, id),
+    });
+
+    if (!existingComplaint) {
+      return res.status(404).json({ message: "Complaint not found" });
+    }
+
+    const now = new Date();
+    const nextStatus = "In Progress";
+
     await Complaints.updateOne(
       { _id: toObjectId(ObjectId, id) },
       {
         $set: {
           assignedTo,
-          status: "In Progress",
-          updatedAt: new Date(),
+          status: nextStatus,
+          updatedAt: now,
         },
         $push: {
           timeline: {
-            status: "In Progress",
-            timestamp: new Date(),
+            status: nextStatus,
+            timestamp: now,
             message: `Assigned to ${assignedTo}`,
           },
         },
       },
     );
+
+    if (existingComplaint.status !== nextStatus) {
+      notifyComplaintStatusChange(
+        {
+          ...existingComplaint,
+          assignedTo,
+          status: nextStatus,
+          updatedAt: now,
+          adminRemarks: existingComplaint.adminRemarks || `Assigned to ${assignedTo}`,
+        },
+        nextStatus,
+      );
+    }
 
     res.json({ message: "Complaint assigned successfully" });
   } catch {

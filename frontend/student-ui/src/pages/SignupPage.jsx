@@ -13,7 +13,7 @@ export default function SignupPage() {
     email: "",
     password: "",
     confirmPassword: "",
-    // ✅ REMOVED: role field - users can only sign up as students
+    role: "student",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,13 +41,13 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
-      // ✅ FIXED: Always register as "student" - no choice given
+      const isStudent = form.role === "student";
       await signupApi(
         form.name.trim(),
-        form.roll.trim(),
+        isStudent ? form.roll.trim() : "",
         form.email.trim(),
         form.password,
-        "student" // ✅ Hardcoded - users can ONLY sign up as students
+        form.role
       );
       alert("Signup successful! Redirecting to login...");
       navigate("/login");
@@ -82,7 +82,7 @@ export default function SignupPage() {
             color: "transparent",
           }}
         >
-          Student Sign Up
+          {form.role === "student" ? "Student Sign Up" : "Admin Sign Up"}
         </h2>
 
         {error && (
@@ -92,6 +92,43 @@ export default function SignupPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4 text-gray-800">
+          {/* Role Selection Segmented Control */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Sign Up As
+            </label>
+            <div className="grid grid-cols-2 gap-2 p-1 rounded-xl border border-gray-200" style={{ backgroundColor: "#f3f4f6" }}>
+              <button
+                type="button"
+                className={`py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${
+                  form.role === "student"
+                    ? "bg-white text-gray-900 shadow-sm border border-gray-150"
+                    : "text-gray-500 hover:text-gray-800"
+                }`}
+                onClick={() => {
+                  setForm((prev) => ({ ...prev, role: "student" }));
+                  setError("");
+                }}
+              >
+                Student
+              </button>
+              <button
+                type="button"
+                className={`py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${
+                  form.role === "admin"
+                    ? "bg-white text-gray-900 shadow-sm border border-gray-150"
+                    : "text-gray-500 hover:text-gray-800"
+                }`}
+                onClick={() => {
+                  setForm((prev) => ({ ...prev, role: "admin", roll: "" }));
+                  setError("");
+                }}
+              >
+                Admin
+              </button>
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Full Name <span className="text-red-500">*</span>
@@ -106,19 +143,21 @@ export default function SignupPage() {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Roll Number <span className="text-red-500">*</span>
-            </label>
-            <input
-              name="roll"
-              placeholder="Enter your roll number"
-              className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-[#0ea5e9] focus:border-transparent outline-none transition-all"
-              onChange={handleChange}
-              value={form.roll}
-              required
-            />
-          </div>
+          {form.role === "student" && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Roll Number <span className="text-red-500">*</span>
+              </label>
+              <input
+                name="roll"
+                placeholder="Enter your roll number"
+                className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-[#0ea5e9] focus:border-transparent outline-none transition-all"
+                onChange={handleChange}
+                value={form.roll}
+                required={form.role === "student"}
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -206,8 +245,10 @@ export default function SignupPage() {
                 </svg>
                 Creating Account...
               </span>
-            ) : (
+            ) : form.role === "student" ? (
               "Create Student Account"
+            ) : (
+              "Create Admin Account"
             )}
           </button>
         </form>
@@ -224,9 +265,11 @@ export default function SignupPage() {
         </p>
 
         {/* ✅ Optional: Info for admins */}
-        <p className="text-center text-xs text-gray-400 mt-4">
-          Admin accounts are managed by system administrators
-        </p>
+        {form.role === "student" && (
+          <p className="text-center text-xs text-gray-400 mt-4">
+            Admin accounts are managed by system administrators
+          </p>
+        )}
       </div>
     </div>
   );
