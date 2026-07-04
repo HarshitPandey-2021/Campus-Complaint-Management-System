@@ -228,7 +228,7 @@ GET    /api/complaints/admin/analytics
 ## 📝 License
 
 **Academic Project**
-University of Lucknow | 2025
+University of Lucknow | 2026
 
 Built with ❤️ by **Team CCMS**
 
