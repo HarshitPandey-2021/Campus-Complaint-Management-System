@@ -232,7 +232,7 @@ University of Lucknow | 2026
 
 Built with ❤️ by **Team CCMS**
 
-*Last Updated: January 2026*
+*Last Updated: March 2026*
 *Default Branch: `develop`*
 
 
