@@ -16,10 +16,10 @@ const Navbar = () => {
           {/* Full name always, just size changes */}
           <div className="flex flex-col">
             <span className="text-base md:text-xl lg:text-2xl font-bold tracking-wide">
-              UNIVERSITY OF LUCKNOW
+              Faculty of Engineering and  Technology
             </span>
             <span className="text-xs md:text-sm text-gray-200 font-light">
-              Faculty of Engineering and  Technology
+              UNIVERSITY OF LUCKNOW
             </span>
           </div>
         </div>

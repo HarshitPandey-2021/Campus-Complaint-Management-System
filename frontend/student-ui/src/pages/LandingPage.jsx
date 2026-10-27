@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import Navbar from "../components/common/Navbar";
+import Navbar from "../components/common/NavBar";
 import { useNavigate } from "react-router-dom";
 import { FileText, Search, ShieldCheck, CheckCircle, Star } from "lucide-react";
 import { getLandingStatsApi } from "../api";
