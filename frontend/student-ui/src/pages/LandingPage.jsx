@@ -296,7 +296,7 @@ export default function LandingPage() {
 
       {/* FOOTER */}
       <footer className="bg-indigo-900 text-white py-6 text-center -mt-8">
-        <p>© {new Date().getFullYear()} University of Lucknow | Campus Complaint Portal</p>
+        <p>© {new Date().getFullYear()} Faculty of Engineering and Technology | Campus Complaint Management System</p>
       </footer>
     </div>
   );

@@ -19,7 +19,7 @@ const Navbar = () => {
               UNIVERSITY OF LUCKNOW
             </span>
             <span className="text-xs md:text-sm text-gray-200 font-light">
-              Campus Complaint Management
+              Faculty of Engineering and  Technology
             </span>
           </div>
         </div>
