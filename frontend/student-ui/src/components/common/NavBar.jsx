@@ -1,7 +1,6 @@
 import React from "react";
-import { Link } from "react-router-dom";
 
-const Navbar = () => {
+export default function Navbar({ onLoginOpen, onSignupOpen }) {
   return (
     <nav className="bg-gradient-to-r from-teal-600 via-blue-700 to-blue-900 text-white shadow-lg">
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 md:py-4 flex justify-between items-center">

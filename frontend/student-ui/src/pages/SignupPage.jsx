@@ -19,6 +19,8 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [showPwdPanel, setShowPwdPanel] = useState(false);
 
+  if (!open) return null;
+
   function handleChange(e) {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
