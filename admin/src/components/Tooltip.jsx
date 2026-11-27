@@ -28,7 +28,7 @@ export default function Tooltip({ children, text, position = 'bottom' }) {
     setShow(false);
   };
 
-  const handleClick = (e) => {
+  const handleClick = () => {
     setShow(false);
   };
 

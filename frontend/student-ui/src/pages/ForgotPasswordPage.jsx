@@ -1,0 +1,303 @@
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import PasswordInput from "../components/common/PasswordInput.jsx";
+import {
+  requestPasswordResetApi,
+  verifyPasswordResetOtpApi,
+  resetPasswordApi,
+} from "../api.js";
+import { PASSWORD_EXAMPLE, PASSWORD_HINT, validatePassword } from "../utils/validators.js";
+import PasswordStrengthPanel from "../components/common/PasswordStrengthPanel.jsx";
+
+export default function ForgotPasswordPage() {
+  const navigate = useNavigate();
+  const [step, setStep] = useState("identifier");
+  const [identifier, setIdentifier] = useState("");
+  const [otp, setOtp] = useState("");
+  const [resetToken, setResetToken] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const [showPwdPanel, setShowPwdPanel] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const id = setInterval(() => {
+      setCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [cooldown]);
+
+  async function sendOtp(isResend = false) {
+    setError("");
+    setMessage("");
+    if (!identifier) {
+      setError("Please enter your registered email address.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await requestPasswordResetApi(identifier.trim());
+      setMessage(
+        res.message || "OTP has been sent to your registered email address."
+      );
+
+      if (!isResend) {
+        setStep("otp");
+      }
+      setCooldown(60);
+    } catch (err) {
+      setError(err.message || "Failed to send OTP.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleIdentifierSubmit(e) {
+    e.preventDefault();
+    await sendOtp(false);
+  }
+
+  async function handleOtpSubmit(e) {
+    e.preventDefault();
+    setError("");
+    setMessage("");
+    if (!otp) {
+      setError("Please enter the OTP.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await verifyPasswordResetOtpApi(
+        identifier.trim(),
+        otp.trim()
+      );
+      setResetToken(res.resetToken);
+      setMessage("OTP verified. Please set a new password.");
+      setStep("reset");
+    } catch (err) {
+      setError(err.message || "Failed to verify OTP.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResetSubmit(e) {
+    e.preventDefault();
+    setError("");
+    setMessage("");
+    if (!newPassword) {
+      setError("Please enter a new password.");
+      return;
+    }
+    if (!validatePassword(newPassword)) {
+      setError(PASSWORD_HINT);
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await resetPasswordApi(resetToken, newPassword);
+      setMessage(
+        res.message || "Password reset successfully. You can login now."
+      );
+      setShowSuccessModal(true);
+    } catch (err) {
+      setError(err.message || "Failed to reset password.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div
+      className="min-h-screen flex items-center justify-center px-4"
+      style={{
+        background:
+          "linear-gradient(135deg, rgba(192,38,211,0.15), rgba(14,165,233,0.12), rgba(0,128,128,0.10))",
+      }}
+    >
+      <div
+        className="p-8 rounded-2xl shadow-xl w-full max-w-md backdrop-blur-md"
+        style={{
+          background:
+            "linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.75))",
+        }}
+      >
+        <h2
+          className="text-3xl font-bold text-center mb-6"
+          style={{
+            background: "linear-gradient(90deg,#c026d3,#0ea5e9,#008080)",
+            WebkitBackgroundClip: "text",
+            color: "transparent",
+          }}
+        >
+          Forgot Password
+        </h2>
+
+        {error && (
+          <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-lg mb-4 text-center">
+            {error}
+          </div>
+        )}
+        {message && (
+          <div className="bg-green-50 border border-green-300 text-green-700 px-4 py-3 rounded-lg mb-4 text-center">
+            {message}
+          </div>
+        )}
+
+        {step === "identifier" && (
+          <form
+            onSubmit={handleIdentifierSubmit}
+            className="space-y-4 text-gray-800"
+          >
+            <input
+              type="email"
+              placeholder="Email"
+              className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#c026d3] outline-none"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              disabled={loading}
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full text-white py-2 rounded-lg font-semibold shadow-lg transition transform hover:scale-[1.02] disabled:opacity-60"
+              style={{
+                background: "linear-gradient(90deg,#c026d3,#0ea5e9,#008080)",
+              }}
+            >
+              {loading ? "Sending OTP..." : "Send OTP"}
+            </button>
+          </form>
+        )}
+
+        {step === "otp" && (
+          <form onSubmit={handleOtpSubmit} className="space-y-4 text-gray-800">
+            <input
+              type="text"
+              placeholder="Enter OTP sent to your email"
+              className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#0ea5e9] outline-none"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              disabled={loading}
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full text-white py-2 rounded-lg font-semibold shadow-lg transition transform hover:scale-[1.02] disabled:opacity-60"
+              style={{
+                background: "linear-gradient(90deg,#c026d3,#0ea5e9,#008080)",
+              }}
+            >
+              {loading ? "Verifying..." : "Verify OTP"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => sendOtp(true)}
+              disabled={loading || cooldown > 0}
+              className="w-full mt-2 border px-3 py-2 rounded-lg font-semibold transition disabled:opacity-60"
+              style={{
+                borderColor: "#0ea5e9",
+                color: "#0ea5e9",
+              }}
+            >
+              {cooldown > 0
+                ? `Resend OTP in ${cooldown}s`
+                : "Resend OTP"}
+            </button>
+          </form>
+        )}
+
+        {step === "reset" && (
+          <>
+            <form
+              onSubmit={handleResetSubmit}
+              className="space-y-4 text-gray-800"
+            >
+              <div className="relative">
+                <PasswordInput
+                  name="newPassword"
+                  placeholder={PASSWORD_EXAMPLE}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  disabled={loading}
+                  required
+                  onFocus={() => setShowPwdPanel(true)}
+                  onBlur={() => setShowPwdPanel(false)}
+                  inputClassName="focus:ring-[#c026d3]"
+                  autoComplete="new-password"
+                />
+
+                {showPwdPanel && (
+                  <div className="absolute top-0 left-full ml-4 hidden lg:block">
+                    <PasswordStrengthPanel password={newPassword} />
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                <span
+                  className="underline decoration-dotted cursor-help"
+                  title={PASSWORD_EXAMPLE}
+                >
+                  {PASSWORD_HINT}
+                </span>
+              </p>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full text-white py-2 rounded-lg font-semibold shadow-lg transition transform hover:scale-[1.02] disabled:opacity-60"
+                style={{
+                  background: "linear-gradient(90deg,#c026d3,#0ea5e9,#008080)",
+                }}
+              >
+                {loading ? "Resetting..." : "Reset Password"}
+              </button>
+            </form>
+
+            {message && message.toLowerCase().includes("success") && !showSuccessModal && (
+              <p className="text-center text-gray-700 mt-4">
+                <Link
+                  to="/login"
+                  className="font-semibold hover:underline"
+                  style={{ color: "#0ea5e9" }}
+                >
+                  Back to login
+                </Link>
+              </p>
+            )}
+          </>
+        )}
+      </div>
+      {showSuccessModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full mx-4 p-6 text-center">
+            <h3 className="text-xl font-semibold mb-3 text-gray-900">
+              Password Reset Successful
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Your password has been updated. Please login again with your new credentials.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setShowSuccessModal(false);
+                navigate("/login");
+              }}
+              className="w-full text-white py-2 rounded-lg font-semibold shadow-lg transition transform hover:scale-[1.02]"
+              style={{
+                background: "linear-gradient(90deg,#c026d3,#0ea5e9,#008080)",
+              }}
+            >
+              Go to Login
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+

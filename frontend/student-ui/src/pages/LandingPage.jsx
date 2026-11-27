@@ -1,271 +1,303 @@
-import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import Navbar from "../components/common/Navbar";
-import LoginModal from "../components/auth/LoginModal";
-import SignupModal from "../components/auth/SignupModal";
-
-import {
-  FileText,
-  Search,
-  ShieldCheck,
-  CheckCircle,
-  Star,
-} from "lucide-react";
+import React, { useEffect, useState } from "react";
+import Navbar from "../components/common/NavBar";
+import { useNavigate } from "react-router-dom";
+import { FileText, Search, ShieldCheck, CheckCircle, Star } from "lucide-react";
+import { getLandingStatsApi } from "../api";
 
 export default function LandingPage() {
-  const [loginOpen, setLoginOpen] = useState(false);
-  const [signupOpen, setSignupOpen] = useState(false);
-
-  /* ----------------------- TESTIMONIAL CAROUSEL STATE ----------------------- */
-  const testimonials = [
-    { name: "Andrew Sans", msg: "Fast response and supportive staff!" },
-    { name: "Eric Rocks", msg: "Issue resolved within a day!" },
-    { name: "Raveric", msg: "Transparent and easy to use!" },
-  ];
-
-  const [slide, setSlide] = useState(0);
+  const navigate = useNavigate();
+  const [stats, setStats] = useState({
+    resolved: "1200+",
+    responseTime: "24 Hrs",
+    satisfaction: "95%",
+    loading: true
+  });
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setSlide((prev) => (prev + 1) % testimonials.length);
-    }, 3500);
-    return () => clearInterval(timer);
+    // Update page title
+    document.title = "Campus Grievance Portal | University of Lucknow";
+    
+    // Fetch dynamic stats
+    fetchStats();
+    
+    // Smooth reveal on scroll
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("opacity-100");
+            entry.target.classList.remove("opacity-0");
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    document.querySelectorAll(".animate-on-scroll").forEach((element) => {
+      element.classList.add("opacity-0", "transition-opacity", "duration-700");
+      observer.observe(element);
+    });
+
+    return () => observer.disconnect();
   }, []);
 
+  // Fetch real stats from backend
+  const fetchStats = async () => {
+    try {
+      const data = await getLandingStatsApi();
+      setStats({
+        resolved: `${data.totalResolved}+`,
+        responseTime: data.avgResponseTime,
+        satisfaction: `${data.satisfactionRate}%`,
+        loading: false
+      });
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+      // Keep fallback values
+      setStats({
+        resolved: "1200+",
+        responseTime: "24 Hrs",
+        satisfaction: "95%",
+        loading: false
+      });
+    }
+  };
+
   return (
-    <>
-      {/* NAVBAR */}
-      <Navbar
-        onLoginOpen={() => setLoginOpen(true)}
-        onSignupOpen={() => setSignupOpen(true)}
-      />
+    <div className="bg-gray-50">
+      <Navbar />
 
-      <div className="min-h-screen flex flex-col bg-gray-50 pt-20">
+      {/* HERO SECTION */}
+      <section
+        className="relative bg-cover bg-center h-[75vh] flex flex-col justify-center items-center text-center"
+        style={{
+          backgroundImage:
+            "url('https://www.lkouniv.ac.in/site/writereaddata/HomePage/Header/H_202403191545264198.jpg')",
+          marginTop: "-1px"
+        }}
+      >
+        <div className="bg-gradient-to-b from-black/60 via-black/50 to-black/40 absolute inset-0" />
+        <div className="relative z-10 text-white px-4 space-y-6 animate-on-scroll">
+          <h1 className="text-5xl md:text-6xl font-extrabold mb-4 drop-shadow-2xl leading-tight">
+            Campus Grievance <span className="text-yellow-400">Redressal</span> Portal
+          </h1>
 
-        {/* HERO SECTION */}
-        <section
-          className="relative bg-cover bg-center h-[70vh] flex flex-col justify-center items-center text-center group transition-all"
-          style={{
-            backgroundImage:
-              "url('https://www.lkouniv.ac.in/site/writereaddata/HomePage/Header/H_202403191545264198.jpg')",
-          }}
-        >
-          <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-all duration-500" />
+          <p className="text-xl md:text-2xl mb-8 font-light max-w-3xl mx-auto leading-relaxed">
+            A transparent, responsive and student-centric system empowering students to raise and track concerns.
+          </p>
 
-          <div className="relative z-10 text-white px-4 transform group-hover:scale-[1.02] transition duration-500">
-            <h1 className="text-4xl md:text-6xl font-bold mb-3 drop-shadow-md tracking-wide">
-              Campus Grievance Redressal Portal
-            </h1>
+          <button
+            onClick={() => navigate("/login")}
+            className="bg-yellow-400 text-gray-900 px-8 py-4 text-lg font-bold rounded-full shadow-2xl hover:bg-yellow-300 hover:scale-105 transition-all duration-300"
+          >
+            Report & Track Complaints →
+          </button>
+        </div>
+      </section>
 
-            <p className="text-lg md:text-xl mb-8 opacity-90 max-w-2xl mx-auto leading-relaxed">
-              A transparent, responsive and student-centric system empowering students to raise and track concerns efficiently.
-            </p>
-
-            <button
-              onClick={() => setLoginOpen(true)}
-              className="bg-yellow-400 text-gray-900 px-8 py-3 font-semibold rounded-xl shadow-lg hover:bg-yellow-300 hover:scale-105 transition"
-            >
-              Report & Track Complaints
-            </button>
-          </div>
-        </section>
-
-        {/* FEATURES */}
-        <section className="py-16 px-6 md:px-20 grid md:grid-cols-3 gap-10 text-center">
+      {/* MAIN FEATURES */}
+      <section className="py-16 px-6 md:px-20">
+        <div className="grid md:grid-cols-3 gap-8 text-center animate-on-scroll">
           {[
             {
               title: "Lodge Complaints Effortlessly",
-              desc: "Submit detailed concerns through an intuitive and student-friendly interface.",
-              icon: <FileText className="mx-auto w-16 h-16 text-pink-600 mb-4" />,
+              desc: "Submit detailed concerns with an intuitive and student-friendly interface.",
+              icon: <FileText className="mx-auto w-14 h-14 text-pink-600 mb-4" />,
+              border: "linear-gradient(90deg,#c026d3,#ec4899,#0ea5e9,#008080) 1",
             },
             {
               title: "Real-Time Status Tracking",
               desc: "Monitor your complaint status with live updates and clear timelines.",
-              icon: <Search className="mx-auto w-16 h-16 text-teal-600 mb-4" />,
+              icon: <Search className="mx-auto w-14 h-14 text-teal-600 mb-4" />,
+              border: "linear-gradient(90deg,#008080,#0ea5e9,#c026d3,#ec4899) 1",
             },
             {
               title: "Ensured Transparency",
-              desc: "A fair, responsible and accountable grievance redressal system.",
-              icon: (
-                <ShieldCheck className="mx-auto w-16 h-16 text-blue-700 mb-4" />
-              ),
+              desc: "A fair, responsible and accountable grievance redressal process.",
+              icon: <ShieldCheck className="mx-auto w-14 h-14 text-blue-700 mb-4" />,
+              border: "linear-gradient(90deg,#0ea5e9,#008080,#ec4899,#c026d3) 1",
             },
           ].map((card, i) => (
             <div
               key={i}
-              className="bg-white p-8 rounded-3xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition border border-gray-200"
+              className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300"
+              style={{ border: "3px solid transparent", backgroundClip: "padding-box", borderImage: card.border }}
             >
               {card.icon}
-              <h3 className="text-xl font-semibold text-gray-800 mb-3">
+              <h3 className="text-xl font-bold text-gray-800 mb-3">
                 {card.title}
               </h3>
               <p className="text-gray-600 leading-relaxed">{card.desc}</p>
             </div>
           ))}
-        </section>
+        </div>
+      </section>
 
-        {/* HOW IT WORKS + STATS (Equal Height Fix Applied) */}
-        <section className="px-6 md:px-20 py-20 bg-gray-100">
-          <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-14 items-stretch">
+      {/* HOW IT WORKS + STATS */}
+      <section className="px-6 md:px-20 py-20 bg-gray-100">
+        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center animate-on-scroll">
+          
+          {/* HOW IT WORKS */}
+          <div className="bg-white rounded-2xl shadow-xl p-10 border border-gray-200 hover:shadow-2xl transition-all duration-300 h-full">
+            <h2 className="text-3xl font-bold text-indigo-700 mb-8 text-center">
+              How It Works
+            </h2>
 
-            {/* LEFT CARD (Equal height) */}
-            <div className="bg-white rounded-3xl shadow-xl p-12 border border-gray-200 hover:shadow-2xl transition h-full">
-              <h2 className="text-3xl font-bold text-indigo-700 mb-8 text-center">
-                How It Works
-              </h2>
-
-              <div className="space-y-6 text-gray-700 text-lg">
-                {[
-                  "Login securely using your credentials.",
-                  "Submit your complaint with full details.",
-                  "Track real-time updates on your dashboard.",
-                  "Receive notifications until resolution.",
-                ].map((step, i) => (
-                  <p key={i} className="flex items-start gap-3">
-                    <CheckCircle className="w-7 h-7 text-teal-600 mt-1" />
-                    {step}
-                  </p>
-                ))}
-              </div>
-            </div>
-
-            {/* RIGHT CARD (Equal height) */}
-            <div className="bg-white rounded-3xl shadow-xl p-12 border border-gray-200 text-center hover:shadow-2xl transition h-full">
-              <h2 className="text-3xl font-bold text-indigo-700 mb-8">
-                Quick Insights
-              </h2>
-
-              <div className="space-y-8 text-gray-800 text-xl font-semibold">
-                <p>
-                  <span className="text-teal-600 text-5xl font-bold">1200+</span>
-                  <br /> Complaints Resolved
+            <div className="space-y-6 text-gray-700 text-lg">
+              {[
+                "Login securely using your credentials.",
+                "Submit your complaint with full details.",
+                "Track real-time updates on your dashboard.",
+                "Receive transparent notifications until resolution."
+              ].map((step, i) => (
+                <p key={i} className="flex items-start gap-3 hover:translate-x-2 transition-transform duration-200 cursor-pointer group">
+                  <CheckCircle className="w-6 h-6 text-teal-600 mt-1 flex-shrink-0 group-hover:scale-110 transition-transform" />
+                  <span className="group-hover:text-indigo-600 transition-colors">{step}</span>
                 </p>
-                <p>
-                  <span className="text-pink-600 text-5xl font-bold">24 Hrs</span>
-                  <br /> Avg Response Time
-                </p>
-                <p>
-                  <span className="text-purple-600 text-5xl font-bold">95%</span>
-                  <br /> Student Satisfaction
-                </p>
-              </div>
+              ))}
             </div>
           </div>
-        </section>
 
-        {/* ABOUT US */}
-        <section className="px-6 md:px-20 py-20 text-center bg-white">
+          {/* QUICK INSIGHTS - NOW DYNAMIC! */}
+          <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-2xl shadow-2xl p-10 text-white text-center hover:scale-[1.02] transition-transform duration-300 h-full flex flex-col justify-center">
+            <h2 className="text-3xl font-bold mb-10">Quick Insights</h2>
+
+            {stats.loading ? (
+              <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-white"></div>
+              </div>
+            ) : (
+              <div className="space-y-8">
+                <div className="hover:scale-110 transition-transform duration-300 cursor-pointer">
+                  <span className="text-yellow-300 text-5xl font-extrabold block animate-pulse">
+                    {stats.resolved}
+                  </span>
+                  <p className="text-lg mt-2">Complaints Resolved</p>
+                </div>
+                <div className="hover:scale-110 transition-transform duration-300 cursor-pointer">
+                  <span className="text-green-300 text-5xl font-extrabold block animate-pulse">
+                    {stats.responseTime}
+                  </span>
+                  <p className="text-lg mt-2">Average Response Time</p>
+                </div>
+                <div className="hover:scale-110 transition-transform duration-300 cursor-pointer">
+                  <span className="text-pink-300 text-5xl font-extrabold block animate-pulse">
+                    {stats.satisfaction}
+                  </span>
+                  <p className="text-lg mt-2">Student Satisfaction</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ABOUT US */}
+      <section className="px-6 md:px-20 py-20 text-center bg-white">
+        <div className="animate-on-scroll">
           <h2 className="text-4xl font-bold mb-6 text-indigo-700">About Us</h2>
-          <p className="max-w-3xl mx-auto text-gray-700 text-lg leading-relaxed mb-12">
-            The University of Lucknow, over a century old centre of higher learning, has always upheld a tradition of academic excellence, integrity, and service to society. Carrying forward this rich legacy pertaining to the digital age, this Campus Grievance Redressal Portal is an initiative, a dedicated platform to strengthen communication between the University community and the University administration.
+          <p className="max-w-3xl mx-auto text-gray-700 leading-relaxed text-lg mb-12">
+            The University of Lucknow's Campus Grievance Redressal Portal is dedicated to ensuring transparency, faster processing, accountability and student empowerment through a modern and fully digital platform. We combine clear workflows, timely action, and user-friendly reporting to improve campus life for students, faculty and staff.
+          </p>
 
-This portal attempts to reflect the University’s commitment to transparency, responsiveness, and community welfare. Designed with modern technological standards, it ensures faster complaint processing, clear accountability, and seamless tracking—allowing one to voice concerns with confidence and clarity.
-
-Beyond its technical efficiency, the portal symbolizes a more humane approach to problem-solving within the campus community. It is to provide not just students, but faculty and staff with a space to be heard and supported, reinforcing the University’s belief that meaningful dialogue is essential for a healthy academic environment.
-
-By integrating our time-honoured values with contemporary digital innovation, this Campus Grievance Redressal Portal stands as a testament to the University of Lucknow’s ongoing mission: to empower students, uphold fairness, and continuously evolve in service of its vibrant academic community.</p>
-
-          {/* TESTIMONIAL CAROUSEL (Enhancement 4) */}
+          {/* TESTIMONIALS - 5 TESTIMONIALS */}
           <h3 className="text-2xl font-semibold text-indigo-700 mb-8">
             Student Testimonials
           </h3>
 
-          <div className="relative w-full max-w-3xl mx-auto overflow-hidden">
-            <div
-              className="flex transition-all duration-700"
-              style={{ transform: `translateX(-${slide * 100}%)` }}
-            >
-              {testimonials.map((t, i) => (
-                <div key={i} className="min-w-full px-6">
-                  <div className="bg-gray-50 p-10 rounded-xl shadow-lg hover:shadow-2xl transition border">
-                    <Star className="w-10 h-10 text-yellow-500 mx-auto mb-4" />
-                    <p className="italic text-gray-700 mb-3">“{t.msg}”</p>
-                    <h4 className="font-semibold text-indigo-700">– {t.name}</h4>
-                  </div>
+          <div className="grid md:grid-cols-3 lg:grid-cols-5 gap-6 justify-center max-w-7xl mx-auto">
+            {[
+              { name: "Priya Sharma", msg: "Extremely fast response and supportive staff!" },
+              { name: "Rahul Verma", msg: "My issue was resolved within a single day!" },
+              { name: "Anjali Singh", msg: "Very transparent and easy to use interface." },
+              { name: "Vikram Yadav", msg: "The tracking system is brilliant and simple!" },
+              { name: "Neha Gupta", msg: "Finally, a system that actually listens to students!" },
+            ].map((t, i) => (
+              <div
+                key={i}
+                className="bg-gradient-to-br from-white to-gray-50 p-6 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border-l-4 border-yellow-400"
+              >
+                <div className="flex gap-1 justify-center mb-3">
+                  {[...Array(5)].map((_, idx) => (
+                    <Star key={idx} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  ))}
                 </div>
-              ))}
-            </div>
-
-            {/* CAROUSEL DOTS */}
-            <div className="flex justify-center gap-3 mt-6">
-              {testimonials.map((_, i) => (
-                <button
-                  key={i}
-                  className={`h-3 w-3 rounded-full transition ${
-                    slide === i ? "bg-indigo-700" : "bg-gray-400"
-                  }`}
-                  onClick={() => setSlide(i)}
-                ></button>
-              ))}
-            </div>
-          </div>
-
-          {/* TEAM */}
-          <h3 className="text-2xl font-semibold text-indigo-700 mt-16 mb-8">
-            Our Team
-          </h3>
-
-          <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-12 max-w-6xl mx-auto">
-            {["team1", "team2", "team3", "team4"].map((img, idx) => (
-              <div key={idx} className="flex flex-col items-center">
-                <div className="w-32 h-32 rounded-full overflow-hidden shadow-lg border hover:scale-105 transition">
-                  <img
-                    src={`/images/${img}.jpg`}
-                    className="w-full h-full object-cover"
-                    alt={`team-${idx + 1}`}
-                  />
-                </div>
-                <p className="font-semibold text-indigo-700 mt-3">Team Member</p>
-                <p className="text-gray-600 text-sm">Administration</p>
+                <p className="italic text-gray-700 mb-3 text-sm leading-relaxed">"{t.msg}"</p>
+                <h4 className="font-bold text-indigo-700 text-sm">– {t.name}</h4>
               </div>
             ))}
           </div>
-        </section>
 
-        {/* CONTACT */}
-        <section className="bg-gradient-to-r from-teal-500 via-pink-500 to-blue-700 py-20 text-white text-center">
+          {/* TEAM SECTION */}
+          <h3 className="text-2xl font-semibold text-indigo-700 mt-16 mb-8">
+            Our Development Team
+          </h3>
+
+          <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-12 justify-items-center max-w-6xl mx-auto">
+            {[
+              { img: "shakti", fallback: "team1", name: "Shakti", role: "Frontend & UI Design" },
+              { img: "harshit", fallback: "team2", name: "Harshit", role: "Dashboard Development" },
+              { img: "somu", fallback: "team3", name: "Somesh", role: "Backend & APIs" },
+              { img: "shiva", fallback: "team4", name: "Shiva", role: "Database & Integration" },
+            ].map((member, idx) => (
+              <div className="flex flex-col items-center group" key={idx}>
+                <div className="w-32 h-32 rounded-full overflow-hidden shadow-lg border-4 border-indigo-200 group-hover:border-indigo-500 transition-all duration-300 group-hover:scale-110">
+                  <img
+                    src={`/images/${member.img}.jpeg`}
+                    className="w-full h-full object-cover object-top"
+                    alt={member.name}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = `/images/${member.fallback}.jpg`;
+                    }}
+                  />
+                </div>
+                <p className="font-bold text-indigo-700 mt-4 text-lg">{member.name}</p>
+                <p className="text-gray-600 text-sm">{member.role}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CONTACT SECTION */}
+      <section className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 py-20 text-white text-center">
+        <div className="animate-on-scroll">
           <h2 className="text-3xl font-bold mb-6">Contact Us</h2>
           <p className="max-w-2xl mx-auto text-lg mb-10">
-            Have a concern or need help? Our team is here to support you.
+            Have a concern or need help? Our support team is here to assist you!
           </p>
 
-          <div className="flex flex-col md:flex-row justify-center items-center gap-10">
-            <div className="bg-white/20 p-6 rounded-xl shadow-lg w-64 hover:scale-105 transition">
-              <h3 className="font-semibold text-xl mb-2">📍 Address</h3>
-              <p>University of Lucknow</p>
+          <div className="flex flex-col md:flex-row justify-center items-center gap-8">
+            <div className="bg-white/20 backdrop-blur-md p-6 rounded-xl shadow-lg w-72 hover:bg-white/30 transition-all duration-300 hover:scale-105">
+              <h3 className="font-semibold text-xl mb-2">📍 Main Campus</h3>
+              <p className="text-sm">University Road, Babuganj, Hasanganj</p>
+              <p className="text-sm">Lucknow - 226007</p>
             </div>
 
-            <div className="bg-white/20 p-6 rounded-xl shadow-lg w-64 hover:scale-105 transition">
-              <h3 className="font-semibold text-xl mb-2">📧 Email</h3>
-              <p>example@abc.edu.in</p>
+            <div className="bg-white/20 backdrop-blur-md p-6 rounded-xl shadow-lg w-72 hover:bg-white/30 transition-all duration-300 hover:scale-105">
+              <h3 className="font-semibold text-xl mb-2">📧 Support Email</h3>
+              <p className="text-sm">General: info@lkouniv.ac.in</p>
+              <p className="text-sm">Technical: lu.support@otpl.co.in</p>
             </div>
 
-            <div className="bg-white/20 p-6 rounded-xl shadow-lg w-64 hover:scale-105 transition">
-              <h3 className="font-semibold text-xl mb-2">📞 Phone</h3>
-              <p>+91 9988776655</p>
+            <div className="bg-white/20 backdrop-blur-md p-6 rounded-xl shadow-lg w-72 hover:bg-white/30 transition-all duration-300 hover:scale-105">
+              <h3 className="font-semibold text-xl mb-2">📞 Helpline</h3>
+              <p className="text-sm">Office: 0522-2740467</p>
+              <p className="text-sm">Support: +91-7991200503</p>
             </div>
           </div>
-        </section>
+          
+          <p className="mt-7 text-white/90 text-sm text-base font-medium">
+            Technical Support Available: Monday - Friday (10 AM - 6 PM)
+          </p>
+        </div>
+      </section>
 
-        <footer className="bg-indigo-700 text-white py-6 text-center">
-          <p>© 2025 University of Lucknow | Campus Complaint Portal</p>
-        </footer>
-      </div>
-
-      {/* MODALS */}
-      <LoginModal
-        isOpen={loginOpen}
-        onClose={() => setLoginOpen(false)}
-        onSignupOpen={() => {
-          setLoginOpen(false);
-          setSignupOpen(true);
-        }}
-      />
-
-      <SignupModal
-        isOpen={signupOpen}
-        onClose={() => setSignupOpen(false)}
-      />
-    </>
+      {/* FOOTER */}
+      <footer className="bg-indigo-900 text-white py-6 text-center -mt-8">
+        <p>© {new Date().getFullYear()} Faculty of Engineering and Technology | Campus Complaint Management System</p>
+      </footer>
+    </div>
   );
 }

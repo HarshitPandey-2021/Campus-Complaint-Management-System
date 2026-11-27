@@ -1,5 +1,3 @@
-// src/pages/ToastTest.jsx - COMPLETELY SELF-CONTAINED
-
 import React, { useState } from 'react';
 import { RiCheckFill, RiCloseLine } from 'react-icons/ri';
 

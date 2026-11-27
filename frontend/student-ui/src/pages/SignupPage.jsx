@@ -1,71 +1,277 @@
 import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { signupApi } from "../api.js";
+import { PASSWORD_EXAMPLE, PASSWORD_HINT, validatePassword } from "../utils/validators.js";
+import PasswordStrengthPanel from "../components/common/PasswordStrengthPanel.jsx";
+import PasswordInput from "../components/common/PasswordInput.jsx";
 
-export default function SignupModal({ open, onClose }) {
+export default function SignupPage() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     name: "",
     roll: "",
     email: "",
     password: "",
     confirmPassword: "",
+    role: "student",
   });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showPwdPanel, setShowPwdPanel] = useState(false);
 
   if (!open) return null;
 
   function handleChange(e) {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setError("");
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    if (form.password !== form.confirmPassword) { alert("Passwords don't match"); return; }
-    if (!/^(?=.*[A-Z])(?=.*\d).{8,}$/.test(form.password)) {
-      alert("Password must be 8+ chars, include number & uppercase");
+    setError("");
+
+    if (form.password !== form.confirmPassword) {
+      setError("Passwords do not match.");
       return;
     }
-    alert("Signup submitted");
+
+    if (!validatePassword(form.password)) {
+      setError(PASSWORD_HINT);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const isStudent = form.role === "student";
+      await signupApi(
+        form.name.trim(),
+        isStudent ? form.roll.trim() : "",
+        form.email.trim(),
+        form.password,
+        form.role
+      );
+      alert("Signup successful! Redirecting to login...");
+      navigate("/login");
+    } catch (err) {
+      setError(err.message || "Signup failed. Try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
-      <div className="w-full max-w-md p-8 rounded-2xl shadow-xl backdrop-blur-md"
-        style={{ background:"linear-gradient(180deg,rgba(255,255,255,0.9),rgba(255,255,255,0.75))" }}>
-        
-        <h2 className="text-3xl font-bold text-center mb-6 bg-gradient-to-r from-pink-600 via-blue-500 to-teal-600 bg-clip-text text-transparent">
-          Sign Up
+    <div
+      className="min-h-screen flex items-center justify-center px-4"
+      style={{
+        background:
+          "linear-gradient(135deg, rgba(192,38,211,0.15), rgba(14,165,233,0.12), rgba(0,128,128,0.10))",
+      }}
+    >
+      <div
+        className="p-8 rounded-2xl shadow-xl w-full max-w-md backdrop-blur-md"
+        style={{
+          background:
+            "linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.75))",
+        }}
+      >
+        <h2
+          className="text-3xl font-bold text-center mb-6"
+          style={{
+            background:
+              "linear-gradient(90deg,#c026d3,#0ea5e9,#008080)",
+            WebkitBackgroundClip: "text",
+            color: "transparent",
+          }}
+        >
+          {form.role === "student" ? "Student Sign Up" : "Admin Sign Up"}
         </h2>
 
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 text-center text-sm">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4 text-gray-800">
-          <input name="name" placeholder="Full Name" onChange={handleChange}
-            className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none" required />
+          {/* Role Selection Segmented Control */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Sign Up As
+            </label>
+            <div className="grid grid-cols-2 gap-2 p-1 rounded-xl border border-gray-200" style={{ backgroundColor: "#f3f4f6" }}>
+              <button
+                type="button"
+                className={`py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${
+                  form.role === "student"
+                    ? "bg-white text-gray-900 shadow-sm border border-gray-150"
+                    : "text-gray-500 hover:text-gray-800"
+                }`}
+                onClick={() => {
+                  setForm((prev) => ({ ...prev, role: "student" }));
+                  setError("");
+                }}
+              >
+                Student
+              </button>
+              <button
+                type="button"
+                className={`py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${
+                  form.role === "admin"
+                    ? "bg-white text-gray-900 shadow-sm border border-gray-150"
+                    : "text-gray-500 hover:text-gray-800"
+                }`}
+                onClick={() => {
+                  setForm((prev) => ({ ...prev, role: "admin", roll: "" }));
+                  setError("");
+                }}
+              >
+                Admin
+              </button>
+            </div>
+          </div>
 
-          <input name="roll" placeholder="Roll Number" onChange={handleChange}
-            className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Full Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              name="name"
+              placeholder="Enter your full name"
+              className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-[#c026d3] focus:border-transparent outline-none transition-all"
+              onChange={handleChange}
+              value={form.name}
+              required
+            />
+          </div>
 
-          <input name="email" type="email" placeholder="Email" onChange={handleChange}
-            className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none" required />
+          {form.role === "student" && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Roll Number <span className="text-red-500">*</span>
+              </label>
+              <input
+                name="roll"
+                placeholder="Enter your roll number"
+                className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-[#0ea5e9] focus:border-transparent outline-none transition-all"
+                onChange={handleChange}
+                value={form.roll}
+                required={form.role === "student"}
+              />
+            </div>
+          )}
 
-          <input name="password" type="password" placeholder="Password" onChange={handleChange}
-            className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none" required />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email <span className="text-red-500">*</span>
+            </label>
+            <input
+              name="email"
+              type="email"
+              placeholder="Enter your email address"
+              className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-[#008080] focus:border-transparent outline-none transition-all"
+              onChange={handleChange}
+              value={form.email}
+              required
+            />
+          </div>
 
-          <input name="confirmPassword" type="password" placeholder="Confirm Password" onChange={handleChange}
-            className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Password <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <PasswordInput
+                name="password"
+                placeholder={PASSWORD_EXAMPLE}
+                value={form.password}
+                onChange={handleChange}
+                required
+                onFocus={() => setShowPwdPanel(true)}
+                onBlur={() => setShowPwdPanel(false)}
+                inputClassName="focus:ring-[#c026d3]"
+              />
+
+              {showPwdPanel && (
+                <div className="absolute top-0 left-full ml-4 hidden lg:block">
+                  <PasswordStrengthPanel password={form.password} />
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              <span
+                className="underline decoration-dotted cursor-help"
+                title={PASSWORD_EXAMPLE}
+              >
+                {PASSWORD_HINT}
+              </span>
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Confirm Password <span className="text-red-500">*</span>
+            </label>
+            <PasswordInput
+              name="confirmPassword"
+              placeholder="Re-enter your password"
+              value={form.confirmPassword}
+              onChange={handleChange}
+              required
+              inputClassName="focus:ring-[#0ea5e9]"
+              autoComplete="new-password"
+            />
+          </div>
+
+          {/* ✅ REMOVED: Role selection radio buttons
+              Admin accounts should be created by:
+              1. Direct database insertion
+              2. Super-admin panel
+              3. Seeding during initial setup
+          */}
 
           <button
             type="submit"
-            className="w-full text-white py-2 rounded-lg font-semibold shadow-lg transition hover:scale-105"
-            style={{ background:"linear-gradient(90deg,#c026d3,#0ea5e9,#008080)" }}
+            disabled={loading}
+            className="w-full text-white py-3 rounded-lg font-semibold shadow-lg transition transform hover:scale-[1.02] hover:shadow-xl disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none mt-6"
+            style={{
+              background:
+                "linear-gradient(90deg,#c026d3,#0ea5e9,#008080)",
+            }}
           >
-            Sign Up
-          </button>
-
-          <button
-            onClick={onClose}
-            type="button"
-            className="w-full mt-3 py-2 font-semibold text-gray-700 hover:opacity-70"
-          >
-            Close
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                </svg>
+                Creating Account...
+              </span>
+            ) : form.role === "student" ? (
+              "Create Student Account"
+            ) : (
+              "Create Admin Account"
+            )}
           </button>
         </form>
+
+        <p className="text-center text-gray-600 mt-6">
+          Already have an account?{" "}
+          <Link
+            to="/login"
+            className="font-semibold hover:underline"
+            style={{ color: "#c026d3" }}
+          >
+            Login here
+          </Link>
+        </p>
+
+        {/* ✅ Optional: Info for admins */}
+        {form.role === "student" && (
+          <p className="text-center text-xs text-gray-400 mt-4">
+            Admin accounts are managed by system administrators
+          </p>
+        )}
       </div>
     </div>
   );
